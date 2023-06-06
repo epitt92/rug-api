@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.etherscan import *
+from v1 import *
 
 app = FastAPI()
 
@@ -20,15 +20,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from fastapi import FastAPI
-
-app = FastAPI()
-
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
 
-# Import and include the item router
-from core.schemas.goplus import goplusrouter
-from core.schemas.schema import etherscanrouter
-app.include_router(item_router, prefix="/items", tags=["items"])
+
+app.include_router(go_plus_router, prefix="/goplus", tags=["goplus"])
+app.include_router(etherscan_router, prefix="/etherscan", tags=["etherscan"])
