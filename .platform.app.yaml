@@ -21,7 +21,7 @@ hooks:
         set -eu
 
         # Download the latest version of pip
-        python3.11 -m pip install --upgrade pip
+        python3 -m pip install --upgrade pip
 
         # Install dependencies
         pipenv install --deploy

@@ -1,3 +1,7 @@
 https://{default}/:
   type: upstream
   upstream: "app:http"
+
+"https://api.rug.ai":
+    type: redirect
+    to: "https://{default}/"
