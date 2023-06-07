@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import HTMLResponse
 
 import os
 import uvicorn
 
 from v1 import *
 
-app = FastAPI()
+app = FastAPI(docs_url="/endpoints", redoc_url="/documentation")
 
 def custom_schema():
     openapi_schema = get_openapi(
@@ -47,6 +48,12 @@ app.include_router(go_plus_router, prefix="/goplus", tags=["GoPlus Security Endp
 app.include_router(explorer_router, prefix="/explorer", tags=["Block Explorer Endpoints"])
 app.include_router(score_router, prefix="/score", tags=["Rug.ai Score Endpoints"])
 app.include_router(honeypot_router, prefix="/honeypot", tags=["Honeypot.is Endpoints"])
+
+
+@app.api_route("/", response_class=HTMLResponse, status_code=200, methods=['GET', 'HEAD'])
+async def load_root():
+    with open("index.html", "r") as file:
+        return file.read()
 
 if __name__ == "__main__":
     port = os.getenv("PORT") or 8080
