@@ -1,3 +1,4 @@
 fastapi
 uvicorn
 endpoints
+python-dotenv
