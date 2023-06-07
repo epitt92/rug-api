@@ -9,6 +9,8 @@ verify_ssl = true
 fastapi = "*"
 uvicorn = "*"
 click = "*"
+requests = "*"
+python-dotenv = "*"
 
 [requires]
-python_version = "3.11"
+python_version = "3.9"
