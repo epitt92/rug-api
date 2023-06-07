@@ -2,6 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 
+import os
+import uvicorn
+
 from v1 import *
 
 app = FastAPI()
@@ -44,3 +47,7 @@ app.include_router(go_plus_router, prefix="/goplus", tags=["GoPlus Security Endp
 app.include_router(explorer_router, prefix="/explorer", tags=["Block Explorer Endpoints"])
 app.include_router(score_router, prefix="/score", tags=["Rug.ai Score Endpoints"])
 app.include_router(honeypot_router, prefix="/honeypot", tags=["Honeypot.is Endpoints"])
+
+if __name__ == '__main__':
+    port = os.getenv("PORT") or 8080
+    uvicorn.run(app, host="127.0.0.1", port=int(port))

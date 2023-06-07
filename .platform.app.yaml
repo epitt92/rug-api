@@ -32,7 +32,7 @@ hooks:
 # The configuration of the application when it is exposed to the web.
 web:
     commands:
-        start: "pipenv run python server.py"
+        start: "pipenv run python main.py"
 
 ##########################
 # Services
