@@ -1,3 +1,6 @@
 https://{default}/:
   type: upstream
   upstream: "app:http"
+"https://api.rug.ai":
+    type: upstream
+    upstream: "api:http"
