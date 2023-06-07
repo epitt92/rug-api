@@ -48,6 +48,6 @@ app.include_router(explorer_router, prefix="/explorer", tags=["Block Explorer En
 app.include_router(score_router, prefix="/score", tags=["Rug.ai Score Endpoints"])
 app.include_router(honeypot_router, prefix="/honeypot", tags=["Honeypot.is Endpoints"])
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     port = os.getenv("PORT") or 8080
     uvicorn.run(app, host="127.0.0.1", port=int(port))
