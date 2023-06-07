@@ -1,23 +1,33 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 import requests
 import os
 import dotenv
+from pydantic import BaseModel
+from typing import Annotated
 
 dotenv.load_dotenv()
 
 router = APIRouter()
+
+
+class HoneypotArgs(BaseModel):
+    contract_address: Annotated[str, Query(max_length=os.getenv('ADDRESS_LENGTH'))]
+    pair_address: Annotated[str, Query(max_length=os.getenv('ADDRESS_LENGTH'))]
+    router_address: Annotated[str, Query(max_length=os.getenv('ADDRESS_LENGTH'))]
+    chain_id: int = 1
+
 
 @router.get("/")
 def ping():
     return {"message": True}
 
 
-def fetch_data(contract_address: str, pair_address: str, router_address: str, chain_id: int = 1):
+def fetch_data(args: HoneypotArgs):
     params = {
-        'chainId': chain_id,
-        'address': contract_address,
-        'pair': pair_address,
-        'router': router_address,
+        'chainId': args.chain_id,
+        'address': args.contract_address,
+        'pair': args.pair_address,
+        'router': args.router_address,
     }
 
     response = requests.get(os.getenv('HONEYPOT_IS_ENDPOINT'), params=params)

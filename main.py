@@ -30,7 +30,6 @@ app.openapi = custom_schema
 origins = [
     "http://localhost",
     "http://localhost:3000",
-    "https://example.com",
 ]
 
 app.add_middleware(
