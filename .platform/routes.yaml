@@ -1,3 +1,3 @@
-https://{default}/:
+https://api/:
   type: upstream
   upstream: "app:http"
