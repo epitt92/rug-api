@@ -8,7 +8,7 @@ import uvicorn
 
 from v1 import *
 
-app = FastAPI()
+app = FastAPI(docs_url="/endpoints", redoc_url="/documentation")
 
 def custom_schema():
     openapi_schema = get_openapi(
