@@ -4,4 +4,4 @@ https://{default}/:
 
 "https://api.rug.ai":
     type: redirect
-    to: "api:http"
+    to: "https://{default}/"
