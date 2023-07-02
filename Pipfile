@@ -1,16 +1,22 @@
 [[source]]
-name = "pypi"
 url = "https://pypi.org/simple"
 verify_ssl = true
+name = "pypi"
+
+[packages]
+anyio = "==3.6.2"
+click = "==8.1.3"
+fastapi = "==0.91.0"
+h11 = "==0.14.0"
+idna = "==3.4"
+pydantic = "==1.10.4"
+sniffio = "==1.3.0"
+starlette = "==0.24.0"
+typing-extensions = "==4.4.0"
+uvicorn = "==0.20.0"
+numpy = "*"
 
 [dev-packages]
 
-[packages]
-fastapi = "*"
-uvicorn = "*"
-click = "*"
-requests = "*"
-python-dotenv = "*"
-
 [requires]
-python_version = "3.9"
+python_version = "3.10"
