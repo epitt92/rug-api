@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException
 from core.models import response, error, success
-from core.dummy import tokens
 import random
 
 router = APIRouter()

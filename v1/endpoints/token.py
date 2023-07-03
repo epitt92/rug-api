@@ -7,7 +7,7 @@ from core.models import success, error, response
 import os
 import requests
 import logging
-import numpy as np
+import random
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -263,10 +263,10 @@ async def post_token_price(chain_id: int, token_address: str):
 
     if _token_address not in token_info[chain_id]:
         await initialize_token_info(chain_id, _token_address)
-        price = float(np.random.uniform(1.0, 100.0))
+        price = float(random.randint(0, 10000) / 10000)
         await patch_token_info(chain_id, _token_address, 'price', price)
     elif token_info[chain_id][_token_address]['price'] is None:
-        price = float(np.random.uniform(1.0, 100.0))
+        price = float(random.randint(0, 10000) / 10000)
         await patch_token_info(chain_id, _token_address, 'price', price)
 
     return response({'price': token_info[chain_id][_token_address]['price']})

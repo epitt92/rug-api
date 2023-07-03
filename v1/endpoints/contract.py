@@ -7,7 +7,6 @@ from core.models import success, error, response
 import os
 import requests
 import logging
-import numpy as np
 from dotenv import load_dotenv
 import json
 

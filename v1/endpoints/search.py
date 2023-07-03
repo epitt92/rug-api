@@ -1,7 +1,11 @@
 from fastapi import APIRouter
 from core.models import search
-from core.dummy import tokens
 import random
+import json
+
+result = None
+with open('v1/utils/search.json') as f:
+    result = json.load(f)
 
 router = APIRouter()
 
@@ -16,8 +20,6 @@ def post_search(query: str):
     __Returns:__
     - **200 OK** (response model): Returns the search result details as a JSON response.
     """
-    result = [{'token_address': token, 'chain_id': 1} for token in tokens]
-    
     random.shuffle(result)
     
     return search(result)

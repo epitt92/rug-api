@@ -1,0 +1,38 @@
+[
+    {
+        "token_address": "0x9343e24716659a3551eb10aff9472a2dcad5db2d",
+        "name": "STFX",
+        "symbol": "STFX",
+        "logo": "",
+        "chain_id": 1,
+        "score": 97.2,
+        "lastUpdate": 1609459200
+    },
+    {
+        "token_address": "0x9343e24716659a3551eb10aff9472a2dcad5db2d",
+        "name": "HarryPotterObamaSonic10Inu",
+        "symbol": "BITCOIN",
+        "logo": "",
+        "chain_id": 1,
+        "score": 73.2,
+        "lastUpdate": 1609459200
+    },
+    {
+        "token_address": "0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce",
+        "name": "Shiba Inu",
+        "symbol": "SHIB",
+        "logo": "",
+        "chain_id": 1,
+        "score": 43.2,
+        "lastUpdate": 1609459200
+    },
+    {
+        "token_address": "0x6982508145454ce325ddbe47a25d4ec3d2311933",
+        "name": "PEPE",
+        "symbol": "PEPE",
+        "logo": "",
+        "chain_id": 1,
+        "score": 23.2,
+        "lastUpdate": 1609459200
+    }
+]
