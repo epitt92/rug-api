@@ -70,7 +70,7 @@ def custom_schema():
 
     return app.openapi_schema
 
-app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title='Rug.ai API', favicon='https://rug.ai/favicon.ico')
+app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, favicon='https://rug.ai/favicon.ico')
 
 app.openapi = custom_schema
 
