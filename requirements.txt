@@ -11,3 +11,4 @@ typing-extensions==4.4.0; python_version >= '3.7'
 uvicorn==0.20.0
 numpy
 requests
+python-dotenv
