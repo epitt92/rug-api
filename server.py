@@ -89,3 +89,7 @@ app.add_middleware(
 )
 
 app.include_router(v1.v1_router)
+
+@app.get("/")
+async def root():
+    return {"message": "rug-api"}

@@ -1,10 +1,10 @@
-import unittest
+import pytest
+from fastapi.testclient import TestClient
+import server
 
+client = TestClient(server.app)
 
-class MyTestCase(unittest.TestCase):
-    def test_something(self):
-        self.assertEqual(True, False)  # add assertion here
-
-
-if __name__ == '__main__':
-    unittest.main()
+def test_read_root():
+    response = client.get("/")
+    assert response.status_code == 200
+    assert response.json() == {"message": "rug-api"}
