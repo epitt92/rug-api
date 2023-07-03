@@ -9,3 +9,7 @@
 - Call `uvicorn server:app --reload` to run the API locally on port `8000`
 
 - Navigate to `localhost:8000/endpoints` in browser to view the endpoints, or `localhost:8000/documentation` to view the documentation for the API
+
+## Unit Tests
+
+Unit tests run via `pytest tests` in the console.
