@@ -1,31 +1,15 @@
-# FastAPI for Platform.sh
+# rug-api
 
-<p align="center">
-<a href="https://console.platform.sh/projects/create-project?template=https://raw.githubusercontent.com/platformsh/template-builder/master/templates/fastapi/.platform.template.yaml&utm_content=fastapi&utm_source=github&utm_medium=button&utm_campaign=deploy_on_platform">
-    <img src="https://platform.sh/images/deploy/lg-blue.svg" alt="Deploy on Platform.sh" width="180px" />
-</a>
-</p>
+- Ensure Python is installed on your machine, pull the repository and open it in terminal
 
-This template demonstrates building the FastAPI framework for Platform.sh.  It includes a minimalist application skeleton that demonstrates how to connect to a MariaDB server for data storage and Redis for caching.  The application starts as a bare Python process with no separate runner.  It is intended for you to use as a starting point and modify for your own needs.
+- Call `pip install -r requirements.txt` to install package requirements
 
-FastAPI is a modern, fast (high-performance), web framework for building APIs with Python 3.6+ based on standard Python type hints.
+- Add a `.env` file in the root folder with `ETHERSCAN_API_KEY = 'YOUR-API-KEY'`
 
-## Features
+- Call `uvicorn server:app --reload` to run the API locally on port `8000`
 
-* Python 3.11
-* MariaDB 10.4
-* Redis 5.0
-* Automatic TLS certificates
-* Pipfile-based build
+- Navigate to `localhost:8000/endpoints` in browser to view the endpoints, or `localhost:8000/documentation` to view the documentation for the API
 
-## Customizations
+## Unit Tests
 
-The following files have been added to a basic FastAPI configuration.  If using this project as a reference for your own existing project, replicate the changes below to your project.
-
-* The `.platform.app.yaml`, `.platform/services.yaml`, and `.platform/routes.yaml` files have been added.  These provide Platform.sh-specific configuration and are present in all projects on Platform.sh.  You may customize them as you see fit.
-* A rudimentary application is included in `server.py` for demonstration purposes.  It shows the basic process of starting the server and connecting to the MariaDB database.  Modify and replace it as desired.
-
-## References
-
-* [FastAPI](https://fastapi.tiangolo.com/)
-* [Python on Platform.sh](https://docs.platform.sh/languages/python.html)
+Unit tests run via `pytest tests` in the console.

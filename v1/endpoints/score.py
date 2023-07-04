@@ -1,13 +1,22 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from core.models import response, error, success
 import random
 
 router = APIRouter()
 
-@router.get("/")
-def ping():
-    return {"message": True}
+score_mapping = {1: {}}
 
-@router.get("/scores")
-def scores(contract_address: str):
-    scores = {"contractAddress": contract_address, "rugScore": int(random.randint(0, 100)), "liquidityScore": int(random.randint(0, 100)), "transferabilityScore": int(random.randint(0, 100)), "supplyScore": int(random.randint(0, 100))}
-    return {"message": scores}
+@router.get("/scores/{chain_id}/{token_address}")
+def scores(chain_id: int, token_address: str):
+    if chain_id not in score_mapping:
+        raise HTTPException(status_code=400, detail=f"Chain ID {chain_id} is not supported.")
+    
+    if len(token_address) != 42:
+        raise HTTPException(status_code=400, detail=f"Token address {token_address} is not valid.")
+    
+    _token_address = token_address.lower()
+
+    if _token_address not in score_mapping[chain_id]:
+        score_mapping[chain_id][_token_address] = {"token_address": token_address, "overall_score": int(random.randint(0, 100)), "liquidity_score": int(random.randint(0, 100)), "transferability_score": int(random.randint(0, 100)), "supply_score": int(random.randint(0, 100))}
+    
+    return response(score_mapping[chain_id][_token_address])
