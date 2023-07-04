@@ -95,6 +95,7 @@ app.include_router(v1.v1_router)
 async def favicon():
     return FileResponse('favicon.ico')
 
+
 @app.get("/")
 async def root():
     return {"message": "rug-api"}
