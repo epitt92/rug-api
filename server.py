@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
+from fastapi.responses import FileResponse
 
 import v1
 
@@ -89,6 +90,10 @@ app.add_middleware(
 )
 
 app.include_router(v1.v1_router)
+
+@app.get('/favicon.ico', include_in_schema=False)
+async def favicon():
+    return FileResponse('favicon.ico')
 
 @app.get("/")
 async def root():
