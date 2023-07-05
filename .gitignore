@@ -21,7 +21,6 @@ sdist/
 var/
 wheels/
 .idea/
-.github/
 *.egg-info/
 .installed.cfg
 *.egg
