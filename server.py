@@ -27,10 +27,6 @@ This router, included under the `/token` prefix, handles general endpoints relat
 
 It provides APIs for querying the token name and symbol, the total supply, or other token-related functionalities. It also provides APIs for querying social media links and other metadata, alongside modifying the token metadata in storage.
 
-### Contract Endpoints 
-
-This router, included under the `/contract` prefix, handles endpoints related to analysis of the contract data for a given token. 
-
 ### Search Endpoints
 
 This router, included under the `/search` prefix, handles endpoints related to search functionalities. 
@@ -44,13 +40,6 @@ At present, it supports only a POST request for searching by query string.
 This router, included under the `/sourcecode` prefix, handles endpoints related to source code operations. 
 
 It provides APIs for source code retrieval, source code caching and storage, or other source code-related functionalities derived from external API providers.
-
-### Score Endpoints
-
-This router, included under the `/score` prefix, handles endpoints related to scoring token contract addresses. 
-
-It provides APIs for scoring token contracts based on a variety of factors, such as tokenomics, liquidity, market cap, or other metrics. It also exposes an API to calculate an overall score for a token contract based on the individual scores of each metric and an AI model.
-
 """
 
 def custom_schema():
