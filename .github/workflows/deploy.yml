@@ -43,6 +43,7 @@ jobs:
           port: 22
           script: |
             aws ecr get-login-password --region eu-west-2 | sudo docker login --username AWS --password-stdin 379150053149.dkr.ecr.eu-west-2.amazonaws.com
+            sudo docker pull 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:${{ github.sha }}
 
             sudo docker service update --image 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:${{ github.sha }} --update-parallelism 1 --update-delay 10s rug-api
 
