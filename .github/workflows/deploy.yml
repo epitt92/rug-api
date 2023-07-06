@@ -2,6 +2,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
+      - CICD
       - main
 
 jobs:
@@ -28,6 +29,10 @@ jobs:
         run: |
           docker build -t 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:${{ github.sha }} .
           docker push 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:${{ github.sha }}
+
+      - name: Run Unit Tests
+        run: |
+          docker run --entrypoint pytest 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:${{ github.sha }}
 
       - name: SSH into EC2 instance and deploy Docker image
         uses: appleboy/ssh-action@master
