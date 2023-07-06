@@ -2,13 +2,12 @@ name: Check PR
 
 on:
   pull_request:
-    types:
-      - opened
+    types: [opened]
 
 
 
 jobs:
-  build-and-deploy:
+  build-and-test:
     runs-on: ubuntu-latest
 
 
