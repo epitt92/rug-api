@@ -6,7 +6,7 @@ router = APIRouter()
 
 score_mapping = {1: {}}
 
-@router.get("/scores/{chain_id}/{token_address}", response_model=ScoreResponse)
+@router.get("/{chain_id}/{token_address}", response_model=ScoreResponse)
 def scores(chain_id: int, token_address: str):
     if chain_id not in score_mapping:
         raise HTTPException(status_code=400, detail=f"Chain ID {chain_id} is not supported.")
