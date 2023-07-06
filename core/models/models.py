@@ -27,3 +27,91 @@ def success(result):
 
 def error(reason: str):
     return RugAPIStringResponse(status=0, message="NOTOK", result=reason)
+
+from pydantic import BaseModel
+from typing import List
+
+class AIComment(BaseModel):
+    commentType: str
+    title: str
+    description: str
+    code: str
+
+class Holder(BaseModel):
+    address: str
+    numTokens: float
+    percentage: float
+
+class ClusterResponse(BaseModel):
+    id: int
+    clusters: List[List[Holder]]
+
+class ScoreResponse(BaseModel):
+    overallScore: float
+    supplyScore: float
+    transferrabilityScore: float
+    liquidityScore: float
+
+class TokenInfo(BaseModel):
+    lastUpdated: int = None
+    deployer: str = None
+    name: str = None
+    symbol: str = None
+    decimals: int = None
+    buyLink: str = None
+    twitter: str = None
+    telegram: str = None
+    webUrl: str = None
+    discord: str = None
+    marketCap: float = None
+    fdv: float = None
+    lockedLiquidity: float = None
+    burnedLiquidity: float = None
+    buyTax: float = None
+    sellTax: float = None
+    liquidityUsd: float = None
+    liquiditySingleSided: float = None
+    volume24h: float = None
+    circulatingSupply: float = None
+    totalSupply: float = None
+    totalSupplyPercentage: float = None
+    txCount: int = None
+    holders: int = None
+    latestPrice: float = None
+
+class ChartResponse(BaseModel):
+    xMin: float
+    xMax: float
+    yMin: float
+    yMax: float
+    numDatapoints: int
+    data: List[dict]
+
+class TokenReview(BaseModel):
+    tokenInfo: TokenInfo
+    score: ScoreResponse
+    aiHighlights: List[AIComment]
+    top5Holders: List[Holder]
+    clusters: ClusterResponse
+    chart: ChartResponse
+
+class Chain(BaseModel):
+    id: int
+    chainId: str
+    name: str
+    logoUrl: str
+    symbol: str
+    currency: str
+
+class Coin(BaseModel):
+    id: int
+    name: str
+    symbol: str
+    tokenAddress: str
+    deployedAgo: int
+    refreshedAgo: int
+    logoUrl: str
+    chain: Chain
+
+class SearchResponse(BaseModel):
+    coins: List[Coin]
