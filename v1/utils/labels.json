@@ -2,130 +2,130 @@
     "is_open_source": {
         "title": "Contract not open source",
         "section": "Supply",
-        "description": "When a contract is not open source, it means its code is not publicly available, making it difficult for rug.ai to verify its integrity and reliability, potentially hiding malicious functions or bugs.",
+        "description": "When a contract is not open source, its code is not publicly available, making it difficult to verify its integrity and reliability. This can potentially hide malicious functions or bugs.",
         "is_boolean": true,
         "severity": 1,
-        "true_description": "When a contract is not open source, it means its code is not publicly available, making it difficult for rug.ai to verify its integrity and reliability, potentially hiding malicious functions or bugs.",
-        "false_description": "When a contract is open source, it means its code is publicly available, making it easier for rug.ai to verify its integrity and reliability."
+        "true_description": "The contract is not open source, meaning its code is not publicly available. This can make it challenging to verify its integrity and reliability, potentially hiding malicious functions or bugs.",
+        "false_description": "The contract is open source, meaning its code is publicly available, making it easier to verify its integrity and reliability."
     },
     "is_proxy": {
         "title": "Contract is a proxy contract",
         "section": "Supply",
-        "description": "A proxy contract delegates calls to another contract (its implementation contract), making it possible to upgrade the contract, but introducing a layer of indirection and potential confusion about the ultimate source of any code execution.",
+        "description": "A proxy contract delegates calls to another contract, known as its implementation contract. This introduces a layer of indirection and potential confusion about the ultimate source of any code execution. Proxy contracts allow for contract upgrades.",
         "is_boolean": true,
         "severity": 1,
-        "true_description": "The contract is a proxy contract.",
-        "false_description": "The contract is not a proxy contract."
+        "true_description": "The contract is a proxy contract, meaning it delegates calls to another contract called the implementation contract. This introduces indirection and potential confusion about the actual code execution source.",
+        "false_description": "The contract is not a proxy contract, meaning it does not delegate calls to another contract."
     },
     "is_mintable": {
         "title": "Contract has a mint function",
         "section": "Supply",
-        "description": "If a contract has a mint function, it allows the creation of new tokens at the discretion of the contract controller, which could potentially dilute the token value or lead to unfair distribution.",
+        "description": "If a contract has a mint function, it allows the creation of new tokens at the discretion of the contract controller. This function can be used to generate additional tokens after the initial token supply. Minting can potentially dilute the token value or lead to unfair distribution.",
         "is_boolean": true,
         "severity": 3,
-        "true_description": "The contract has a mint function.",
-        "false_description": "The contract does not have a mint function."
+        "true_description": "The contract has a mint function, which enables the contract controller to create new tokens at their discretion. This can potentially dilute the token value or result in unfair distribution of tokens.",
+        "false_description": "The contract does not have a mint function, meaning new tokens cannot be generated after the initial token supply."
     },
     "owner_address": {
         "title": "Contract has an owner/has not renounced ownership",
         "section": "Supply",
-        "description": "Ownership of a contract can provide a single entity with broad power, including the ability to modify the contract, which can lead to manipulation or misuse if the owner is not trustworthy.",
+        "description": "Ownership of a contract provides broad power to a single entity, including the ability to modify the contract. If the owner has not renounced ownership, they retain control over the contract. This can lead to manipulation or misuse if the owner is not trustworthy.",
         "is_boolean": true,
         "severity": 1,
-        "true_description": "The contract has an owner and has not renounced ownership.",
-        "false_description": "The contract does not have an owner or has renounced ownership."
+        "true_description": "The contract has an owner who has not renounced ownership. This means a single entity retains control over the contract and can modify its behavior. However, if the owner is not trustworthy, this can lead to potential manipulation or misuse of the contract.",
+        "false_description": "The contract does not have an owner or has renounced ownership, indicating that control of the contract is decentralized or transferred to a neutral entity."
     },
     "hidden_owner": {
         "title": "Contract has a hidden owner",
         "section": "Supply",
-        "description": "This means that the true owner of the contract is obscured, potentially hiding a malicious actor who can manipulate the contract for personal gain or disrupt the token's operation.",
+        "description": "A hidden owner means that the true owner of the contract is obscured or not easily identifiable. This can potentially hide a malicious actor who can manipulate the contract for personal gain or disrupt the token's operation.",
         "is_boolean": true,
         "severity": 2,
-        "true_description": "The contract has a hidden owner.",
-        "false_description": "The contract does not have a hidden owner."
+        "true_description": "The contract has a hidden owner, making it difficult to identify the true owner. This can introduce the risk of a malicious actor using their hidden ownership to manipulate the contract for personal gain or disrupt the token's functionality.",
+        "false_description": "The contract does not have a hidden owner, meaning the identity of the contract owner is known and transparent."
     },
     "can_take_back_ownership": {
         "title": "Contract can take back ownership",
         "section": "Supply",
-        "description": "If a contract can take back ownership, it means the owner can arbitrarily change the owner address, potentially leading to manipulation or misuse.",
+        "description": "If a contract can take back ownership, it means the current owner has the ability to change the owner address arbitrarily. This can potentially lead to manipulation or misuse if the owner abuses this privilege.",
         "is_boolean": true,
         "severity": 2,
-        "true_description": "The contract can take back ownership.",
-        "false_description": "The contract cannot take back ownership."
+        "true_description": "The contract can take back ownership, allowing the current owner to change the owner address arbitrarily. This introduces the risk of potential manipulation or misuse if the owner misuses this privilege.",
+        "false_description": "The contract cannot take back ownership, meaning once the ownership is transferred or decentralized, it cannot be arbitrarily changed."
     },
     "cannot_sell_all": {
         "title": "Contract cannot sell all",
         "section": "Transferability",
-        "description": "If a contract has a sell all function, it allows the sale of all tokens in a single transaction, which can be used to manipulate the token price or liquidity.",
+        "description": "If a contract has a 'sell all' function, it allows the sale of all tokens in a single transaction. This functionality can be used to manipulate the token price or liquidity.",
         "is_boolean": true,
         "severity": 2,
-        "true_description": "The contract cannot sell all tokens.",
-        "false_description": "The contract can sell all tokens."
+        "true_description": "The contract cannot sell all tokens in a single transaction, limiting the potential for large-scale manipulation of token price or liquidity.",
+        "false_description": "The contract can sell all tokens in a single transaction, which introduces the possibility of large-scale manipulation of token price or liquidity."
     },
     "selfdestruct": {
         "title": "Contract has a self-destruct OP code",
         "section": "Supply",
-        "description": "This feature allows the owner to permanently destroy the contract at any time, potentially rendering any associated tokens useless and leading to a total loss for token holders.",
+        "description": "The self-destruct OP code allows the owner to permanently destroy the contract at any time. This can render any associated tokens useless and lead to a total loss for token holders.",
         "is_boolean": true,
         "severity": 3,
-        "true_description": "The contract has a self-destruct OP code.",
-        "false_description": "The contract does not have a self-destruct OP code."
+        "true_description": "The contract has a self-destruct OP code, giving the owner the ability to permanently destroy the contract. This action renders any associated tokens useless and results in a total loss for token holders.",
+        "false_description": "The contract does not have a self-destruct OP code, ensuring that the contract cannot be permanently destroyed by the owner."
     },
     "external_call": {
         "title": "Contract makes external contract calls",
         "section": "Supply",
-        "description": "When a contract makes external calls, it can introduce potential security risks, such as re-entrancy attacks, if those calls are not properly secured.",
+        "description": "When a contract makes external calls to other contracts, it can introduce potential security risks, such as re-entrancy attacks, if those calls are not properly secured.",
         "is_boolean": true,
         "severity": 2,
-        "true_description": "The contract makes external contract calls.",
-        "false_description": "The contract does not make external contract calls."
+        "true_description": "The contract makes external contract calls to other contracts. This introduces potential security risks, such as re-entrancy attacks, if the calls are not properly secured.",
+        "false_description": "The contract does not make external contract calls to other contracts."
     },
     "buy_tax": {
         "title": "Contract has a buy tax",
         "section": "Transferability",
-        "description": "A buy tax means that a percentage of tokens are deducted from each purchase and redirected, which can disincentivize buying and potentially manipulate the token's value.",
+        "description": "A buy tax deducts a percentage of tokens from each purchase and redirects them. This can disincentivize buying and potentially manipulate the token's value.",
         "is_boolean": false,
         "severity": 2,
         "is_numerical": true,
-        "true_description": "The contract has a buy tax of $x %.",
-        "false_description": "The contract does not have a buy tax."
+        "true_description": "The contract has a buy tax of $x%. This means that a percentage of tokens is deducted from each purchase and redirected according to the specified tax rate. This mechanism disincentivizes buying and can potentially manipulate the token's value.",
+        "false_description": "The contract does not have a buy tax, meaning no percentage of tokens is deducted from purchases."
     },
     "sell_tax": {
         "title": "Contract has a sell tax",
         "section": "Transferability",
-        "description": "A sell tax means that a percentage of tokens are deducted from each sale and redirected, which can disincentivize selling and potentially manipulate the token's liquidity.",
+        "description": "A sell tax deducts a percentage of tokens from each sale and redirects them. This can disincentivize selling and potentially manipulate the token's liquidity.",
         "is_boolean": true,
         "severity": 2,
         "is_numerical": true,
-        "true_description": "The contract has a sell tax of $x.",
-        "false_description": "The contract does not have a sell tax."
+        "true_description": "The contract has a sell tax of $x. This means that a percentage of tokens is deducted from each sale and redirected according to the specified tax rate. This mechanism disincentivizes selling and can potentially manipulate the token's liquidity.",
+        "false_description": "The contract does not have a sell tax, meaning no percentage of tokens is deducted from sales."
     },
     "slippage_modifiable": {
-        "title": "Contract has taxes that are modifiable",
+        "title": "Contract has modifiable taxes",
         "section": "Transferability",
-        "description": "If taxes are modifiable, this means the token's owner can arbitrarily change the buy/sell tax rates, introducing uncertainty and potential manipulation.",
+        "description": "If taxes are modifiable, it means the token's owner can arbitrarily change the buy/sell tax rates. This introduces uncertainty and potential manipulation.",
         "is_boolean": true,
         "severity": 2,
-        "true_description": "The contract has modifiable taxes.",
-        "false_description": "The contract does not have modifiable taxes."
+        "true_description": "The contract has modifiable taxes, enabling the token's owner to arbitrarily change the buy/sell tax rates. This introduces uncertainty and the potential for manipulation.",
+        "false_description": "The contract does not have modifiable taxes, meaning the buy/sell tax rates are fixed and cannot be arbitrarily changed."
     },
     "personal_slippage_modifiable": {
-        "title": "Contract has personal taxes that are modifiable",
+        "title": "Contract has personal modifiable taxes",
         "section": "Transferability",
-        "description": "If personal taxes are modifiable, this means the token's owner can arbitrarily change the buy/sell tax rates for specific addresses, introducing uncertainty and potential manipulation.",
+        "description": "If personal taxes are modifiable, it means the token's owner can arbitrarily change the buy/sell tax rates for specific addresses. This introduces uncertainty and potential manipulation.",
         "is_boolean": true,
         "severity": 3,
-        "true_description": "The contract has personal modifiable taxes.",
-        "false_description": "The contract does not have personal modifiable taxes."
+        "true_description": "The contract has personal modifiable taxes, allowing the token's owner to arbitrarily change the buy/sell tax rates for specific addresses. This introduces uncertainty and the potential for manipulation.",
+        "false_description": "The contract does not have personal modifiable taxes, meaning the buy/sell tax rates for specific addresses are fixed and cannot be arbitrarily changed."
     },
     "cannot_buy": {
         "title": "Token cannot be bought",
         "section": "Transferability",
-        "description": "If a token cannot be bought, it might be due to a malfunction or manipulation, significantly impacting its usability and value.",
+        "description": "If a token cannot be bought, it means there are restrictions or limitations preventing users from purchasing the token. This might be due to a malfunction or manipulation, significantly impacting its usability and value.",
         "is_boolean": true,
         "severity": 3,
-        "true_description": "The token cannot be bought.",
-        "false_description": "The token can be bought."
+        "true_description": "The token cannot be bought due to restrictions or limitations imposed by the contract. This significantly impacts the token's usability and value.",
+        "false_description": "The token can be bought without any restrictions or limitations."
     },
     "trading_cooldown": {
         "title": "Token has a trading cooldown",
@@ -133,8 +133,8 @@
         "description": "A trading cooldown means that a certain amount of time must pass between trades, which can be used to prevent manipulation, but can also limit the token's liquidity and usability.",
         "is_boolean": true,
         "severity": 1,
-        "true_description": "The token has a trading cooldown.",
-        "false_description": "The token does not have a trading cooldown."
+        "true_description": "The token has a trading cooldown, which requires a certain amount of time to pass between trades. This mechanism can be employed to prevent manipulation, but it may also limit the token's liquidity and usability.",
+        "false_description": "The token does not have a trading cooldown, allowing trades to occur without any specific time restrictions."
     },
     "honeypot_with_same_creator": {
         "title": "Token has a honeypot with the same creator",
@@ -142,8 +142,8 @@
         "description": "A honeypot token is one that appears profitable but traps users' funds, essentially acting as a scam to lure unsuspecting investors.",
         "is_boolean": true,
         "severity": 3,
-        "true_description": "The token has a honeypot with the same creator.",
-        "false_description": "The token does not have a honeypot with the same creator."
+        "true_description": "The token has a honeypot with the same creator. A honeypot token deceives investors by creating the illusion of profitability but ultimately traps their funds, making it a deceptive and scammy investment.",
+        "false_description": "The token does not have a honeypot with the same creator, indicating that it does not employ deceptive tactics to trap users' funds."
     },
     "is_honeypot": {
         "title": "Token is a honeypot",
@@ -151,8 +151,8 @@
         "description": "A honeypot token is one that appears profitable but traps users' funds, essentially acting as a scam to lure unsuspecting investors.",
         "is_boolean": true,
         "severity": 3,
-        "true_description": "The token is a honeypot.",
-        "false_description": "The token is not a honeypot."
+        "true_description": "The token is a honeypot. A honeypot token is designed to deceive investors by creating the illusion of profitability while trapping their funds, making it a deceptive and scammy investment.",
+        "false_description": "The token is not a honeypot, indicating that it does not employ deceptive tactics to trap users' funds."
     },
     "transfer_pausable": {
         "title": "Token transfers can be paused",
@@ -160,8 +160,8 @@
         "description": "This means the token's owner can halt any token transactions, leading to potential misuse and disruption of the token's operation.",
         "is_boolean": true,
         "severity": 3,
-        "true_description": "Token transfers can be paused.",
-        "false_description": "Token transfers cannot be paused."
+        "true_description": "Token transfers can be paused by the token's owner. This capability allows the owner to temporarily halt any token transactions, which can be potentially misused and lead to disruption of the token's operation.",
+        "false_description": "Token transfers cannot be paused, ensuring that transactions can proceed without any temporary halts imposed by the token's owner."
     },
     "is_blacklisted": {
         "title": "Token has blacklist functionality",
@@ -169,8 +169,8 @@
         "description": "This feature enables the owner to prevent certain addresses from buying or selling the token, which can be misused for censorship or manipulation.",
         "is_boolean": true,
         "severity": 1,
-        "true_description": "The token has blacklist functionality.",
-        "false_description": "The token does not have blacklist functionality."
+        "true_description": "The token has blacklist functionality, allowing the owner to prevent specific addresses from buying or selling the token. However, this capability can be potentially misused for censorship or manipulation.",
+        "false_description": "The token does not have blacklist functionality, meaning there are no restrictions imposed by the token's owner on specific addresses regarding buying or selling the token."
     },
     "is_whitelisted": {
         "title": "Token has whitelist functionality",
@@ -178,8 +178,8 @@
         "description": "Whitelisting allows only approved addresses to interact with the token, potentially restricting its accessibility and use.",
         "is_boolean": true,
         "severity": 1,
-        "true_description": "The token has whitelist functionality.",
-        "false_description": "The token does not have whitelist functionality."
+        "true_description": "The token has whitelist functionality, which means only approved addresses can interact with the token. This capability restricts the token's accessibility and use to a specific set of addresses.",
+        "false_description": "The token does not have whitelist functionality, meaning there are no restrictions imposed by the token on which addresses can interact with it."
     },
     "anti_whale_modifiable": {
         "title": "Token has anti-whale functionality",
@@ -187,7 +187,8 @@
         "description": "This limits the amount of tokens a single address can hold or trade, aiming to prevent manipulation by large holders (whales), but can limit potential growth or use of the token.",
         "is_boolean": true,
         "severity": 1,
-        "true_description": "The token has anti-whale functionality.",
-        "false_description": "The token does not have anti-whale functionality."
+        "true_description": "The token has anti-whale functionality, which restricts the amount of tokens a single address can hold or trade. This mechanism aims to prevent manipulation by large holders (whales), but it can also limit the potential growth or use of the token.",
+        "false_description": "The token does not have anti-whale functionality, meaning there are no restrictions imposed on the amount of tokens a single address can hold or trade."
     }
-}
+    }
+    

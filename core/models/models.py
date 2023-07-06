@@ -87,16 +87,8 @@ class ChartResponse(BaseModel):
     numDatapoints: int
     data: List[dict]
 
-class TokenReview(BaseModel):
-    tokenInfo: TokenInfo
-    score: ScoreResponse
-    aiHighlights: List[AIComment]
-    top5Holders: List[Holder]
-    clusters: ClusterResponse
-    chart: ChartResponse
-
 class Chain(BaseModel):
-    chainId: str = None
+    chainId: int = None
     name: str = None
     logoUrl: str = None
     nativeAsset: str = None
@@ -107,9 +99,27 @@ class Token(BaseModel):
     tokenAddress: str = None
     score: float = None
     deployedAgo: int = None
-    refreshedAgo: int = None
     logoUrl: str = None
     chain: Chain = None
 
 class SearchResponse(BaseModel):
     tokens: List[Token]
+
+class ContractItem(BaseModel):
+    title: str = None
+    section: str = None
+    generalDescription: str = None
+    description: str = None
+    value: float = None
+    severity: int = None
+
+class ContractResponse(BaseModel):
+    items : List[ContractItem] = None
+
+class TokenReview(BaseModel):
+    tokenInfo: TokenInfo = None
+    score: ScoreResponse = None
+    aiHighlights: List[AIComment] = None
+    contractInfo: ContractResponse = None
+    clusters: ClusterResponse = None
+    chart: ChartResponse = None
