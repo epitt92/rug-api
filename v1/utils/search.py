@@ -31,7 +31,6 @@ stfx = Token(
     tokenAddress="0x9343e24716659a3551eb10aff9472a2dcad5db2d",
     score=97.2,
     deployedAgo=23324,
-    refreshedAgo=122,
     chain=ethereum
 )
 
@@ -42,7 +41,6 @@ shiba_inu = Token(
     score=43.9,
     chain=ethereum,
     deployedAgo=2434323,
-    refreshedAgo=32332
 )
 
 pepe = Token(
@@ -52,7 +50,6 @@ pepe = Token(
     score=23.2,
     chain=ethereum,
     deployedAgo=23324,
-    refreshedAgo=122
 )
 
 harry_potter_obama_sonic_10_inu = Token(
@@ -62,7 +59,6 @@ harry_potter_obama_sonic_10_inu = Token(
     score=73.2,
     chain=ethereum,
     deployedAgo=23324,
-    refreshedAgo=122
 )
 
 # Search Response
