@@ -8,6 +8,7 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -37,6 +38,6 @@ jobs:
           port: 22
           script: |
             aws ecr get-login-password --region eu-west-2 --profile rug | sudo docker login --username AWS --password-stdin 379150053149.dkr.ecr.eu-west-2.amazonaws.com
-            
+
             sudo docker service update --image 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:${{ github.sha }} --update-parallelism 1 --update-delay 10s rug-api
 
