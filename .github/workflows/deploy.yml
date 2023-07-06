@@ -18,7 +18,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: <your-aws-region>
+          aws-region: eu-west-2
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -26,16 +26,16 @@ jobs:
 
       - name: Build and push Docker image to ECR
         run: |
-          docker build -t <ecr-repository-uri>:<tag> .
-          docker push <ecr-repository-uri>:<tag>
+          docker build -t 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:${{ github.sha }} .
+          docker push 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:${{ github.sha }}
 
       - name: SSH into EC2 instance and deploy Docker image
         uses: appleboy/ssh-action@master
         with:
-          host: <ec2-instance-ip>
-          username: <ec2-instance-username>
+          host: 52.56.229.232
+          username: ubuntu
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: <ec2-instance-ssh-port>
+          port: 22
           script: |
-            docker pull <ecr-repository-uri>:<tag>
-            docker run -d --name <container-name> <ecr-repository-uri>:<tag>
+            docker service update --image 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:${{ github.sha }} --update-parallelism 1 --update-delay 10s myservice
+
