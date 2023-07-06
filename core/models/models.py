@@ -47,10 +47,10 @@ class ClusterResponse(BaseModel):
     clusters: List[List[Holder]]
 
 class ScoreResponse(BaseModel):
-    overallScore: float
-    supplyScore: float
-    transferrabilityScore: float
-    liquidityScore: float
+    overallScore: float = None
+    supplyScore: float = None
+    transferrabilityScore: float = None
+    liquidityScore: float = None
 
 class TokenInfo(BaseModel):
     lastUpdated: int = None
@@ -96,22 +96,20 @@ class TokenReview(BaseModel):
     chart: ChartResponse
 
 class Chain(BaseModel):
-    id: int
-    chainId: str
-    name: str
-    logoUrl: str
-    symbol: str
-    currency: str
+    chainId: str = None
+    name: str = None
+    logoUrl: str = None
+    nativeAsset: str = None
 
-class Coin(BaseModel):
-    id: int
-    name: str
-    symbol: str
-    tokenAddress: str
-    deployedAgo: int
-    refreshedAgo: int
-    logoUrl: str
-    chain: Chain
+class Token(BaseModel):
+    name: str = None
+    symbol: str = None
+    tokenAddress: str = None
+    score: float = None
+    deployedAgo: int = None
+    refreshedAgo: int = None
+    logoUrl: str = None
+    chain: Chain = None
 
 class SearchResponse(BaseModel):
-    coins: List[Coin]
+    tokens: List[Token]

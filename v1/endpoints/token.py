@@ -249,9 +249,8 @@ async def post_token_price(chain_id: int, token_address: str):
 
     if _token_address not in token_info[chain_id]:
         await initialize_token_info(chain_id, _token_address)
-        price = float(random.randint(0, 10000) / 10000)
-        await patch_token_info(chain_id, _token_address, 'latestPrice', price)
-    elif token_info[chain_id][_token_address].latestPrice is None:
+    
+    if token_info[chain_id][_token_address].latestPrice is None:
         price = float(random.randint(0, 10000) / 10000)
         await patch_token_info(chain_id, _token_address, 'latestPrice', price)
 
@@ -304,7 +303,7 @@ async def post_token_liquidity_info(chain_id: int, token_address: str):
                 data = request_response.json()
 
                 await patch_token_info(chain_id, _token_address, 'deployer', data['result'][_token_address]['creator_address'])
-                await patch_token_info(chain_id, _token_address, 'holderCount', int(data['result'][_token_address]['holder_count']))
+                await patch_token_info(chain_id, _token_address, 'holders', int(data['result'][_token_address]['holder_count']))
                 await patch_token_info(chain_id, _token_address, 'buyTax', float(data['result'][_token_address]['buy_tax']))
                 await patch_token_info(chain_id, _token_address, 'sellTax', float(data['result'][_token_address]['sell_tax']))
                 await patch_token_info(chain_id, _token_address, 'liquidityUsd', sum([float(item['liquidity']) for item in data['result'][_token_address]['dex']]))
