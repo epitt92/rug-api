@@ -1,20 +1,17 @@
 from fastapi import APIRouter, HTTPException
 from core.models import ReelResponse, Token
 from v1.utils.tokens import ethereum
-import requests, random
+import random, json
+
+data = None
+with open('v1/utils/1inch.json') as f:
+        data = json.load(f)
 
 router = APIRouter()
 
 @router.get("/")
 async def get_reel_response():
-    try:
-        response = requests.get(f'https://api.1inch.io/v5.0/1/tokens')
-        response.raise_for_status()
-        data = response.json()
-        return data.get("tokens")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+    return data["tokens"]
 
 @router.get("/hot", response_model=ReelResponse)
 async def get_hot_tokens(limit: int = 10):

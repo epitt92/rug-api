@@ -14,6 +14,10 @@ mapping = None
 with open('v1/utils/labels.json') as f:
     mapping = json.load(f)
 
+data = None
+with open('v1/utils/1inch.json') as f:
+        data = json.load(f)
+
 router = APIRouter()
 
 token_info = {1: {}}
@@ -39,11 +43,8 @@ async def post_token_last_updated(chain_id: int, token_address: str):
 
     return True
 
-async def get_1inch_data(chain_id: int):
-    response = requests.get(f'https://api.1inch.io/v5.0/{chain_id}/tokens')
-    response.raise_for_status()
-    data = response.json()
-    return data['tokens']
+async def get_1inch_data():
+    return data["tokens"]
 
 @router.get("/info/updated/{chain_id}/{token_address}")
 async def get_token_last_updated(chain_id: int, token_address: str):
@@ -341,7 +342,7 @@ async def post_token_logo_info(chain_id: int, token_address: str):
         await initialize_token_info(chain_id, _token_address)
 
     if token_info[chain_id][_token_address].logoUrl is None:
-        oneinch_list = await get_1inch_data(chain_id)
+        oneinch_list = await get_1inch_data()
 
         if token_address in oneinch_list:
             await patch_token_info(chain_id, token_address, 'logoUrl', oneinch_list[token_address]['logoURI'])
@@ -427,14 +428,24 @@ async def post_token_contract_info(chain_id: int, token_address: str):
 
                 for key, item in mapping.items():
                     if key in data_response:
-                        item = ContractItem(
-                            title=item['title'],
-                            section=item['section'],
-                            generalDescription=item['description'],
-                            description=item['false_description'] if bool(data_response[key]) else item['true_description'],
-                            value=float(data_response[key]) if data_response[key] != '' else None,
-                            severity=item['severity']
-                        )
+                        if key == 'owner_address':
+                            item = ContractItem(
+                                title=item['title'],
+                                section=item['section'],
+                                generalDescription=item['description'],
+                                description=item['false_description'] if data_response[key] == '' else item['true_description'],
+                                value=0 if data_response[key] == '' else 1,
+                                severity=item['severity']
+                            )
+                        else:
+                            item = ContractItem(
+                                title=item['title'],
+                                section=item['section'],
+                                generalDescription=item['description'],
+                                description=item['false_description'] if bool(data_response[key]) else item['true_description'],
+                                value=float(data_response[key]) if data_response[key] != '' else None,
+                                severity=item['severity']
+                            )
 
                         items.append(item)
 
