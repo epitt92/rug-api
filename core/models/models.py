@@ -80,13 +80,18 @@ class TokenInfo(BaseModel):
     latestPrice: float = None
     logoUrl: str = None
 
+class ChartData(BaseModel):
+    timestamp: int
+    price: float
+    volume: float
+
 class ChartResponse(BaseModel):
     xMin: float
     xMax: float
     yMin: float
     yMax: float
     numDatapoints: int
-    data: List[dict]
+    data: List[ChartData]
 
 class Chain(BaseModel):
     chainId: int = None
