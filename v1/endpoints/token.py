@@ -39,6 +39,12 @@ async def post_token_last_updated(chain_id: int, token_address: str):
 
     return True
 
+async def get_1inch_data(chain_id: int):
+    response = requests.get(f'https://api.1inch.io/v5.0/{chain_id}/tokens')
+    response.raise_for_status()
+    data = response.json()
+    return data['tokens']
+
 @router.get("/info/updated/{chain_id}/{token_address}")
 async def get_token_last_updated(chain_id: int, token_address: str):
     """
@@ -321,6 +327,28 @@ async def post_token_liquidity_info(chain_id: int, token_address: str):
     return token_info[chain_id][_token_address]
 
 
+@router.post("/info/logo/{chain_id}/{token_address}", response_model=TokenInfo)
+async def post_token_logo_info(chain_id: int, token_address: str):
+    if chain_id not in token_info:
+        raise HTTPException(status_code=400, detail=f"Chain ID {chain_id} is not supported.")
+    
+    if len(token_address) != 42:
+        raise HTTPException(status_code=400, detail=f"Token address {token_address} is not valid.")
+    
+    _token_address = token_address.lower()
+
+    if _token_address not in token_info[chain_id]:
+        await initialize_token_info(chain_id, _token_address)
+
+    if token_info[chain_id][_token_address].logoUrl is None:
+        oneinch_list = await get_1inch_data(chain_id)
+
+        if token_address in oneinch_list:
+            await patch_token_info(chain_id, token_address, 'logoUrl', oneinch_list[token_address]['logoURI'])
+
+    return token_info[chain_id][token_address]
+
+
 @router.post("/info/{chain_id}/{token_address}", response_model=TokenInfo)
 async def post_token_info(chain_id: int, token_address: str):
     """
@@ -350,6 +378,7 @@ async def post_token_info(chain_id: int, token_address: str):
     
     await post_token_liquidity_info(chain_id, _token_address)
     await post_token_price(chain_id, _token_address)
+    await post_token_logo_info(chain_id, _token_address)
 
     return token_info[chain_id][_token_address]
 
