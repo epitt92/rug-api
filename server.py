@@ -64,15 +64,9 @@ app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, fa
 
 app.openapi = custom_schema
 
-# CORS Configuration
-origins = [
-    "http://localhost",
-    "http://localhost:3000",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
