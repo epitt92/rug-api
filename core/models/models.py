@@ -103,7 +103,7 @@ class Token(BaseModel):
     chain: Chain = None
 
 class SearchResponse(BaseModel):
-    tokens: List[Token]
+    items: List[Token]
 
 class ContractItem(BaseModel):
     title: str = None
@@ -123,3 +123,6 @@ class TokenReview(BaseModel):
     contractInfo: ContractResponse = None
     clusters: ClusterResponse = None
     chart: ChartResponse = None
+
+class ReelResponse(BaseModel):
+    items : List[Token] = None
