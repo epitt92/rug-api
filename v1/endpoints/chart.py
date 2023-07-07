@@ -12,11 +12,12 @@ async def get_chart_data(chain_id: int, token_address: str, frequency: str = '1d
         raise HTTPException(status_code=400, detail=f"Token address {token_address} is invalid.")
     
     N = 200
+    step = 30000
 
     S = [random.uniform(0, 10000)]
     V = [S[0] * random.randint(200, 2000)]
     end_time = int(time.time())
-    start_time = end_time - N * 30000
+    start_time = end_time - N * step
 
     for i in range(1, N):
         S.append(S[i-1] * math.exp(random.uniform(-0.02, 0.02)))
@@ -29,6 +30,6 @@ async def get_chart_data(chain_id: int, token_address: str, frequency: str = '1d
 
     data = []
     for i in range(N):
-        data.append(ChartData(timestamp=start_time + i * 300, price=S[i], volume=V[i]))
+        data.append(ChartData(timestamp=start_time + i * step, price=S[i], volume=V[i]))
 
     return ChartResponse(xMin=start_time, xMax=end_time, yMin=y_min, yMax=y_max, numDatapoints=N, data=data)
