@@ -9,7 +9,6 @@ with open('v1/utils/1inch.json') as f:
 
 router = APIRouter()
 
-@router.get("/")
 async def get_reel_response():
     return data["tokens"]
 
