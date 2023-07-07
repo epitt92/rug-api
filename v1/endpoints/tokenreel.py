@@ -5,6 +5,7 @@ import requests, random
 
 router = APIRouter()
 
+@router.get("/")
 async def get_reel_response():
     response = requests.get(f'https://api.1inch.io/v5.0/1/tokens')
     response.raise_for_status()
