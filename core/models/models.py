@@ -78,6 +78,7 @@ class TokenInfo(BaseModel):
     txCount: int = None
     holders: int = None
     latestPrice: float = None
+    logoUrl: str = None
 
 class ChartResponse(BaseModel):
     xMin: float
