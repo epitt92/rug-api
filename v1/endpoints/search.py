@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 from core.models import SearchResponse
-from v1.utils.search import search_response
+from v1.utils.tokens import search_response
 
 router = APIRouter()
 
