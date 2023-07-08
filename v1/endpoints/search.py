@@ -4,8 +4,8 @@ from v1.utils.tokens import search_response
 
 router = APIRouter()
 
-@router.post("/{query}", response_model=SearchResponse)
-def post_search(query: str):
+@router.post("/", response_model=SearchResponse)
+def post_search(query: str ):
     """
     Retrieve search results by query.
 

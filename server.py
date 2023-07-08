@@ -6,30 +6,30 @@ from fastapi.responses import FileResponse
 import v1
 
 TITLE = 'rug.ai API'
-VERSION = 1.7
+VERSION = 1.8
 
 DESCRIPTION = f"""
 ### AI Endpoints
 
-This router, included under the `/ai` prefix, handles endpoints related to AI models used to score and analyse token data. 
+This router, included under the `/ai` prefix, handles endpoints related to AI models used to score and analyse token data.
 
 It likely provides APIs for AI-related tasks such as machine learning classification of source code, natural language processing and other AI-driven applications on {TITLE}.
 
 ### Liquidity Endpoints
 
-This router, included under the `/liquidity` prefix, handles endpoints related to token liquidity such as holder information, clustering holders and producing a liquidity report. 
+This router, included under the `/liquidity` prefix, handles endpoints related to token liquidity such as holder information, clustering holders and producing a liquidity report.
 
 It provides APIs for querying the holder distribution of a token, clustering holders based on their token holdings, or other liquidity-related functionalities.
 
-### Token Endpoints 
+### Token Endpoints
 
-This router, included under the `/token` prefix, handles general endpoints related to the token itself. 
+This router, included under the `/token` prefix, handles general endpoints related to the token itself.
 
 It provides APIs for querying the token name and symbol, the total supply, or other token-related functionalities. It also provides APIs for querying social media links and other metadata, alongside modifying the token metadata in storage.
 
 ### Search Endpoints
 
-This router, included under the `/search` prefix, handles endpoints related to search functionalities. 
+This router, included under the `/search` prefix, handles endpoints related to search functionalities.
 
 It likely provides APIs for searching and retrieving data from platform storage, such as search by keywords, filtering options, or advanced search criteria.
 
@@ -37,7 +37,7 @@ At present, it supports only a POST request for searching by query string.
 
 ### Source Code Endpoints
 
-This router, included under the `/sourcecode` prefix, handles endpoints related to source code operations. 
+This router, included under the `/sourcecode` prefix, handles endpoints related to source code operations.
 
 It provides APIs for source code retrieval, source code caching and storage, or other source code-related functionalities derived from external API providers.
 """
