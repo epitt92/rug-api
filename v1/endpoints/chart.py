@@ -10,9 +10,10 @@ router = APIRouter()
 async def get_chart_data(chain_id: int, token_address: str, frequency: str = '1d'):
     if len(token_address) != 42:
         raise HTTPException(status_code=400, detail=f"Token address {token_address} is invalid.")
-    
+
     N = 200
-    step = 30000
+    step = 86400
+    total_supply = 1e4
 
     S = [random.uniform(0, 10000)]
     V = [S[0] * random.randint(200, 2000)]
@@ -30,6 +31,6 @@ async def get_chart_data(chain_id: int, token_address: str, frequency: str = '1d
 
     data = []
     for i in range(N):
-        data.append(ChartData(timestamp=start_time + i * step, price=S[i], volume=V[i]))
+        data.append(ChartData(timestamp=start_time + i * step, price=S[i], volume=V[i], marketCap=S[i] * total_supply))
 
-    return ChartResponse(xMin=start_time, xMax=end_time, yMin=y_min, yMax=y_max, numDatapoints=N, data=data)
+    return ChartResponse(priceMin=y_min, priceMax=y_max, marketCapMin=y_min*total_supply, marketCapMax=y_max*total_supply, timestampMin=start_time, timestampMax=end_time, numDatapoints=N, data=data)
