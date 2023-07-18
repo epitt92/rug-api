@@ -84,6 +84,7 @@ class ChartData(BaseModel):
     timestamp: int
     price: float
     volume: float
+    marketCap: float
 
 class ChartResponse(BaseModel):
     xMin: float
