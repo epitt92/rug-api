@@ -13,6 +13,7 @@ async def get_chart_data(chain_id: int, token_address: str, frequency: str = '1d
 
     N = 200
     step = 86400
+    total_supply = 1e4
 
     S = [random.uniform(0, 10000)]
     V = [S[0] * random.randint(200, 2000)]
@@ -30,6 +31,6 @@ async def get_chart_data(chain_id: int, token_address: str, frequency: str = '1d
 
     data = []
     for i in range(N):
-        data.append(ChartData(timestamp=start_time + i * step, price=S[i], volume=V[i], marketCap=S[i] * 1e9))
+        data.append(ChartData(timestamp=start_time + i * step, price=S[i], volume=V[i], marketCap=S[i] * total_supply))
 
-    return ChartResponse(xMin=start_time, xMax=end_time, yMin=y_min, yMax=y_max, numDatapoints=N, data=data)
+    return ChartResponse(priceMin=start_time, priceMax=end_time, marketCapMin=y_min*total_supply, marketCapMax=y_max*total_supply, timestampMin=y_min, timestampMax=y_max, numDatapoints=N, data=data)
