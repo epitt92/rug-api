@@ -81,8 +81,8 @@ class TokenInfo(BaseModel):
     logoUrl: str = None
 
 class ChartData(BaseModel):
-    y: int
-    x: int
+    timestamp: int
+    price: float
     volume: float
 
 class ChartResponse(BaseModel):
