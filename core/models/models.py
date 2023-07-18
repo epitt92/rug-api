@@ -82,7 +82,7 @@ class TokenInfo(BaseModel):
 
 class ChartData(BaseModel):
     y: int
-    x: str
+    x: int
     volume: float
 
 class ChartResponse(BaseModel):

@@ -30,8 +30,6 @@ async def get_chart_data(chain_id: int, token_address: str, frequency: str = '1d
 
     data = []
     for i in range(N):
-        date = start_time + i * step
-        date_formatted = time.strftime("%Y-%m-%d", time.localtime(date))
-        data.append(ChartData(x=date_formatted, y=S[i], volume=round(V[i])))
+        data.append(ChartData(x=start_time + i * step, y=S[i], volume=round(V[i])))
 
     return ChartResponse(xMin=start_time, xMax=end_time, yMin=y_min, yMax=y_max, numDatapoints=N, data=data)
