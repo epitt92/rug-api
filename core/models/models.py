@@ -87,10 +87,12 @@ class ChartData(BaseModel):
     marketCap: float
 
 class ChartResponse(BaseModel):
-    xMin: float
-    xMax: float
-    yMin: float
-    yMax: float
+    priceMin: float
+    priceMax: float
+    marketCapMin: float
+    marketCapMax: float
+    timestampMin: float
+    timestampMax: float
     numDatapoints: int
     data: List[ChartData]
 
