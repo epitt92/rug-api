@@ -6,8 +6,14 @@ import random, math, time
 
 router = APIRouter()
 
-@router.get("/{chain_id}/{token_address}", response_model=ChartResponse)
-async def get_chart_data(chain_id: int, token_address: str, frequency: str = '1d'):
+chain_name_mapping = {'ethereum': 1, 'bsc': 56, 'arbitrum': 42161}
+chain_id_mapping = {k: v for v, k in chain_name_mapping.items()}
+
+@router.get("/{chain}/{token_address}", response_model=ChartResponse)
+async def get_chart_data(chain: str, token_address: str, frequency: str = '1d'):
+    if chain not in chain_name_mapping:
+        raise HTTPException(status_code=400, detail=f"Chain {chain} is invalid.")
+    
     if len(token_address) != 42:
         raise HTTPException(status_code=400, detail=f"Token address {token_address} is invalid.")
 
@@ -33,4 +39,5 @@ async def get_chart_data(chain_id: int, token_address: str, frequency: str = '1d
     for i in range(N):
         data.append(ChartData(timestamp=start_time + i * step, price=S[i], volume=V[i], marketCap=S[i] * total_supply))
 
-    return ChartResponse(priceMin=y_min, priceMax=y_max, marketCapMin=y_min*total_supply, marketCapMax=y_max*total_supply, timestampMin=start_time, timestampMax=end_time, numDatapoints=N, data=data)
+    return ChartResponse(priceMin=y_min, priceMax=y_max, marketCapMin=y_min*total_supply, marketCapMax=y_max*total_supply, timestampMin=start_time, timestampMax=end_time, numDatapoints=N, data=data, latestPrice=S[-1], latestReturn=(S[-1] - S[0]) / S[0])
+

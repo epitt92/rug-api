@@ -12,7 +12,7 @@ arbitrum = Chain(
 ethereum = Chain(
     chainId=1,
     name="Ethereum",
-    logoUrl=None,
+    logoUrl="https://tokens.1inch.io/0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee.png",
     nativeAsset="ETH"
 )
 

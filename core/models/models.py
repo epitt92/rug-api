@@ -1,41 +1,15 @@
 from pydantic import BaseModel
 from typing import List
 
-class RugAPIResponse(BaseModel):
-    status: int
-    message: str
-    result: dict
-
-class RugAPISearchResponse(BaseModel):
-    status: int
-    message: str
-    result: List[dict]
-
-class RugAPIStringResponse(BaseModel):
-    status: int
-    message: str
-    result: str
-
-def response(result):
-    return RugAPIResponse(status=1, message="OK", result=result)
-
-def search(result):
-    return RugAPISearchResponse(status=1, message="OK", result=result)
-
-def success(result):
-    return RugAPIStringResponse(status=1, message="OK", result=result)
-
-def error(reason: str):
-    return RugAPIStringResponse(status=0, message="NOTOK", result=reason)
-
-from pydantic import BaseModel
-from typing import List
-
 class AIComment(BaseModel):
-    commentType: str
-    title: str
+    commentType: str = None
+    title: str = None
+    description: str = None
+    code: str = None
+
+class AISummary(BaseModel):
     description: str
-    code: str
+    numIssues: int
 
 class Holder(BaseModel):
     address: str
@@ -43,7 +17,6 @@ class Holder(BaseModel):
     percentage: float
 
 class ClusterResponse(BaseModel):
-    id: int
     clusters: List[List[Holder]]
 
 class ScoreResponse(BaseModel):
@@ -51,34 +24,6 @@ class ScoreResponse(BaseModel):
     supplyScore: float = None
     transferrabilityScore: float = None
     liquidityScore: float = None
-
-class TokenInfo(BaseModel):
-    lastUpdated: int = None
-    deployer: str = None
-    name: str = None
-    symbol: str = None
-    decimals: int = None
-    buyLink: str = None
-    twitter: str = None
-    telegram: str = None
-    webUrl: str = None
-    discord: str = None
-    marketCap: float = None
-    fdv: float = None
-    lockedLiquidity: float = None
-    burnedLiquidity: float = None
-    buyTax: float = None
-    sellTax: float = None
-    liquidityUsd: float = None
-    liquiditySingleSided: float = None
-    volume24h: float = None
-    circulatingSupply: float = None
-    totalSupply: float = None
-    totalSupplyPercentage: float = None
-    txCount: int = None
-    holders: int = None
-    latestPrice: float = None
-    logoUrl: str = None
 
 class ChartData(BaseModel):
     timestamp: int
@@ -94,6 +39,8 @@ class ChartResponse(BaseModel):
     timestampMin: float
     timestampMax: float
     numDatapoints: int
+    latestPrice: float = None
+    latestReturn: float = None
     data: List[ChartData]
 
 class Chain(BaseModel):
@@ -125,13 +72,50 @@ class ContractItem(BaseModel):
 class ContractResponse(BaseModel):
     items : List[ContractItem] = None
 
-class TokenReview(BaseModel):
-    tokenInfo: TokenInfo = None
+class SourceCode(BaseModel):
+    filename: str = None
+    sourceCode: str = None
+
+class TokenMetadata(BaseModel):
+    name: str = None
+    symbol: str = None
+    tokenAddress: str = None
+    contractDeployer: str = None
+    decimals: int = None
+    deployedTimestamp: int = None
+    lastUpdatedTimestamp: int = None
+    logoUrl: str = None
+    chain: Chain = None
+    twitter: str = None
+    telegram: str = None
+    discord: str = None
+    webUrl: str = None
+    buyLink: str = None
+    marketCap: float = None
+    fdv: float = None
+    lockedLiquidity: float = None
+    burnedLiquidity: float = None
+    buyTax: float = None
+    sellTax: float = None
+    liquidityUsd: float = None
+    liquiditySingleSided: float = None
+    volume24h: float = None
+    circulatingSupply: float = None
+    totalSupply: float = None
+    totalSupplyPercentage: float = None
+    txCount: int = None
+    holders: int = None
+
+class TokenInfoResponse(BaseModel):
+    tokenMetadata: TokenMetadata = None
     score: ScoreResponse = None
-    aiHighlights: List[AIComment] = None
+    aiSummary: AISummary = None
+    topHolders: ClusterResponse = None
+
+class TokenReviewResponse(BaseModel):
     contractInfo: ContractResponse = None
+    aiComments: List[AIComment] = None
     clusters: ClusterResponse = None
-    chart: ChartResponse = None
 
 class ReelResponse(BaseModel):
     items : List[Token] = None
