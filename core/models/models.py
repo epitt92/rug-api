@@ -17,6 +17,7 @@ class Holder(BaseModel):
     percentage: float
 
 class ClusterResponse(BaseModel):
+    top5Holding: float = 0.73
     clusters: List[List[Holder]]
 
 class Score(BaseModel):
