@@ -1,7 +1,7 @@
 import random
 from fastapi import APIRouter, HTTPException
 import time
-from core.models import ContractResponse, ContractItem, TokenMetadata, TokenInfoResponse, ScoreResponse, TokenReviewResponse, AIComment, AISummary, ClusterResponse, Holder
+from core.models import ContractResponse, ContractItem, TokenMetadata, TokenInfoResponse, Score, ScoreResponse, TokenReviewResponse, AIComment, AISummary, ClusterResponse, Holder
 from v1.utils.tokens import ethereum, arbitrum, bnb_chain
 import os
 import requests
@@ -336,7 +336,10 @@ async def post_score_info(chain_id: int, token_address: str):
     _token_address = token_address.lower()
 
     if _token_address not in score_mapping[chain_id]:
-        score_mapping[chain_id][_token_address] = ScoreResponse(overallScore=int(random.randint(0, 100)), liquidityScore=int(random.randint(0, 100)), transferrabilityScore=int(random.randint(0, 100)), supplyScore=int(random.randint(0, 100)))
+        score_mapping[chain_id][_token_address] = ScoreResponse(overallScore=int(random.randint(0, 100)), 
+                                                                liquidityScore=Score(value=int(random.randint(0, 100)), description="No liquidity vulnerabilities found"), 
+                                                                transferrabilityScore=Score(value=int(random.randint(0, 100)), description="The token cannot be sold"), 
+                                                                supplyScore=Score(value=int(random.randint(0, 100)), description="The token supply is modifiable"))
 
     return score_mapping[chain_id][_token_address]
 
