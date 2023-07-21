@@ -58,7 +58,7 @@ class Token(BaseModel):
     name: str = None
     symbol: str = None
     tokenAddress: str = None
-    score: float = None
+    score: ScoreResponse = None
     deployedAgo: int = None
     logoUrl: str = None
     chain: Chain = None
@@ -87,7 +87,7 @@ class TokenMetadata(BaseModel):
     tokenAddress: str = None
     contractDeployer: str = None
     decimals: int = None
-    deployedTimestamp: int = None
+    deployedAgo: int = None
     lastUpdatedTimestamp: int = None
     logoUrl: str = None
     chain: Chain = None

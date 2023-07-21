@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from core.models import ReelResponse, Token
+from core.models import ReelResponse, Token, ScoreResponse, Score
 from v1.utils.tokens import ethereum
 import random, json
 
@@ -19,10 +19,15 @@ async def get_hot_tokens(limit: int = 10):
     keys = list(tokens.keys())
     output_keys = random.sample(keys, limit)
 
+    scoreResponse = ScoreResponse(overallScore=int(random.randint(0, 100)), 
+                                liquidityScore=Score(value=int(random.randint(0, 100)), description="No liquidity vulnerabilities found"), 
+                                transferrabilityScore=Score(value=int(random.randint(0, 100)), description="The token cannot be sold"), 
+                                supplyScore=Score(value=int(random.randint(0, 100)), description="The token supply is modifiable"))
+
     return ReelResponse(items=[Token(name=tokens[key]['name'],
                                         symbol=tokens[key]['symbol'],
                                         tokenAddress=tokens[key]['address'],
-                                        score=round(random.uniform(0, 100), 2),
+                                        score=scoreResponse,
                                         deployedAgo=round(random.uniform(0, 100000), 2),
                                         logoUrl=tokens[key]['logoURI'],
                                         chain=ethereum) for key in output_keys])
@@ -35,10 +40,15 @@ async def get_new_tokens(limit: int = 10):
     keys = list(tokens.keys())
     output_keys = random.sample(keys, limit)
 
+    scoreResponse = ScoreResponse(overallScore=int(random.randint(0, 100)), 
+                                liquidityScore=Score(value=int(random.randint(0, 100)), description="No liquidity vulnerabilities found"), 
+                                transferrabilityScore=Score(value=int(random.randint(0, 100)), description="The token cannot be sold"), 
+                                supplyScore=Score(value=int(random.randint(0, 100)), description="The token supply is modifiable"))
+
     return ReelResponse(items=[Token(name=tokens[key]['name'],
                                         symbol=tokens[key]['symbol'],
                                         tokenAddress=tokens[key]['address'],
-                                        score=round(random.uniform(0, 100), 2),
+                                        score=scoreResponse,
                                         deployedAgo=round(random.uniform(0, 100000), 2),
                                         logoUrl=tokens[key]['logoURI'],
                                         chain=ethereum) for key in output_keys])
@@ -51,10 +61,15 @@ async def get_featured_tokens(limit : int = 10):
     keys = list(tokens.keys())
     output_keys = random.sample(keys, limit)
 
+    scoreResponse = ScoreResponse(overallScore=int(random.randint(0, 100)), 
+                                liquidityScore=Score(value=int(random.randint(0, 100)), description="No liquidity vulnerabilities found"), 
+                                transferrabilityScore=Score(value=int(random.randint(0, 100)), description="The token cannot be sold"), 
+                                supplyScore=Score(value=int(random.randint(0, 100)), description="The token supply is modifiable"))
+
     return ReelResponse(items=[Token(name=tokens[key]['name'],
                                         symbol=tokens[key]['symbol'],
                                         tokenAddress=tokens[key]['address'],
-                                        score=round(random.uniform(0, 100), 2),
+                                        score=scoreResponse,
                                         deployedAgo=round(random.uniform(0, 100000), 2),
                                         logoUrl=tokens[key]['logoURI'],
                                         chain=ethereum) for key in output_keys])
