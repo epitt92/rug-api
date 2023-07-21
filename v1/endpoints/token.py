@@ -95,7 +95,7 @@ async def initialize_token_metadata(chain_id: int, token_address: str):
     _token_address = token_address.lower()
 
     if _token_address not in token_metadata[chain_id]:
-        token_metadata[chain_id][_token_address] = TokenMetadata()
+        token_metadata[chain_id][_token_address] = TokenMetadata(tokenAddress=_token_address)
     
     return token_metadata[chain_id][_token_address]
 
