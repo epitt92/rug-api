@@ -44,7 +44,7 @@ async def get_chart_data(chain: str, token_address: str, frequency: str = '1d'):
     pool_address = await get_pool_address(chain_id, _token_address)
 
     # Call CoinGecko API with pool address and correct frequency
-    durations = {
+    frequencies = {
         '1h': {'candleType': 'minute', 'candleDuration': 1},
         '4h': {'candleType': 'minute', 'candleDuration': 1},
         '1d': {'candleType': 'minute', 'candleDuration': 5},
@@ -53,13 +53,13 @@ async def get_chart_data(chain: str, token_address: str, frequency: str = '1d'):
         'all': {'candleType': 'hour', 'candleDuration': 12}
     }
 
-    if duration not in durations:
+    if frequency not in frequencies:
         raise HTTPException(status_code=400, detail=f"Duration {duration} is invalid.")
     
     try:
-        url = f"https://api.geckoterminal.com/api/v2/networks/eth/pools/{pool_address}/ohlcv/{durations[duration]['candleType']}"
+        url = f"https://api.geckoterminal.com/api/v2/networks/eth/pools/{pool_address}/ohlcv/{frequencies[frequency]['candleType']}"
         params = {
-            "aggregate": durations[duration]['candleDuration'],
+            "aggregate": frequencies[frequency]['candleDuration'],
             "limit": 240
         }
 
