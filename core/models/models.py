@@ -96,8 +96,6 @@ class TokenMetadata(BaseModel):
     discord: str = None
     webUrl: str = None
     buyLink: str = None
-    marketCap: float = None
-    fdv: float = None
     lockedLiquidity: float = None
     burnedLiquidity: float = None
     buyTax: float = None
