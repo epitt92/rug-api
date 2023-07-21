@@ -9,7 +9,6 @@ router = APIRouter()
 chain_name_mapping = {'ethereum': 1, 'bsc': 56, 'arbitrum': 42161}
 chain_id_mapping = {k: v for v, k in chain_name_mapping.items()}
 
-@router.get("/goplus/{chain}/{token_address}")
 async def get_pool_address(chain_id: int, token_address: str):
     # Get the leading pool address from GoPlus API for a token and return it
     _token_address = token_address.lower()
@@ -31,7 +30,7 @@ async def get_pool_address(chain_id: int, token_address: str):
 
 
 @router.get("/{chain}/{token_address}", response_model=ChartResponse)
-async def get_chart_data(chain: str, token_address: str, duration: str = '1d'):
+async def get_chart_data(chain: str, token_address: str, frequency: str = '1d'):
     if chain not in chain_name_mapping:
         raise HTTPException(status_code=400, detail=f"Chain {chain} is invalid.")
     
