@@ -219,8 +219,8 @@ async def post_token_liquidity_info(chain_id: int, token_address: str):
 
                 await patch_token_metadata(chain_id, _token_address, 'contractDeployer', data['result'][_token_address]['creator_address'])
                 await patch_token_metadata(chain_id, _token_address, 'holders', int(data['result'][_token_address]['holder_count']))
-                await patch_token_metadata(chain_id, _token_address, 'buyTax', float(data['result'][_token_address]['buy_tax']))
-                await patch_token_metadata(chain_id, _token_address, 'sellTax', float(data['result'][_token_address]['sell_tax']))
+                await patch_token_metadata(chain_id, _token_address, 'buyTax', 100 * float(data['result'][_token_address]['buy_tax']))
+                await patch_token_metadata(chain_id, _token_address, 'sellTax', 100 * float(data['result'][_token_address]['sell_tax']))
                 await patch_token_metadata(chain_id, _token_address, 'liquidityUsd', sum([float(item['liquidity']) for item in data['result'][_token_address]['dex']]))
             else:
                 raise HTTPException(status_code=500, detail=f"An unknown error occurred during the call to fetch token security information for {_token_address} on chain {chain_id}.")

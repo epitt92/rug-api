@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 import v1
 
 TITLE = 'rug.ai API'
-VERSION = 1.10
+VERSION = 1.11
 
 DESCRIPTION = f"""
 ### Token Endpoints
