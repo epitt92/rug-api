@@ -41,15 +41,32 @@ class Chain(BaseModel):
             values['nativeAsset'] = ARBITRUM_NATIVE_ASSET
         return values
 
-class Token(BaseModel):
+class TokenBase(BaseModel):
     name: str
     symbol: str
     tokenAddress: constr(max_length=42)
+    chain: Chain
+    logoUrl: HttpUrl = None
+
+    @root_validator(pre=True)
+    def pre_process(cls, values):
+        # Convert tokenAddress to lowercase
+        if 'tokenAddress' in values:
+            values['tokenAddress'] = values['tokenAddress'].lower()
+        return values
+    
+    @validator('tokenAddress')
+    def validate_token_address(cls, value):
+        if not value.startswith('0x'):
+            raise ValueError('Field "tokenAddress" must be a valid Ethereum address beginning with "0x".')
+        if len(value) != 42:
+            raise ValueError('Field "tokenAddress" must be a valid Ethereum address with length 42.')
+        return value
+
+class Token(TokenBase):
     decimals: int = None
     score: ScoreResponse = None
     deployedAgo: int = None
-    logoUrl: HttpUrl = None
-    chain: Chain
 
     @root_validator(pre=True)
     def pre_process(cls, values):

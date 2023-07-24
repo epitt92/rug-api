@@ -4,8 +4,9 @@ from dotenv import load_dotenv
 from collections import defaultdict
 
 from src.v1.shared.dependencies import get_random_score
-from src.v1.shared.constants import CHAIN_ID_MAPPING
+from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
 from src.v1.shared.models import ChainEnum
+from src.v1.shared.schemas import Chain
 from src.v1.shared.exceptions import validate_token_address
 from src.v1.tokens.schemas import TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, AIComment, ClusterResponse, Holder
 from src.v1.tokens.models import TokenMetadataEnum
@@ -19,6 +20,8 @@ with open('src/v1/tokens/files/labels.json') as f:
 tokens = None
 with open('src/v1/shared/files/tokens.json') as f:
     tokens = json.load(f)["tokens"]
+
+ETHEREUM = Chain(chainId=ETHEREUM_CHAIN_ID)
 
 router = APIRouter()
 
@@ -71,8 +74,9 @@ async def initialize_token_metadata(chain: ChainEnum, token_address: str):
     _token_address = token_address.lower()
 
     if _token_address not in token_metadata[chain.value]:
+        data = await get_block_explorer_data(_token_address)
         # TODO: This will likely revert due to a lack of values for Token field, add method to fetch and cache required entries
-        token_metadata[chain.value][_token_address] = TokenMetadata(tokenAddress=_token_address)
+        token_metadata[chain.value][_token_address] = TokenMetadata(name=data.get("name"), symbol=data.get("symbol"), chain=Chain(chainId=CHAIN_ID_MAPPING[chain.value]), tokenAddress=_token_address)
     
     return token_metadata[chain.value][_token_address]
 
@@ -183,8 +187,8 @@ async def post_token_liquidity_info(chain: ChainEnum, token_address: str):
 
                 await patch_token_metadata(chain, _token_address, 'contractDeployer', data['result'][_token_address]['creator_address'])
                 await patch_token_metadata(chain, _token_address, 'holders', int(data['result'][_token_address]['holder_count']))
-                await patch_token_metadata(chain, _token_address, 'buyTax', 100 * float(data['result'][_token_address]['buy_tax']))
-                await patch_token_metadata(chain, _token_address, 'sellTax', 100 * float(data['result'][_token_address]['sell_tax']))
+                await patch_token_metadata(chain, _token_address, 'buyTax', float(data['result'][_token_address]['buy_tax']))
+                await patch_token_metadata(chain, _token_address, 'sellTax', float(data['result'][_token_address]['sell_tax']))
 
                 # Liquidity token calculations
                 liquidityUsd = sum([float(item['liquidity']) for item in data['result'][_token_address]['dex']])
@@ -353,7 +357,7 @@ async def post_token_info(chain: ChainEnum, token_address: str):
     '''
 
     # TODO: Refactor this to constants so it is easily modifiable
-    aiSummary = AISummary(description=description, numIssues=7)
+    aiSummary = AISummary(description=description, numIssues=7, comments=[])
     topHolders = ClusterResponse(clusters=[[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=322, percentage=0.12)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=645, percentage=0.12), Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=5, percentage=0.12)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=45, percentage=0.02)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=300, percentage=0.05)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=300, percentage=0.03)]])
 
     return TokenInfoResponse(tokenMetadata=tokenMetadata, score=score, aiSummary=aiSummary, topHolders=topHolders)

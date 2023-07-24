@@ -1,8 +1,6 @@
 from pydantic import BaseModel, HttpUrl
 from typing import List
-from enum import Enum
-
-from src.v1.shared.schemas import ScoreResponse, Token
+from src.v1.shared.schemas import ScoreResponse, TokenBase
 
 class AIComment(BaseModel):
     commentType: str = None
@@ -54,7 +52,7 @@ class MarketData(BaseModel):
     totalSupply: float = None
     totalSupplyPercentage: float = None
 
-class TokenMetadata(Token, SocialMedia, MarketData):
+class TokenMetadata(TokenBase, SocialMedia, MarketData):
     contractDeployer: str = None
     lastUpdatedTimestamp: int = None
     txCount: int = None
