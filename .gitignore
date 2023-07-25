@@ -108,3 +108,6 @@ venv.bak/
 core/example.json
 sandbox/asynchronous_liquidity.py
 sandbox/liquidity.ipynb
+dummy.json
+review_response.json
+*.ipynb
