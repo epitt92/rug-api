@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from router import v1_router
 
 TITLE = 'rug.ai API'
-VERSION = 1.11
+VERSION = 1.12
 
 def custom_schema():
     openapi_schema = get_openapi(title=TITLE, version=VERSION, routes=app.routes)

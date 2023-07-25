@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
 import time, os, requests, json
 from dotenv import load_dotenv
-from collections import defaultdict
+
+import logging
 
 from src.v1.shared.dependencies import get_random_score
 from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
@@ -25,16 +26,16 @@ ETHEREUM = Chain(chainId=ETHEREUM_CHAIN_ID)
 
 router = APIRouter()
 
-token_metadata = defaultdict(dict)
-contract_info = defaultdict(dict)
-score_mapping = defaultdict(dict)
-review_mapping = defaultdict(dict)
+token_metadata = {'ethereum': {}}
+contract_info = {'ethereum': {}}
+score_mapping = {'ethereum': {}}
+review_mapping = {'ethereum': {}}
 
 async def patch_token_metadata(chain: ChainEnum, token_address: str, updateKey: TokenMetadataEnum, updateValue):    
     _token_address = token_address.lower()
 
     if _token_address not in token_metadata[chain.value]:
-        raise HTTPException(status_code=404, detail=f"Token info for {token_address} on chain {chain.value} has never been initialized.")
+        await initialize_token_metadata(chain, _token_address)
     
     token_info_dict = token_metadata[chain.value][_token_address].dict()
     token_info_dict.update(**{updateKey: updateValue})
@@ -64,7 +65,7 @@ async def get_token_last_updated(chain: ChainEnum, token_address: str):
     _token_address = token_address.lower()
 
     if _token_address not in token_metadata[chain.value]:
-        raise HTTPException(status_code=404, detail=f"Token {_token_address} on chain {chain.value} has never been initialized.")
+        raise HTTPException(status_code=404, detail=f"Token {_token_address} on chain {chain} has never been initialized.")
     
     return token_metadata[chain.value][_token_address].lastUpdatedTimestamp
 
@@ -75,12 +76,12 @@ async def initialize_token_metadata(chain: ChainEnum, token_address: str):
 
     if _token_address not in token_metadata[chain.value]:
         data = await get_block_explorer_data(_token_address)
-        # TODO: This will likely revert due to a lack of values for Token field, add method to fetch and cache required entries
         token_metadata[chain.value][_token_address] = TokenMetadata(name=data.get("name"), symbol=data.get("symbol"), chain=Chain(chainId=CHAIN_ID_MAPPING[chain.value]), tokenAddress=_token_address)
     
     return token_metadata[chain.value][_token_address]
 
 
+@router.get("/explorer_data/{token_address}", include_in_schema=False)
 async def get_block_explorer_data(token_address: str):
     api_key = os.getenv('ETHERSCAN_API_KEY')
 
@@ -118,6 +119,18 @@ async def get_block_explorer_data(token_address: str):
         raise HTTPException(status_code=500, detail=f"A request exception occurred: {e}.")
 
 
+async def token_metadata_check(chain: ChainEnum, token_address: str):
+    _token_address = token_address.lower()
+
+    metadata = token_metadata[chain.value].get(_token_address)
+
+    if not metadata:
+        await initialize_token_metadata(chain, _token_address)
+    
+    return token_metadata[chain.value].get(_token_address)
+
+
+@router.get("socials/{chain}/{token_address}", response_model=TokenMetadata, include_in_schema=False)
 async def post_token_socials(chain: ChainEnum, token_address: str):
     """
     Post the token social information for a given token address on a given blockchain retrieved from an external API.
@@ -125,19 +138,23 @@ async def post_token_socials(chain: ChainEnum, token_address: str):
     __Parameters:__
     - **chain_id** (int): ID of the blockchain that the token belongs to.
     - **token_address** (str): The token address to query on the given blockchain.
-
-    __Raises:__
-    - **400 Bad Request**: If the token address is invalid.
-    - **500 Internal Server Error**: If an error occurred during the call to the external API.
     """
+    logging.info(f"Fetching socials for {token_address} on chain {chain.value}")
+
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
-    if token_metadata[chain.value][_token_address].name is None:
+    logging.info("Token address validated")
+
+    metadata = await token_metadata_check(chain, _token_address)
+
+    if (metadata.twitter is None):
+        logging.error(f"Twitter is none, {metadata}")
         try:
             info = await get_block_explorer_data(_token_address)
 
             for key, value in info.items():
+                logging.info(f"Updating {key} to {value}")
                 await patch_token_metadata(chain, _token_address, key, value)
 
             await patch_token_metadata(chain, _token_address, 'lastUpdatedTimestamp', int(time.time()))
@@ -149,6 +166,7 @@ async def post_token_socials(chain: ChainEnum, token_address: str):
     return token_metadata[chain.value][_token_address]
 
 
+@router.get("liquidity/{chain}/{token_address}", response_model=TokenMetadata, include_in_schema=False)
 async def post_token_liquidity_info(chain: ChainEnum, token_address: str):
     """
     Post the latest liquidity information for a given token address on a given blockchain. This information is queried directly from GoPlus Labs endpoints for token contract security.
@@ -171,7 +189,9 @@ async def post_token_liquidity_info(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
-    if token_metadata[chain.value][_token_address].contractDeployer is None:
+    metadata = await token_metadata_check(chain, _token_address)
+
+    if metadata.contractDeployer is None:
         try:
             url = f'https://api.gopluslabs.io/api/v1/token_security/{CHAIN_ID_MAPPING[chain.value]}'
 
@@ -201,28 +221,28 @@ async def post_token_liquidity_info(chain: ChainEnum, token_address: str):
                 # await patch_token_metadata(chain, _token_address, 'lockedLiquidityUsd', lockedLiquidityUsd)
                 # await patch_token_metadata(chain, _token_address, 'burnedLiquidityUsd', burnedLiquidityUsd)
             else:
-                raise HTTPException(status_code=500, detail=f"An unknown error occurred during the call to fetch token security information for {_token_address} on chain {chain.value}.")
+                raise HTTPException(status_code=500, detail=f"An unknown error occurred during the call to fetch token security information for {_token_address} on chain {chain}.")
 
             await patch_token_metadata(chain, _token_address, 'lastUpdatedTimestamp', time.time())
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"An unknown error occurred during the call to fetch token security information for {_token_address} on chain {chain.value}. {e}")
+            raise HTTPException(status_code=500, detail=f"An unknown error occurred during the call to fetch token security information for {_token_address} on chain {chain}. {e}")
     
     return token_metadata[chain.value][_token_address]
 
 
+@router.get("logo/{chain}/{token_address}", response_model=TokenMetadata, include_in_schema=False)
 async def post_token_logo_info(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
-    if _token_address not in token_metadata[chain.value]:
-        await initialize_token_metadata(chain.value, _token_address)
+    metadata = await token_metadata_check(chain, _token_address)
 
-    if token_metadata[chain.value][_token_address].logoUrl is None:
+    if metadata.logoUrl is None:
         if tokens.get(_token_address):
-            await patch_token_metadata(chain.value, token_address, 'logoUrl', tokens[_token_address]['logoURI'])
+            await patch_token_metadata(chain, _token_address, 'logoUrl', tokens[_token_address]['logoUrl'])
 
         # TODO: Add link to randomly generated rug.ai icon
-    return token_metadata[chain.value][token_address]
+    return token_metadata[chain.value][_token_address]
 
 
 async def post_token_contract_info(chain: ChainEnum, token_address: str):
@@ -325,9 +345,6 @@ async def post_token_metadata(chain: ChainEnum, token_address: str):
     await post_token_socials(chain, _token_address)
     await post_token_liquidity_info(chain, _token_address)
     await post_token_logo_info(chain, _token_address)
-
-    # TODO: Fix this patching with correct Chain object
-    # await patch_token_metadata(chain, _token_address, 'chain', CHAIN_ID_MAPPING[chain_id])
 
     return token_metadata[chain.value][_token_address]
 
