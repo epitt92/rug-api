@@ -9,8 +9,10 @@ from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.schemas import Chain
 from src.v1.shared.exceptions import validate_token_address
-from src.v1.tokens.schemas import TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, AIComment, ClusterResponse, Holder
+from src.v1.tokens.constants import AI_SUMMARY_DESCRIPTION, CLUSTER_RESPONSE, CLUSTER_1, CLUSTER_2, CLUSTER_3, CLUSTER_4, CLUSTER_5, HOLDER_1
+from src.v1.tokens.schemas import TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, AIComment, ClusterResponse, Holder, Cluster
 from src.v1.tokens.models import TokenMetadataEnum
+from src.v1.sourcecode.endpoints import get_source_code
 
 load_dotenv()
 
@@ -27,6 +29,7 @@ ETHEREUM = Chain(chainId=ETHEREUM_CHAIN_ID)
 router = APIRouter()
 
 token_metadata = {'ethereum': {}}
+token_ai_summary = {'ethereum': {}}
 contract_info = {'ethereum': {}}
 score_mapping = {'ethereum': {}}
 review_mapping = {'ethereum': {}}
@@ -314,7 +317,7 @@ async def post_token_contract_info(chain: ChainEnum, token_address: str):
     return contract_info[chain.value][_token_address]
 
 
-async def post_score_info(chain: ChainEnum, token_address: str):
+async def post_token_score(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
@@ -322,17 +325,6 @@ async def post_score_info(chain: ChainEnum, token_address: str):
         score_mapping[chain.value][_token_address] = get_random_score()
 
     return score_mapping[chain.value][_token_address]
-
-
-@router.get("/review/{chain}/{token_address}", response_model=TokenReviewResponse)
-async def get_token_detailed_review(chain: ChainEnum, token_address: str): 
-    validate_token_address(token_address)
-    contract_info = await post_token_contract_info(chain, token_address)
-
-    ai_comments = [AIComment(commentType="Function", title="Transferrss", description="This function is used to transfer tokens from one address to another."), 
-                   AIComment(commentType="Function", title="SetSellFeue", description="This function is used to set the sell fee.")]
-
-    return TokenReviewResponse(contractInfo=contract_info, aiComments=ai_comments, clusters=ClusterResponse(clusters=[[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=322, percentage=0.12)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=645, percentage=0.12), Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=5, percentage=0.12)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=45, percentage=0.02)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=300, percentage=0.05)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=300, percentage=0.03)]]))
 
 
 async def post_token_metadata(chain: ChainEnum, token_address: str):
@@ -347,6 +339,26 @@ async def post_token_metadata(chain: ChainEnum, token_address: str):
     await post_token_logo_info(chain, _token_address)
 
     return token_metadata[chain.value][_token_address]
+
+
+@router.get("/ai/{chain}/{token_address}", response_model=AISummary)
+async def get_token_ai_summary(chain: ChainEnum, token_address: str):
+    validate_token_address(token_address)
+    _token_address = token_address.lower()
+
+    if _token_address not in token_ai_summary[chain.value]:
+        # TODO: Wire this up to the rug-ml API as a request
+        aiSummary = AISummary(description=AI_SUMMARY_DESCRIPTION, numIssues=7, comments=[])
+        token_ai_summary[chain.value][_token_address] = aiSummary
+
+    return token_ai_summary[chain.value][_token_address]
+
+
+@router.get("/cluster/{chain}/{token_address}", response_model=ClusterResponse)
+async def get_token_cluster_summary(chain: ChainEnum, token_address: str):
+    validate_token_address(token_address)
+    logging.info(f"Fetching cluster summary for {token_address} on chain {chain.value}")
+    return CLUSTER_RESPONSE
 
 
 async def post_token_info(chain: ChainEnum, token_address: str):
@@ -365,35 +377,36 @@ async def post_token_info(chain: ChainEnum, token_address: str):
     _token_address = token_address.lower()
 
     tokenMetadata = await post_token_metadata(chain, token_address)
-    score = await post_score_info(chain, _token_address)
+    score = await post_token_score(chain, _token_address)
+    ai_summary = await get_token_ai_summary(chain, _token_address)
+    topHolders = await get_token_cluster_summary(chain, _token_address)
 
-    description = '''
-    rug.ai AI-tooling identified **7** potential vulnerabilities in the **Wetch.ai** contract which could cause partial or complete loss of funds. Therefore, we recommend proceeding with caution when interacting with this contract.
-
-    In Line 7, there is a `TransferOwnership` function which allows the ownership of the contract to be transferred to a malicious owner.
-    '''
-
-    # TODO: Refactor this to constants so it is easily modifiable
-    aiSummary = AISummary(description=description, numIssues=7, comments=[])
-    topHolders = ClusterResponse(clusters=[[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=322, percentage=0.12)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=645, percentage=0.12), Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=5, percentage=0.12)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=45, percentage=0.02)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=300, percentage=0.05)], [Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=300, percentage=0.03)]])
-
-    return TokenInfoResponse(tokenMetadata=tokenMetadata, score=score, aiSummary=aiSummary, topHolders=topHolders)
+    return TokenInfoResponse(tokenSummary=tokenMetadata, score=score, contractSummary=ai_summary, holderChart=topHolders)
 
 
 @router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
 async def get_token_info(chain: ChainEnum, token_address: str):
-    """
-    Get the token information for a given token address on a given blockchain.
-
-    __Parameters:__
-    - **chain_id** (int): ID of the blockchain that the token belongs to.
-    - **token_address** (str): The token address to query on the given blockchain.
-
-    __Raises:__
-    - **400 Bad Request**: If the chain ID is not supported.
-    - **400 Bad Request**: If the token address is invalid.
-    - **404 Not Found**: If the token address has never been updated and the token information does not exist.
-    """
     validate_token_address(token_address)
     _token_address = token_address.lower()
     return await post_token_info(chain, _token_address)
+
+
+@router.get("/review/{chain}/{token_address}", response_model=TokenReviewResponse)
+async def get_token_detailed_review(chain: ChainEnum, token_address: str): 
+    validate_token_address(token_address)
+
+    token_info = await post_token_info(chain, token_address)
+
+    supplySummary = await post_token_contract_info(chain, token_address)
+    transferrabilitySummary = await post_token_contract_info(chain, token_address)
+    liquiditySummary = await get_token_cluster_summary(chain, token_address)
+    sourceCode = await get_source_code(chain, token_address)
+
+    return TokenReviewResponse(tokenSummary=token_info.tokenSummary, 
+                               score=token_info.score, 
+                               contractSummary=token_info.contractSummary, 
+                               holderChart=token_info.holderChart, 
+                               supplySummary=supplySummary, 
+                               transferrabilitySummary=transferrabilitySummary, 
+                               liquiditySummary=liquiditySummary, 
+                               sourceCode=sourceCode)
