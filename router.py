@@ -6,7 +6,7 @@ from src.v1.feeds.endpoints import router as feeds_router
 from src.v1.tokens.endpoints import router as tokens_router
 from src.v1.sourcecode.endpoints import router as sourcecode_router
 
-v1_router = APIRouter()
+v1_router = APIRouter(prefix='/v1')
 
 v1_router.include_router(chart_router, prefix="/chart", tags=["Chart Endpoints"])
 v1_router.include_router(search_router, prefix="/search", tags=["Search Endpoints"])
