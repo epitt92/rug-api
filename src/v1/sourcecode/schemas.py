@@ -1,8 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, HttpUrl
 from typing import List
 
-class AIComment(BaseModel):
-    commentType: str = None
-    title: str = None
-    description: str = None
-    code: str = None
+class SourceCodeFile(BaseModel):
+    name: str
+    sourceCode: str
+    fileUrl: HttpUrl = None
+
+class SourceCodeResponse(BaseModel):
+    files: List[SourceCodeFile]

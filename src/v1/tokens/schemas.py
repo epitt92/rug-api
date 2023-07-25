@@ -24,7 +24,6 @@ class ClusterResponse(BaseModel):
 
 class ContractItem(BaseModel):
     title: str = None
-    section: str = None
     generalDescription: str = None
     description: str = None
     value: float = None

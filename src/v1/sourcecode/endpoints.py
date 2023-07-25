@@ -1,140 +1,64 @@
-# from fastapi import HTTPException
-# from fastapi import APIRouter, HTTPException, Query
-# import time
-# from pydantic import Field
-# import time
-# from core.models import success, error, response
-# import os
-# import requests
-# import logging
+from fastapi import HTTPException, APIRouter, HTTPException
+import os, requests, json
 
-# router = APIRouter()
+from src.v1.sourcecode.models import ChainEnum
+from src.v1.sourcecode.schemas import SourceCodeResponse, SourceCodeFile
 
-# source_code = {1: {}}
+router = APIRouter()
 
-# @router.get("/check/{chain_id}/{token_address}")
-# async def check_source_code(chain_id: int, token_address: str):
-#     """
-#     Check whether the source code for a given token address on a given blockchain is available.
+async def fetch_raw_code(token_address: str = '0x163f8C2467924be0ae7B5347228CABF260318753') -> str:
+    response = requests.get(f"https://api.etherscan.io/api?module=contract&action=getsourcecode&address={token_address}&apikey=GV1BQXWFT1FKAKUJTJ1E1QPGYMNDWBQXB6")
+    data = response.json().get('result')[0]
+    source = data.get('SourceCode')
+    return source
 
-#     __Parameters:__
-#     - **chain_id** (int): ID of the blockchain that the token belongs to.
-#     - **token_address** (str): The token address to query on the given blockchain.
+async def parse_raw_code(source: str) -> dict:
+    if source.startswith('{'):
+        # Clean up the source by removing the extra curly braces and newline characters
+        clean_source = source.replace('{{', '{').replace('}}', '}').replace('\r', '').replace('\n', '')
 
-#     __Returns:__
-#     - **OK**: Returns a success message indicating whether the source code is available.
-#     - **NOTOK**: Returns an error message indicating that the source code is not available.
-
-#     __Raises:__
-#     - **400 Bad Request**: If the chain ID is not supported.
-#     - **400 Bad Request**: If the token address is invalid.
-#     """
-        
-#     if chain_id not in source_code:
-#         raise HTTPException(status_code=400, detail=f"Chain ID {chain_id} is not supported.")
+        # Parse the clean_source string into a dictionary
+        try:
+            parsed_source = json.loads(clean_source)
+            return parsed_source.get('sources')
+        except Exception as e:
+            print(f'An error occurred: {e}')
+    else:
+        return source
     
-#     if len(token_address) != 42:
-#         raise HTTPException(status_code=400, detail=f"Token address {token_address} is invalid.")
+async def get_source_code_map(token_address: str = '0x163f8C2467924be0ae7B5347228CABF260318753'):
+    source = await parse_raw_code(await fetch_raw_code(token_address))
+    if isinstance(source, str):
+        if len(source) == 0:
+            return {'Flattened Source Code': 'No source code available for this contract.'}
+        return {'Flattened Source Code': source}
+    elif isinstance(source, dict):
+        # Pre-process dictionary keys and return
+        new_keys = [file.split('/')[-1] for file in source.keys() if file.endswith('.sol')]
+        key_map = dict(zip(source.keys(), new_keys))
+        return {key_map.get(key): source.get(key).get('content') for key in source.keys()}
 
-#     _token_address = token_address.lower()
+@router.get("/{chain}/{token_address}", response_model=SourceCodeResponse)
+async def get_source_code(chain: ChainEnum, token_address: str):
+    """
+    Get the source code for a given token address on a given blockchain to storage from an external API.
 
-#     if _token_address not in source_code[chain_id]:
-#         return error('Source code not found.')
-#     else:
-#         return success('Source code found.')
+    __Parameters:__
+    - **chain_id** (int): ID of the blockchain that the token belongs to.
+    - **token_address** (str): The token address to query on the given blockchain.
 
+    __Returns:__
+    - **OK**: Returns the source code of the token address on the given blockchain as a JSON.
 
-# async def fetch_source_code(token_address: str):
-#     api_key = os.getenv('ETHERSCAN_API_KEY')
-
-#     url = 'https://api.etherscan.io/api'
-
-#     params = {
-#         'module': 'contract',
-#         'action': 'getsourcecode',
-#         'address': token_address,
-#         'apikey': api_key
-#     }
-
-#     try:
-#         result = requests.get(url, params=params)
-#         result.raise_for_status()
-#         data = result.json()
-
-#         if data['status'] == "1":
-#             raw_data = data['result'][0]
-#             output = {'source_code': raw_data['SourceCode'], 'abi': raw_data['ABI']}
-#             return response(output)
-#         else:
-#             return error(f"An external API response error occurred with message: {data['message']}")
-#     except requests.exceptions.RequestException as e:
-#         return error(f"A request exception occurred with error: {e}.")
-
-
-# @router.post("/{chain_id}/{token_address}")
-# async def post_source_code(chain_id: int, token_address: str):
-#     """
-#     Post the source code for a given token address on a given blockchain to storage from an external API.
-
-#     __Parameters:__
-#     - **chain_id** (int): ID of the blockchain that the token belongs to.
-#     - **token_address** (str): The token address to query on the given blockchain.
-
-#     __Returns:__
-#     - **OK**: Returns the source code of the token address on the given blockchain as a JSON.
-#     - **NOTOK**: Returns an error message indicating that the attempt to fetch the source code failed.
-
-#     __Raises:__
-#     - **400 Bad Request**: If the chain ID is not supported.
-#     - **400 Bad Request**: If the token address is invalid.
-#     """
+    __Raises:__
+    - **400 Bad Request**: If the chain ID is not supported.
+    - **400 Bad Request**: If the token address is invalid.
+    - **404 Not Found**: If the token address does not have source code stored in memory.
+    """
         
-#     if chain_id not in source_code:
-#         raise HTTPException(status_code=400, detail=f"Chain ID {chain_id} is not supported.")
-    
-#     if len(token_address) != 42:
-#         raise HTTPException(status_code=400, detail=f"Token address {token_address} is invalid.")
+    source_code_map = await get_source_code_map(token_address)
+    output = []
+    for key, value in source_code_map.items():
+        output.append(SourceCodeFile(name=key, sourceCode=value))
 
-#     _token_address = token_address.lower()
-
-#     if _token_address not in source_code[chain_id]:
-#         result = await fetch_source_code(_token_address)
-#         if result.status == 1:
-#             source_code[chain_id][_token_address] = result.result
-#             return response(source_code[chain_id][_token_address])
-#         else:
-#             return error('An error occurred while fetching source code.')
-#     else:
-#         return response(source_code[chain_id][_token_address])
-
-
-# @router.get("/{chain_id}/{token_address}")
-# async def get_source_code(chain_id: int, token_address: str):
-#     """
-#     Get the source code for a given token address on a given blockchain to storage from an external API.
-
-#     __Parameters:__
-#     - **chain_id** (int): ID of the blockchain that the token belongs to.
-#     - **token_address** (str): The token address to query on the given blockchain.
-
-#     __Returns:__
-#     - **OK**: Returns the source code of the token address on the given blockchain as a JSON.
-
-#     __Raises:__
-#     - **400 Bad Request**: If the chain ID is not supported.
-#     - **400 Bad Request**: If the token address is invalid.
-#     - **404 Not Found**: If the token address does not have source code stored in memory.
-#     """
-        
-#     if chain_id not in source_code:
-#         raise HTTPException(status_code=400, detail=f"Chain ID {chain_id} is not supported.")
-    
-#     if len(token_address) != 42:
-#         raise HTTPException(status_code=400, detail=f"Token address {token_address} is invalid.")
-
-#     _token_address = token_address.lower()
-
-#     if _token_address not in source_code[chain_id]:
-#         raise HTTPException(status_code=404, detail=f"Token address {token_address} does not have source code stored in memory.")
-#     else:
-#         return response(source_code[chain_id][_token_address])
+    return SourceCodeResponse(files=output)
