@@ -12,25 +12,25 @@ AI_COMMENT_1 = AIComment(commentType='Function',
                         title='_transfer',
                         description='This contract has a `_transfer` function which allows the ownership of the contract to be transferred to a malicious owner.', 
                         fileName='Token.sol',
-                        line=[7])
+                        lines=[7])
 
 AI_COMMENT_2 = AIComment(commentType='Function',
                         title='setSellFee',
                         description='This contract has a `setSellFee` function which allows the owner of the contract to modify sell fees',
                         fileName='Token.sol',
-                        line=[38])
+                        lines=[38])
 
 AI_COMMENT_3 = AIComment(commentType='Function',
                         title='TransferOwnership',
                         description='This contract has a `TransferOwnership` function which allows the ownership of the contract to be transferred to a malicious owner.',
                         fileName='Token.sol',
-                        line=[12])
+                        lines=[12])
 
 AI_COMMENT_4 = AIComment(commentType='Function',
                         title='Execute',
                         description='This contract has a `Execute` function which allows the owner of the contract to modify the balances of holders.',
                         fileName='Token.sol',
-                        line=[7])
+                        lines=[7])
 
 AI_COMMENTS = [AI_COMMENT_1, AI_COMMENT_2, AI_COMMENT_3, AI_COMMENT_4]
 
