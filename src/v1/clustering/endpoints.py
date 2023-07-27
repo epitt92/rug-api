@@ -63,4 +63,4 @@ async def fetch_transfers(sender_address: str):
 @router.get("/liquidity/{chain}/{token_address}", response_model=ClusterResponse)
 async def get_cluster(chain_id: int, token_address: str):
 
-    return
+    return ClusterResponse()

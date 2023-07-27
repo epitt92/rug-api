@@ -9,8 +9,8 @@ from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.schemas import Chain
 from src.v1.shared.exceptions import validate_token_address
-from src.v1.tokens.constants import AI_SUMMARY_DESCRIPTION, CLUSTER_RESPONSE, CLUSTER_1, CLUSTER_2, CLUSTER_3, CLUSTER_4, CLUSTER_5, HOLDER_1
-from src.v1.tokens.schemas import TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, AIComment, ClusterResponse, Holder, Cluster
+from src.v1.tokens.constants import AI_SUMMARY_DESCRIPTION, CLUSTER_RESPONSE, AI_COMMENTS
+from src.v1.tokens.schemas import TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, ClusterResponse
 from src.v1.tokens.models import TokenMetadataEnum
 from src.v1.sourcecode.endpoints import get_source_code
 
@@ -341,20 +341,20 @@ async def post_token_metadata(chain: ChainEnum, token_address: str):
     return token_metadata[chain.value][_token_address]
 
 
-@router.get("/ai/{chain}/{token_address}", response_model=AISummary)
+@router.get("/ai/{chain}/{token_address}", response_model=AISummary, include_in_schema=False)
 async def get_token_ai_summary(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
     if _token_address not in token_ai_summary[chain.value]:
         # TODO: Wire this up to the rug-ml API as a request
-        aiSummary = AISummary(description=AI_SUMMARY_DESCRIPTION, numIssues=7, comments=[])
+        aiSummary = AISummary(description=AI_SUMMARY_DESCRIPTION, numIssues=7, comments=AI_COMMENTS)
         token_ai_summary[chain.value][_token_address] = aiSummary
 
     return token_ai_summary[chain.value][_token_address]
 
 
-@router.get("/cluster/{chain}/{token_address}", response_model=ClusterResponse)
+@router.get("/cluster/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=False)
 async def get_token_cluster_summary(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     logging.info(f"Fetching cluster summary for {token_address} on chain {chain.value}")
@@ -399,7 +399,7 @@ async def get_token_detailed_review(chain: ChainEnum, token_address: str):
 
     supplySummary = await post_token_contract_info(chain, token_address)
     transferrabilitySummary = await post_token_contract_info(chain, token_address)
-    liquiditySummary = await get_token_cluster_summary(chain, token_address)
+    # liquiditySummary = await get_token_cluster_summary(chain, token_address)
     sourceCode = await get_source_code(chain, token_address)
 
     return TokenReviewResponse(tokenSummary=token_info.tokenSummary, 
@@ -408,5 +408,5 @@ async def get_token_detailed_review(chain: ChainEnum, token_address: str):
                                holderChart=token_info.holderChart, 
                                supplySummary=supplySummary, 
                                transferrabilitySummary=transferrabilitySummary, 
-                               liquiditySummary=liquiditySummary, 
+                               liquiditySummary=None, 
                                sourceCode=sourceCode)
