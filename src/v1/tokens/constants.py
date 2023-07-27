@@ -2,11 +2,7 @@ import random
 
 from src.v1.tokens.schemas import Holder, Cluster, ClusterResponse, AIComment
 
-AI_SUMMARY_DESCRIPTION = '''
-        rug.ai AI-tooling identified **7** potential vulnerabilities in this contract which could cause partial or complete loss of funds. Therefore, we recommend proceeding with caution when interacting with this contract.
-
-        In Line 7, there is also a `TransferOwnership` function which allows the ownership of the contract to be transferred to a malicious owner.
-        '''
+AI_SUMMARY_DESCRIPTION = '''rug.ai AI-tooling identified **7** potential vulnerabilities in this contract which could cause partial or complete loss of funds. Therefore, we recommend proceeding with caution when interacting with this contract. In Line 7, there is also a `TransferOwnership` function which allows the ownership of the contract to be transferred to a malicious owner.'''
 
 AI_COMMENT_1 = AIComment(commentType='Function',
                         title='_transfer',
