@@ -15,7 +15,8 @@ class AIComment(BaseModel):
     commentType: str = None
     title: str = None
     description: str = None
-    code: str = None
+    fileName: str = None
+    lines: List[int] = None
 
 class AISummary(BaseModel):
     description: str
