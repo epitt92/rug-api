@@ -9,7 +9,7 @@ from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.schemas import Chain
 from src.v1.shared.exceptions import validate_token_address
-from src.v1.tokens.constants import AI_SUMMARY_DESCRIPTION, CLUSTER_RESPONSE, AI_COMMENTS
+from src.v1.tokens.constants import CLUSTER_RESPONSE, AI_SUMMARY_DESCRIPTION, AI_COMMENTS, AI_SCORE
 from src.v1.tokens.schemas import TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, ClusterResponse
 from src.v1.tokens.models import TokenMetadataEnum
 from src.v1.sourcecode.endpoints import get_source_code
@@ -348,7 +348,7 @@ async def get_token_ai_summary(chain: ChainEnum, token_address: str):
 
     if _token_address not in token_ai_summary[chain.value]:
         # TODO: Wire this up to the rug-ml API as a request
-        aiSummary = AISummary(description=AI_SUMMARY_DESCRIPTION, numIssues=7, comments=AI_COMMENTS)
+        aiSummary = AISummary(description=AI_SUMMARY_DESCRIPTION, numIssues=7, overallScore=AI_SCORE, comments=AI_COMMENTS)
         token_ai_summary[chain.value][_token_address] = aiSummary
 
     return token_ai_summary[chain.value][_token_address]
