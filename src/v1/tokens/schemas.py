@@ -130,6 +130,7 @@ class TokenMetadata(TokenBase, SocialMedia, MarketData):
     lastUpdatedTimestamp: int = None
     txCount: int = None
     holders: int = None
+    latestPrice: float = None
 
 ######################################################
 #                                                    #

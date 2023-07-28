@@ -9,10 +9,12 @@ from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.schemas import Chain
 from src.v1.shared.exceptions import validate_token_address
-from src.v1.tokens.constants import CLUSTER_RESPONSE, AI_SUMMARY_DESCRIPTION, AI_COMMENTS, AI_SCORE
+from src.v1.tokens.constants import CLUSTER_RESPONSE, AI_SUMMARY_DESCRIPTION, AI_COMMENTS, AI_SCORE, BURN_TAG
 from src.v1.tokens.schemas import TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, ClusterResponse
 from src.v1.tokens.models import TokenMetadataEnum
 from src.v1.sourcecode.endpoints import get_source_code
+from src.v1.chart.endpoints import get_chart_data
+from src.v1.chart.models import FrequencyEnum
 
 load_dotenv()
 
@@ -142,22 +144,16 @@ async def post_token_socials(chain: ChainEnum, token_address: str):
     - **chain_id** (int): ID of the blockchain that the token belongs to.
     - **token_address** (str): The token address to query on the given blockchain.
     """
-    logging.info(f"Fetching socials for {token_address} on chain {chain.value}")
-
     validate_token_address(token_address)
     _token_address = token_address.lower()
-
-    logging.info("Token address validated")
 
     metadata = await token_metadata_check(chain, _token_address)
 
     if (metadata.twitter is None):
-        logging.error(f"Twitter is none, {metadata}")
         try:
             info = await get_block_explorer_data(_token_address)
 
             for key, value in info.items():
-                logging.info(f"Updating {key} to {value}")
                 await patch_token_metadata(chain, _token_address, key, value)
 
             await patch_token_metadata(chain, _token_address, 'lastUpdatedTimestamp', int(time.time()))
@@ -216,13 +212,21 @@ async def post_token_liquidity_info(chain: ChainEnum, token_address: str):
                 # Liquidity token calculations
                 liquidityUsd = sum([float(item['liquidity']) for item in data['result'][_token_address]['dex']])
 
-                # TODO: Fix these calculations from GoPlus API
-                # lockedLiquidityUsd = sum([float(item['liquidity']) for item in data['result'][_token_address]['dex'] if item['locked'] == 'true'])
-                # burnedLiquidityUsd = sum([float(item['liquidity']) for item in data['result'][_token_address]['dex'] if item['burned'] == 'true'])
+                # Locked and burned liquidity calculations
+                lp_holders = data['result'][_token_address]['lp_holders']
+
+                lockedLiquidity, burnedLiquidity = 0.0, 0.0
+                for lp in lp_holders:
+                    if lp.get('percent'):
+                        percent = float(lp.get('percent'))
+                        if lp.get("tag")== BURN_TAG:
+                            burnedLiquidity += percent
+                        elif lp.get("is_locked") == 1:
+                            lockedLiquidity += float(lp.get('percent'))
 
                 await patch_token_metadata(chain, _token_address, 'liquidityUsd', liquidityUsd)
-                # await patch_token_metadata(chain, _token_address, 'lockedLiquidityUsd', lockedLiquidityUsd)
-                # await patch_token_metadata(chain, _token_address, 'burnedLiquidityUsd', burnedLiquidityUsd)
+                await patch_token_metadata(chain, _token_address, 'lockedLiquidity', lockedLiquidity)
+                await patch_token_metadata(chain, _token_address, 'burnedLiquidity', burnedLiquidity)
             else:
                 raise HTTPException(status_code=500, detail=f"An unknown error occurred during the call to fetch token security information for {_token_address} on chain {chain}.")
 
@@ -338,6 +342,9 @@ async def post_token_metadata(chain: ChainEnum, token_address: str):
     await post_token_liquidity_info(chain, _token_address)
     await post_token_logo_info(chain, _token_address)
 
+    chart = await get_chart_data(chain, _token_address, FrequencyEnum('1d'))
+    await patch_token_metadata(chain, _token_address, 'latestPrice', chart.latestPrice)
+
     return token_metadata[chain.value][_token_address]
 
 
@@ -357,7 +364,6 @@ async def get_token_ai_summary(chain: ChainEnum, token_address: str):
 @router.get("/cluster/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=False)
 async def get_token_cluster_summary(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
-    logging.info(f"Fetching cluster summary for {token_address} on chain {chain.value}")
     return CLUSTER_RESPONSE
 
 

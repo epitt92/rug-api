@@ -54,3 +54,5 @@ CLUSTER_4 = Cluster(members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd32669763
 CLUSTER_5 = Cluster(members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.002)])
 
 CLUSTER_RESPONSE = ClusterResponse(clusters=[CLUSTER_1, CLUSTER_2, CLUSTER_3, CLUSTER_4, CLUSTER_5])
+
+BURN_TAG = "Null Address"
