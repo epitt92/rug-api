@@ -15,12 +15,14 @@ class AIComment(BaseModel):
     commentType: str = None
     title: str = None
     description: str = None
+    severity: int = None
     fileName: str = None
-    lines: List[int] = None
+    sourceCode: str = None
 
 class AISummary(BaseModel):
     description: str
     numIssues: int
+    overallScore: float
     comments: List[AIComment]
 
 ######################################################
@@ -128,6 +130,7 @@ class TokenMetadata(TokenBase, SocialMedia, MarketData):
     lastUpdatedTimestamp: int = None
     txCount: int = None
     holders: int = None
+    latestPrice: float = None
 
 ######################################################
 #                                                    #
