@@ -10,6 +10,7 @@ from src.v1.shared.models import ChainEnum
 from src.v1.shared.schemas import Chain
 from src.v1.shared.exceptions import validate_token_address
 from src.v1.tokens.constants import CLUSTER_RESPONSE, AI_SUMMARY_DESCRIPTION, AI_COMMENTS, AI_SCORE, BURN_TAG
+from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
 from src.v1.tokens.schemas import TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, ClusterResponse
 from src.v1.tokens.models import TokenMetadataEnum
 from src.v1.sourcecode.endpoints import get_source_code
@@ -32,7 +33,8 @@ router = APIRouter()
 
 token_metadata = {'ethereum': {}}
 token_ai_summary = {'ethereum': {}}
-contract_info = {'ethereum': {}}
+supply_info = {'ethereum': {}}
+transferrability_info = {'ethereum': {}}
 score_mapping = {'ethereum': {}}
 review_mapping = {'ethereum': {}}
 
@@ -219,7 +221,7 @@ async def post_token_liquidity_info(chain: ChainEnum, token_address: str):
                 for lp in lp_holders:
                     if lp.get('percent'):
                         percent = float(lp.get('percent'))
-                        if lp.get("tag")== BURN_TAG:
+                        if lp.get("tag") == BURN_TAG:
                             burnedLiquidity += percent
                         elif lp.get("is_locked") == 1:
                             lockedLiquidity += float(lp.get('percent'))
@@ -271,7 +273,7 @@ async def post_token_contract_info(chain: ChainEnum, token_address: str):
     
     _token_address = token_address.lower()
 
-    if _token_address not in contract_info[chain.value]:
+    if (_token_address not in supply_info[chain.value]) or (_token_address not in transferrability_info[chain.value]):
         try:
             url = f'https://api.gopluslabs.io/api/v1/token_security/{CHAIN_ID_MAPPING[chain.value]}'
 
@@ -287,38 +289,20 @@ async def post_token_contract_info(chain: ChainEnum, token_address: str):
 
                 data_response = data['result'][_token_address]
 
-                items = []
+                # Process this data and produce a supply and a transferrability summary
+                supply_summary = get_supply_summary(data_response)
+                transferrability_summary = get_transferrability_summary(data_response)
 
-                for key, item in mapping.items():
-                    if key in data_response:
-                        if key == 'owner_address':
-                            item = ContractItem(
-                                title=item['title'],
-                                section=item['section'],
-                                generalDescription=item['description'],
-                                description=item['false_description'] if data_response[key] == '' else item['true_description'],
-                                value=0 if data_response[key] == '' else 1,
-                                severity=item['severity']
-                            )
-                        else:
-                            item = ContractItem(
-                                title=item['title'],
-                                section=item['section'],
-                                generalDescription=item['description'],
-                                description=item['false_description'] if bool(data_response[key]) else item['true_description'],
-                                value=float(data_response[key]) if data_response[key] != '' else None,
-                                severity=item['severity']
-                            )
+                supply_info[chain.value][_token_address] = supply_summary
+                transferrability_info[chain.value][_token_address] = transferrability_summary
 
-                        items.append(item)
-
-                contract_info[chain.value][_token_address] = ContractResponse(items=items)
+                return supply_summary, transferrability_summary
             else:
                 raise HTTPException(status_code=500, detail=f"Failed to fetch token security information from GoPlus: {request_response.text}")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Failed to fetch token security information from GoPlus: {e}")
 
-    return contract_info[chain.value][_token_address]
+    return supply_info[chain.value][_token_address], transferrability_info[chain.value][_token_address]
 
 
 async def post_token_score(chain: ChainEnum, token_address: str):
@@ -403,8 +387,7 @@ async def get_token_detailed_review(chain: ChainEnum, token_address: str):
 
     token_info = await post_token_info(chain, token_address)
 
-    supplySummary = await post_token_contract_info(chain, token_address)
-    transferrabilitySummary = await post_token_contract_info(chain, token_address)
+    supplySummary, transferrabilitySummary = await post_token_contract_info(chain, token_address)
     # liquiditySummary = await get_token_cluster_summary(chain, token_address)
     sourceCode = await get_source_code(chain, token_address)
 

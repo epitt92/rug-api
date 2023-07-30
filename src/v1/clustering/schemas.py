@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, confloat
 from typing import List, Dict
 
 from src.v1.shared.schemas import Chain
@@ -6,7 +6,7 @@ from src.v1.shared.schemas import Chain
 class Node(BaseModel):
     address: str = None
     numTokens: float = None
-    percentTokens: float = None
+    percentTokens: confloat(gt=0.0, lt=1.0) = None
 
 
 class Transfer(BaseModel):
