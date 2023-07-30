@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 from typing import List
 
 class ChartData(BaseModel):
@@ -17,4 +17,16 @@ class ChartResponse(BaseModel):
     numDatapoints: int
     latestPrice: float
     latestReturn: float
+    totalVolume: float = None
     data: List[ChartData]
+
+    @root_validator(pre=True)
+    def pre_process(cls, values):
+        totalVolume = 0
+        for data in values['data']:
+            if isinstance(data, dict):
+                totalVolume += data['volume'] * data['price']
+            elif isinstance(data, ChartData):
+                totalVolume += data.volume * data.price
+        values['totalVolume'] = totalVolume
+        return values
