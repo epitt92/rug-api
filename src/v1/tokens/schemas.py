@@ -1,6 +1,6 @@
-from pydantic import BaseModel, HttpUrl, root_validator, validator
+from pydantic import BaseModel, HttpUrl, root_validator, validator, confloat
 from typing import List
-import logging
+from enum import Enum
 
 from src.v1.shared.schemas import ScoreResponse, TokenBase
 from src.v1.sourcecode.schemas import SourceCodeResponse
@@ -51,7 +51,6 @@ class Holder(BaseModel):
             raise ValueError('Field "address" must be a valid Ethereum address with length 42.')
         return value
 
-
 class Cluster(BaseModel):
     members: List[Holder]
     percentage: float = None
@@ -90,15 +89,26 @@ class ClusterResponse(BaseModel):
 #                                                    #
 ######################################################
 
+class SeverityEnum(int, Enum):
+    neutral = 0
+    low = 1
+    medium = 2
+    high = 3
+
 class ContractItem(BaseModel):
     title: str = None
-    generalDescription: str = None
     description: str = None
-    value: float = None
-    severity: int = None
+    severity: SeverityEnum = None
 
 class ContractResponse(BaseModel):
-    items : List[ContractItem] = None
+    items : List[ContractItem]
+    numIssues: int = None
+    score: confloat(ge=0.0, le=100.0) = None
+
+    @root_validator(pre=True)
+    def pre_process(cls, values):
+        values['numIssues'] = len(values['items'])
+        return values
 
 ######################################################
 #                                                    #
