@@ -327,7 +327,10 @@ async def post_token_metadata(chain: ChainEnum, token_address: str):
     await post_token_logo_info(chain, _token_address)
 
     chart = await get_chart_data(chain, _token_address, FrequencyEnum('1d'))
+
+    # Patch latest price and add 24h volume
     await patch_token_metadata(chain, _token_address, 'latestPrice', chart.latestPrice)
+    await patch_token_metadata(chain, _token_address, 'volume24h', chart.totalVolume)
 
     return token_metadata[chain.value][_token_address]
 
