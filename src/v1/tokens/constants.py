@@ -78,7 +78,7 @@ ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
 ANTI_WHALE_MAPPING = {
     True: {'title': 'Has Anti-Whale Functionality',
-          'description': "The token has anti-whale functionality, which restricts the amount of tokens a single address can hold or trade. This mechanism prevents single addresses from acquiring large percentages of supply, but trades should review the [rug.ai](https://rug.ai) Liquidity Report to ensure that there are no clusters of connected addresses present.",
+          'description': "The token has anti-whale functionality, which restricts the amount of tokens a single address can hold or trade. This mechanism prevents single addresses from acquiring large percentages of supply, but traders should review the [rug.ai](https://rug.ai) Liquidity Report to ensure that there are no clusters of connected addresses present.",
           'severity': 0},
     False: {'title': "Does Not Have Anti-Whale Functionality",
            'description': "The token does not have anti-whale functionality, meaning there are no restrictions imposed on the amount of tokens a single address can hold or trade. Traders should review the [rug.ai](https://rug.ai) Liquidity Report for more information on the holder distribution for this token.",
