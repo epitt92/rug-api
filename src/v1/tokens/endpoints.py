@@ -330,7 +330,7 @@ async def post_token_metadata(chain: ChainEnum, token_address: str):
 
     # Patch latest price and add 24h volume
     await patch_token_metadata(chain, _token_address, 'latestPrice', chart.latestPrice)
-    await patch_token_metadata(chain, _token_address, 'volume24h', chart.totalVolume)
+    await patch_token_metadata(chain, _token_address, 'volume24h', chart.dayVolume)
 
     return token_metadata[chain.value][_token_address]
 
