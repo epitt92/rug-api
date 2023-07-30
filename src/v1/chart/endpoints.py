@@ -42,7 +42,7 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
         url = f"https://api.geckoterminal.com/api/v2/networks/eth/pools/{pool_address}/ohlcv/{FREQUENCY_MAPPING[frequency.value]['candleType']}"
         params = {
             "aggregate": FREQUENCY_MAPPING[frequency.value]['candleDuration'],
-            "limit": 300
+            "limit": FREQUENCY_MAPPING[frequency.value]['limit']
         }
 
         response = requests.get(url, params=params)
