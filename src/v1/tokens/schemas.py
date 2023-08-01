@@ -1,6 +1,7 @@
 from pydantic import BaseModel, HttpUrl, root_validator, validator, confloat
 from typing import List
 from enum import Enum
+import logging
 
 from src.v1.shared.schemas import ScoreResponse, TokenBase
 from src.v1.sourcecode.schemas import SourceCodeResponse
@@ -55,6 +56,7 @@ class Cluster(BaseModel):
     members: List[Holder]
     percentage: float = None
     numMembers: int = None
+    containsDeployer: bool = False
 
     @root_validator(pre=True)
     def pre_process(cls, values):

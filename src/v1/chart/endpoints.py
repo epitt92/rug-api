@@ -59,6 +59,7 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
     output = []
     timestampArray = []
     priceArray = []
+    marketCapArray = []
 
     # CoinGecko returns data in reverse chronological order
     for i in reversed(range(N)):
@@ -67,6 +68,7 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
 
         timestampArray.append(timestamp)
         priceArray.append(price)
+        marketCapArray.append(marketCap)
 
         output.append(ChartData(timestamp=timestamp, price=price, volume=volume, marketCap=marketCap))
 
@@ -80,4 +82,4 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
     priceMin -= l * 0.05
     priceMax += l * 0.05
 
-    return ChartResponse(priceMin=priceMin, priceMax=priceMax, marketCapMin=priceMin, marketCapMax=priceMax, timestampMin=timestampMin, timestampMax=timestampMax, numDatapoints=N, data=output, latestPrice=priceArray[-1], latestReturn=(priceArray[-1] - priceArray[0]) / priceArray[0])
+    return ChartResponse(priceMin=priceMin, priceMax=priceMax, marketCapMin=priceMin, marketCapMax=priceMax, timestampMin=timestampMin, timestampMax=timestampMax, numDatapoints=N, data=output, latestPrice=priceArray[-1], latestMarketCap=marketCapArray[-1], latestReturn=(priceArray[-1] - priceArray[0]) / priceArray[0])
