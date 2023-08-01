@@ -114,6 +114,11 @@ async def get_block_explorer_data(token_address: str):
             output['symbol'] = raw_data['symbol']
             output['decimals'] = int(raw_data['divisor'])
             output['totalSupply'] = int(raw_data['totalSupply']) / (10 ** int(raw_data['divisor']))
+
+            # TODO: Temporarily make circulating supply the same as total supply
+            output['circulatingSupply'] = output['totalSupply']
+            output['totalSupplyPercentage'] = 1.0
+
             output['website'] = raw_data['website'] if raw_data['website'] != '' else None
             output['twitter'] = raw_data['twitter'] if raw_data['twitter'] != '' else None
             output['telegram'] = raw_data['telegram'] if raw_data['telegram'] != '' else None
@@ -227,8 +232,10 @@ async def post_token_liquidity_info(chain: ChainEnum, token_address: str):
                             lockedLiquidity += float(lp.get('percent'))
 
                 await patch_token_metadata(chain, _token_address, 'liquidityUsd', liquidityUsd)
-                await patch_token_metadata(chain, _token_address, 'lockedLiquidity', lockedLiquidity)
-                await patch_token_metadata(chain, _token_address, 'burnedLiquidity', burnedLiquidity)
+                if lockedLiquidity > 0.001:
+                    await patch_token_metadata(chain, _token_address, 'lockedLiquidity', lockedLiquidity)
+                if burnedLiquidity > 0.001:
+                    await patch_token_metadata(chain, _token_address, 'burnedLiquidity', burnedLiquidity)
             else:
                 raise HTTPException(status_code=500, detail=f"An unknown error occurred during the call to fetch token security information for {_token_address} on chain {chain}.")
 

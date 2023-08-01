@@ -59,7 +59,8 @@ CLUSTER_2 = Cluster(members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd32669763
 
 CLUSTER_3 = Cluster(members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.018)])
 
-CLUSTER_4 = Cluster(members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.034), 
+CLUSTER_4 = Cluster(containsDeployer=True,
+                    members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.034), 
                              Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.0023),
                              Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.0023)])
 

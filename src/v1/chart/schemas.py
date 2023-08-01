@@ -16,6 +16,7 @@ class ChartResponse(BaseModel):
     timestampMax: float
     numDatapoints: int
     latestPrice: float
+    latestMarketCap: float
     latestReturn: float
     totalVolume: float = None
     dayVolume: float = None
