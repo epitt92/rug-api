@@ -1,6 +1,6 @@
-### Instructions for Integrating Endpoints into Front End
+# Instructions for Integrating Endpoints into Front End
 
-##### Metrics
+### Metrics
 
 Fetched by quering the endpoint at:
 
@@ -26,7 +26,7 @@ This returns a response, for which the key `tokenSummary` can be queried, the re
   }
 ```
 
-##### lockedLiquidity
+### lockedLiquidity
 
 - If `lockedLiquidity` is `null`, this should be rendered as "None" on the UI, in this style:
 
@@ -41,7 +41,7 @@ The logic for determining which colour is as follows:
 - If `lockedLiquidity` >= 50%, then green
 - Otherwise, then grey
 
-##### burnedLiquidity
+### burnedLiquidity
 
 - If `burnedLiquidity` is `null`, this should be rendered as "None" on the UI, in this style:
 
@@ -55,3 +55,4 @@ The logic for determining which colour is as follows:
 
 - If `burnedLiquidity` >= 50%, then green
 - Otherwise, then grey
+
