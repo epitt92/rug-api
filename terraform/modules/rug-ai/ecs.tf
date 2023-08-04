@@ -55,7 +55,7 @@ module "rug_app_service" {
       value = "v0.0.6"
     }
   ]
-  # alb_certifcate_arn                      = aws_acm_certificate.cert.arn
+  alb_certifcate_arn                      = aws_acm_certificate.cert.arn
   secrets                                 = [
     {
       name      = "ETHERSCAN_API_KEY"
