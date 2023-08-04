@@ -14,3 +14,4 @@ requests
 python-dotenv
 pytest
 httpx==0.24.1
+coverage==7.2.7
