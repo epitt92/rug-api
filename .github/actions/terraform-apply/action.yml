@@ -1,0 +1,47 @@
+name: 'Terraform apply apps'
+description: 'CI action that plan and apply terraform apps using terragrunt'
+inputs:
+  env:
+    description: 'deployment env'
+    required: true
+    default: 'test'
+
+  role-to-assume:
+    description: 'aws role to assume arn'
+    required: true
+    default: 'arn'
+
+  GH_TOKEN:
+    description: 'GH_TOKEN to use for terraform modules'
+    required: true
+    default: 'test'
+    
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Terraform version
+      shell: bash
+      run: terraform --version
+
+
+    - name: Configure AWS credentials from AWS account
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ inputs.role-to-assume }}
+        aws-region: eu-west-2
+        role-session-name: GitHub-OIDC-TERRAFORM
+
+
+    - name: Github credentials
+      shell: bash
+      run: git config --system url."https://oauth2:${{ inputs.GH_TOKEN }}@github.com".insteadOf https://github.com
+
+    - name: Terragrunt Apply terraform apps
+      shell: bash
+      working-directory: ./terraform/apps/rug
+      run: terragrunt run-all apply --terragrunt-non-interactive 
+      env:
+        TG_ENV: ${{ inputs.env }}
