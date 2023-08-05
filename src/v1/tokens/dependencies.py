@@ -1,6 +1,8 @@
+from typing import List
+import math
 
 from src.v1.tokens.schemas import ContractResponse, ContractItem
-from src.v1.tokens.constants import ZERO_ADDRESS, ANTI_WHALE_MAPPING, HIDDEN_OWNER_MAPPING, OPEN_SOURCE_MAPPING, HONEYPOT_MAPPING, PROXY_MAPPING, TRADING_COOLDOWN_MAPPING, CANNOT_SELL_ALL_MAPPING, OWNER_CHANGE_BALANCE_MAPPING, SELF_DESTRUCT_MAPPING, BLACKLIST_MAPPING, WHITELIST_MAPPING, HONEYPOT_SAME_CREATOR
+from src.v1.tokens.constants import SCORE_BASELINE, ZERO_ADDRESS, ANTI_WHALE_MAPPING, HIDDEN_OWNER_MAPPING, OPEN_SOURCE_MAPPING, HONEYPOT_MAPPING, PROXY_MAPPING, TRADING_COOLDOWN_MAPPING, CANNOT_SELL_ALL_MAPPING, OWNER_CHANGE_BALANCE_MAPPING, SELF_DESTRUCT_MAPPING, BLACKLIST_MAPPING, WHITELIST_MAPPING, HONEYPOT_SAME_CREATOR
 
 simple_mapping = {
     'anti_whale_modifiable': ANTI_WHALE_MAPPING,
@@ -16,6 +18,18 @@ simple_mapping = {
     'is_whitelisted': WHITELIST_MAPPING,
     'honeypot_with_same_creator': HONEYPOT_SAME_CREATOR
 }
+
+def calculate_score(item_list: List[ContractItem]) -> float:
+    r = SCORE_BASELINE
+    for item in item_list:
+        r += (float(item.severity) + 0.25) ** 2.0
+
+    # Apply a sigmoid function to the score
+    s = 100.0 * (1.0 - (1.0 / (1.0 + math.exp(-r))))
+    return s
+
+def generate_description(item_list: List[ContractItem]) -> str:
+    return 'There is no description information available for this token.'
 
 def get_supply_summary(go_plus_response: dict) -> ContractResponse:
     items = []
@@ -50,21 +64,10 @@ def get_supply_summary(go_plus_response: dict) -> ContractResponse:
     else:
         items.append(ContractItem(title='Not Mintable', description='The contract does not have minting functionality.', severity=0))
 
-    score = 100
+    score = calculate_score(items)
+    description = generate_description(items)
 
-    # Run manual checks to determine score
-    if bool(go_plus_response.get('selfdestruct')):
-        score = max(min(score - 20, 50), 0)
-    if bool(go_plus_response.get('is_mintable')):
-        score = max(min(score - 50, 5), 0)
-    if bool(go_plus_response.get('is_proxy')):
-        score = max(min(score - 5, 70), 0)
-    if not bool(go_plus_response.get('is_open_source')):
-        score = max(min(score - 5, 70), 0)
-    if bool(go_plus_response.get('hidden_owner')):
-        score = max(min(score - 40, 70), 0)
-
-    return ContractResponse(items=items, score=score)
+    return ContractResponse(items=items, score=score, description=description)
 
 
 def get_transferrability_summary(go_plus_response: dict) -> ContractResponse:
@@ -121,22 +124,7 @@ def get_transferrability_summary(go_plus_response: dict) -> ContractResponse:
     else:
         items.append(ContractItem(title='Transfers Not Pausable', description='The contract does not have transfer pausing functionality.', severity=0))
 
-    score = 100
+    score = calculate_score(items)
+    description = generate_description(items)
 
-    # Run manual checks to determine score
-    if bool(go_plus_response.get('is_honeypot')):
-        score = max(min(score, 0), 0)
-    if bool(go_plus_response.get('trading_cooldown')):
-        score = max(min(score - 10, 80), 0)
-    if bool(go_plus_response.get('cannot_sell_all')):
-        score = max(min(score - 15, 80), 0)
-    if bool(go_plus_response.get('owner_change_balance')):
-        score = max(min(score - 50, 25), 0)
-    if bool(go_plus_response.get('is_blacklisted')):
-        score = max(min(score - 10, 80), 0)
-    if bool(go_plus_response.get('is_whitelisted')):
-        score = max(min(score - 30, 80), 0)
-    if bool(go_plus_response.get('honeypot_with_same_creator')):
-        score = max(min(score, 0), 0)
-
-    return ContractResponse(items=items, score=score)
+    return ContractResponse(items=items, score=score, description=description)

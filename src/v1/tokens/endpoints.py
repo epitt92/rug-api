@@ -7,7 +7,7 @@ import logging
 from src.v1.shared.dependencies import get_random_score
 from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
 from src.v1.shared.models import ChainEnum
-from src.v1.shared.schemas import Chain
+from src.v1.shared.schemas import Chain, ScoreResponse
 from src.v1.shared.exceptions import validate_token_address
 from src.v1.tokens.constants import CLUSTER_RESPONSE, AI_SUMMARY_DESCRIPTION, AI_COMMENTS, AI_SCORE, BURN_TAG
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
@@ -312,12 +312,23 @@ async def post_token_contract_info(chain: ChainEnum, token_address: str):
     return supply_info[chain.value][_token_address], transferrability_info[chain.value][_token_address]
 
 
+@router.get("/score/{chain}/{token_address}", response_model=ScoreResponse, include_in_schema=False)
 async def post_token_score(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
     if _token_address not in score_mapping[chain.value]:
-        score_mapping[chain.value][_token_address] = get_random_score()
+        if token_address not in supply_info[chain.value]:
+            await post_token_contract_info(chain, _token_address)
+        if token_address not in transferrability_info[chain.value]:
+            await post_token_contract_info(chain, _token_address)
+        
+        supplyScore = supply_info[chain.value][_token_address].score
+        supplyDescription = supply_info[chain.value][_token_address].description
+        transferrabilityScore = transferrability_info[chain.value][_token_address].score
+        transferrabilityDescription = transferrability_info[chain.value][_token_address].description
+
+        score_mapping[chain.value][_token_address] = get_random_score(supply_score=supplyScore, supply_description=supplyDescription, transferrability_score=transferrabilityScore, transferrability_description=transferrabilityDescription)
 
     return score_mapping[chain.value][_token_address]
 
@@ -395,11 +406,11 @@ async def get_token_info(chain: ChainEnum, token_address: str):
 async def get_token_detailed_review(chain: ChainEnum, token_address: str): 
     validate_token_address(token_address)
 
-    token_info = await post_token_info(chain, token_address)
-
     supplySummary, transferrabilitySummary = await post_token_contract_info(chain, token_address)
     # liquiditySummary = await get_token_cluster_summary(chain, token_address)
     sourceCode = await get_source_code(chain, token_address)
+
+    token_info = await post_token_info(chain, token_address)
 
     return TokenReviewResponse(tokenSummary=token_info.tokenSummary, 
                                score=token_info.score, 
