@@ -1,10 +1,16 @@
 from fastapi import HTTPException, APIRouter, HTTPException
-import os, requests, json
+import os, requests, json, time, dotenv
 
+from src.v1.shared.DAO import DAO
+from src.v1.shared.dependencies import get_primary_key
 from src.v1.sourcecode.models import ChainEnum
 from src.v1.sourcecode.schemas import SourceCodeResponse, SourceCodeFile
 
 router = APIRouter()
+
+dotenv.load_dotenv()
+
+SOURCE_CODE_DAO = DAO('sourcecode')
 
 async def fetch_raw_code(token_address: str = '0x163f8C2467924be0ae7B5347228CABF260318753') -> str:
     response = requests.get(f"https://api.etherscan.io/api?module=contract&action=getsourcecode&address={token_address}&apikey=GV1BQXWFT1FKAKUJTJ1E1QPGYMNDWBQXB6")
@@ -20,7 +26,7 @@ async def parse_raw_code(source: str) -> dict:
         # Parse the clean_source string into a dictionary
         try:
             parsed_source = json.loads(clean_source)
-            return parsed_source.get('sources')
+            return parsed_source.gxet('sources')
         except Exception as e:
             print(f'An error occurred: {e}')
     else:
@@ -55,8 +61,27 @@ async def get_source_code(chain: ChainEnum, token_address: str):
     - **400 Bad Request**: If the token address is invalid.
     - **404 Not Found**: If the token address does not have source code stored in memory.
     """
-        
+    _token_address = token_address.lower()
+
+    # Check if the token source code has already been cached
+    pk = get_primary_key(_token_address, chain.value)
+
+    # Attempt to fetch transfers from DAO object
+    _source_code_map = SOURCE_CODE_DAO.find_most_recent_by_pk(pk)
+
+    # If source code is found, return it
+    if _source_code_map:
+        output = []
+        for key, value in _source_code_map.get('sourcecode').items():
+            output.append(SourceCodeFile(name=key, sourceCode=value))
+
+        return SourceCodeResponse(files=output)
+
     source_code_map = await get_source_code_map(token_address)
+
+    # Write source code map to DAO file
+    SOURCE_CODE_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'sourcecode': source_code_map})
+    
     output = []
     for key, value in source_code_map.items():
         output.append(SourceCodeFile(name=key, sourceCode=value))

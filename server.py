@@ -3,7 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import FileResponse
 
+import dotenv
+
 from router import v1_router
+
+dotenv.load_dotenv()
 
 TITLE = 'rug.ai API'
 VERSION = 1.13

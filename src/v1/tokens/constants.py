@@ -190,3 +190,13 @@ HONEYPOT_SAME_CREATOR = {
            'description': "The deployer of this token contract does not have a history of deploying honeypot contracts.",
             'severity': 0}
 }
+
+##########################################################
+#                                                        #
+#            DynamoDB Staleness Constants                #
+#                                                        #
+##########################################################
+
+TOKEN_METRICS_STALENESS_THRESHOLD = 60 * 5 # 5 minutes
+SUPPLY_REPORT_STALENESS_THRESHOLD = 60 * 60 * 1 # 1 hour
+TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD = 60 * 60 * 1 # 1 hour

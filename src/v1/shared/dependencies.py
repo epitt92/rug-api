@@ -11,3 +11,6 @@ def get_random_score():
                 )
     
     return output
+
+def get_primary_key(token_address: str, chain: str) -> str:
+    return f"{token_address.lower()}_{chain}"

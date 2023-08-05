@@ -2,15 +2,15 @@ from fastapi import APIRouter, HTTPException
 import time, os, requests, json
 from dotenv import load_dotenv
 
-import logging
-
-from src.v1.shared.dependencies import get_random_score
+from src.v1.shared.dependencies import get_random_score, get_primary_key
 from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.schemas import Chain
 from src.v1.shared.exceptions import validate_token_address
+from src.v1.shared.DAO import DAO
 from src.v1.tokens.constants import CLUSTER_RESPONSE, AI_SUMMARY_DESCRIPTION, AI_COMMENTS, AI_SCORE, BURN_TAG
-from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
+from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD
+from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary, get_go_plus_summary
 from src.v1.tokens.schemas import TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, ClusterResponse
 from src.v1.tokens.models import TokenMetadataEnum
 from src.v1.sourcecode.endpoints import get_source_code
@@ -30,6 +30,10 @@ with open('src/v1/shared/files/tokens.json') as f:
 ETHEREUM = Chain(chainId=ETHEREUM_CHAIN_ID)
 
 router = APIRouter()
+
+SUPPLY_REPORT_DAO = DAO("supplyreports")
+TRANSFERRABILITY_REPORT_DAO = DAO("transferrabilityreports")
+TOKEN_METRICS_DAO = DAO("tokenmetrics")
 
 token_metadata = {'ethereum': {}}
 token_ai_summary = {'ethereum': {}}
@@ -53,21 +57,6 @@ async def patch_token_metadata(chain: ChainEnum, token_address: str, updateKey: 
 
 @router.get("/info/updated/{chain}/{token_address}")
 async def get_token_last_updated(chain: ChainEnum, token_address: str):
-    """
-    Retrieve the UNIX timestamp at which a token was last updated.
-
-    __Parameters:__
-    - **chain_id** (int): ID of the blockchain that the token belongs to.
-    - **token_address** (str): The token address to query on the given blockchain.
-
-    __Returns:__
-    - **OK**: Returns the last updated UNIX timestamp as a JSON response.
-
-    __Raises:__
-    - **400 Bad Request**: If the chain ID is not supported.
-    - **400 Bad Request**: If the token address is invalid.
-    - **404 Not Found**: If the token address has never been updated.
-    """
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
@@ -144,13 +133,6 @@ async def token_metadata_check(chain: ChainEnum, token_address: str):
 
 @router.get("socials/{chain}/{token_address}", response_model=TokenMetadata, include_in_schema=False)
 async def post_token_socials(chain: ChainEnum, token_address: str):
-    """
-    Post the token social information for a given token address on a given blockchain retrieved from an external API.
-
-    __Parameters:__
-    - **chain_id** (int): ID of the blockchain that the token belongs to.
-    - **token_address** (str): The token address to query on the given blockchain.
-    """
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
@@ -174,24 +156,6 @@ async def post_token_socials(chain: ChainEnum, token_address: str):
 
 @router.get("liquidity/{chain}/{token_address}", response_model=TokenMetadata, include_in_schema=False)
 async def post_token_liquidity_info(chain: ChainEnum, token_address: str):
-    """
-    Post the latest liquidity information for a given token address on a given blockchain. This information is queried directly from GoPlus Labs endpoints for token contract security.
-
-    This endpoint will update the following entries:
-    - **dex_liquidity_usd**: The latest liquidity information for the token.
-    - **buy_tax**: The latest buy tax information for the token.
-    - **sell_tax**: The latest sell tax information for the token.
-    - **deployer**: The address of the deployer of the token contract.
-    - **holder_count**: The number of holders of the token contract.
-
-    __Parameters:__
-    - **chain_id** (int): ID of the blockchain that the token belongs to.
-    - **token_address** (str): The token address to query on the given blockchain.
-
-    __Raises:__
-    - **400 Bad Request**: If the chain ID is not supported.
-    - **400 Bad Request**: If the token address is invalid.
-    """
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
@@ -261,55 +225,39 @@ async def post_token_logo_info(chain: ChainEnum, token_address: str):
     return token_metadata[chain.value][_token_address]
 
 
-async def post_token_contract_info(chain: ChainEnum, token_address: str):
-    """
-    Fetches the contract information for a given token address on a given blockchain.
-
-    __Parameters:__
-    - **chain_id** (int): ID of the blockchain that the token belongs to.
-    - **token_address** (str): The token address to query on the given blockchain.
-
-    __Raises:__
-    - **400 Bad Request**: If the chain ID is not supported.
-    - **400 Bad Request**: If the token address is invalid.
-    """
+@router.get("info/{chain}/{token_address}", include_in_schema=True)
+async def get_supply_transferrability_info(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
 
     if mapping is None:
         raise HTTPException(status_code=500, detail=f"Failed to load labels from static file.")
     
     _token_address = token_address.lower()
+    
+    pk = get_primary_key(_token_address, chain)
 
-    if (_token_address not in supply_info[chain.value]) or (_token_address not in transferrability_info[chain.value]):
-        try:
-            url = f'https://api.gopluslabs.io/api/v1/token_security/{CHAIN_ID_MAPPING[chain.value]}'
+    # TODO: Add a DAO check for both supply and transferrability summary
+    _supply_summary = SUPPLY_REPORT_DAO.find_most_recent_by_pk(pk)
+    _transferrability_summary = TRANSFERRABILITY_REPORT_DAO.find_most_recent_by_pk(pk)
 
-            params = {
-                'contract_addresses': _token_address
-            }
+    # If this data is found and is not stale, return it
+    if _supply_summary and _transferrability_summary:
+        if (time.time() - int(_supply_summary.get('timestamp'))) < SUPPLY_REPORT_STALENESS_THRESHOLD and (time.time() - int(_transferrability_summary.get('timestamp'))) < TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD:
+            return _supply_summary.get('summary'), _transferrability_summary.get('summary')
 
-            request_response = requests.get(url, params=params)
-            request_response.raise_for_status()
-            
-            if request_response.status_code == 200:
-                data = request_response.json()
+    data = get_go_plus_summary(chain, _token_address)
 
-                data_response = data['result'][_token_address]
+    data_response = data['result'][_token_address]
 
-                # Process this data and produce a supply and a transferrability summary
-                supply_summary = get_supply_summary(data_response)
-                transferrability_summary = get_transferrability_summary(data_response)
+    # Process this data and produce a supply and a transferrability summary
+    supply_summary = get_supply_summary(data_response)
+    transferrability_summary = get_transferrability_summary(data_response)
 
-                supply_info[chain.value][_token_address] = supply_summary
-                transferrability_info[chain.value][_token_address] = transferrability_summary
+    # Cache this data to the database
+    SUPPLY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(supply_summary)})
+    TRANSFERRABILITY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(transferrability_summary)})
 
-                return supply_summary, transferrability_summary
-            else:
-                raise HTTPException(status_code=500, detail=f"Failed to fetch token security information from GoPlus: {request_response.text}")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to fetch token security information from GoPlus: {e}")
-
-    return supply_info[chain.value][_token_address], transferrability_info[chain.value][_token_address]
+    return supply_summary, transferrability_summary
 
 
 async def post_token_score(chain: ChainEnum, token_address: str):
@@ -322,7 +270,7 @@ async def post_token_score(chain: ChainEnum, token_address: str):
     return score_mapping[chain.value][_token_address]
 
 
-async def post_token_metadata(chain: ChainEnum, token_address: str):
+async def get_token_metrics(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
@@ -358,48 +306,54 @@ async def get_token_ai_summary(chain: ChainEnum, token_address: str):
 @router.get("/cluster/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=False)
 async def get_token_cluster_summary(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
+
+    URL = os.environ.get('DEV_ML_API_URL') + f'v1/clustering/{chain.value}/{token_address.lower()}'
+
+    response = requests.get(URL)
+    response.raise_for_status()
+
+    CLUSTER_RESPONSE = ClusterResponse(**response.json())
+    
     return CLUSTER_RESPONSE
-
-
-async def post_token_info(chain: ChainEnum, token_address: str):
-    """
-    Post the latest information for a given token address on a given blockchain.
-
-    __Parameters:__
-    - **chain_id** (int): ID of the blockchain that the token belongs to.
-    - **token_address** (str): The token address to query on the given blockchain.
-
-    __Raises:__
-    - **400 Bad Request**: If the chain ID is not supported.
-    - **400 Bad Request**: If the token address is invalid.
-    """
-    validate_token_address(token_address)
-    _token_address = token_address.lower()
-
-    tokenMetadata = await post_token_metadata(chain, token_address)
-    score = await post_token_score(chain, _token_address)
-    ai_summary = await get_token_ai_summary(chain, _token_address)
-    topHolders = await get_token_cluster_summary(chain, _token_address)
-
-    return TokenInfoResponse(tokenSummary=tokenMetadata, score=score, contractSummary=ai_summary, holderChart=topHolders)
 
 
 @router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
 async def get_token_info(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
-    return await post_token_info(chain, _token_address)
+    
+    tokenMetadata = await get_token_metrics(chain, token_address)
+
+    score = await post_token_score(chain, _token_address)
+
+    ai_summary = await get_token_ai_summary(chain, _token_address)
+    topHolders = await get_token_cluster_summary(chain, _token_address)
+
+    return TokenInfoResponse(tokenSummary=tokenMetadata, score=score, contractSummary=ai_summary, holderChart=topHolders)
 
 
 @router.get("/review/{chain}/{token_address}", response_model=TokenReviewResponse)
 async def get_token_detailed_review(chain: ChainEnum, token_address: str): 
     validate_token_address(token_address)
 
-    token_info = await post_token_info(chain, token_address)
+    # Get the supply and transferrability summary information
+    supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
-    supplySummary, transferrabilitySummary = await post_token_contract_info(chain, token_address)
+    # Get the clustering report for the token
+    # TODO
     # liquiditySummary = await get_token_cluster_summary(chain, token_address)
+
+    # Get and cache the source code for the token
     sourceCode = await get_source_code(chain, token_address)
+
+    # Get the AI summary for the token
+    # TODO
+
+    # Get the overall score information for the token
+    # TODO
+
+    # Get the token summary for the token
+    token_info = await post_token_info(chain, token_address)
 
     return TokenReviewResponse(tokenSummary=token_info.tokenSummary, 
                                score=token_info.score, 
