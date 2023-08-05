@@ -14,7 +14,7 @@ token_list = list(map(lambda s: s.lower(), tokens.keys()))
 token_scores = {}
 
 for token in token_list:
-    token_scores[token] = get_random_score()
+    token_scores[token] = get_random_score(93.2, "High liquidity", 100, "High transferrability")
 
 ETHEREUM = Chain(chainId=ETHEREUM_CHAIN_ID)
 
