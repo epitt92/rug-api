@@ -111,3 +111,16 @@ sandbox/liquidity.ipynb
 dummy.json
 review_response.json
 *.ipynb
+
+
+#terraform and terragrunt files
+.terraform
+.terragrunt-cache
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfvars
+terraform.tfvars.json
+*.tfvars
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl

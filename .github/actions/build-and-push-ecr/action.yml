@@ -1,0 +1,77 @@
+name: 'Build and push ecr'
+description: 'ci action that build and push docker images to ecr'
+inputs:
+  app:
+    description: 'Nx app'
+    required: true
+    default: 'app'
+  GH_TOKEN:
+    description: 'GH_TOKEN to use for terraform modules'
+    required: true
+    default: 'test'
+  dockerfile-path: 
+    description: 'Docker file  after apps dir'
+    required: true
+    default: './'
+  aws-region: 
+    description: 'aws region'
+    required: true
+    default: 'eu-west-2'
+  ecr-repository:
+    description: 'aws ecr repository'
+    required: true
+    default: 'ec2'
+  role-to-assume:
+    description: 'aws role to assume arn'
+    required: true
+    default: 'arn'
+  IMAGE_VARIABLE:
+    description: 'image variable'
+    required: true
+    default: 'CONTAINER_IMAGE'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Use Node.js 16.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16.x
+
+    - name: Configure AWS credentials from AWS account
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: ${{ inputs.role-to-assume }}
+        aws-region: ${{ inputs.aws-region }}
+        role-session-name: GitHub-OIDC-TERRAFORM
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@aaf69d68aa3fb14c1d5a6be9ac61fe15b48453a2
+
+    - name: Create ecr repository if doesn't exist
+      uses: int128/create-ecr-repository-action@v1
+      id: ecr
+      with:
+        repository: ${{ inputs.ecr-repository }}
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      working-directory: ./
+      shell: bash
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Build a docker container and
+        # push it to ECR so that it can
+        # be deployed to ECS.
+
+        docker build -t $ECR_REGISTRY/${{ inputs.ecr-repository }}:$IMAGE_TAG -f ./Dockerfile .
+        docker push $ECR_REGISTRY/${{ inputs.ecr-repository }}:$IMAGE_TAG
+        echo "image=$ECR_REGISTRY/${{ inputs.ecr-repository }}:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+        curl -L -H "Authorization: Bearer ${{ inputs.GH_TOKEN }}" -H "Accept: application/vnd.github.v3+json" -X PATCH "https://api.github.com/repos/diffusion-io/rug-api/actions/variables/${{inputs.IMAGE_VARIABLE}}" -d '{"name":"${{inputs.IMAGE_VARIABLE}}","value":"${{env.ECR_REGISTRY}}/${{ inputs.ecr-repository }}:${{env.IMAGE_TAG}}"}'
