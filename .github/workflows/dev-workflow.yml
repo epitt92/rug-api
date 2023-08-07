@@ -85,7 +85,7 @@ jobs:
         shell: bash
         id: images
         run: |
-          echo "TG_RUG_ECR_IMAGE = $(curl -H "Authorization: token ${{ secrets.GH_TOKEN }}" -H "Accept: application/vnd.github.v3+json"-X GET "https://api.github.com/repos/diffusion-io/rug-ml/actions/variables/${{env.ENV}}_RUG_AI_IMAGE" | jq -r ".value")" >> $GITHUB_ENV
+          echo "TG_RUG_ECR_IMAGE = $(curl -H "Authorization: token ${{ secrets.GH_TOKEN }}" -H "Accept: application/vnd.github.v3+json"-X GET "https://api.github.com/repos/diffusion-io/rug-api/actions/variables/${{env.ENV}}_RUG_AI_IMAGE" | jq -r ".value")" >> $GITHUB_ENV
 
       - name: apply terraform
         uses: ./.github/actions/terraform-apply

@@ -1,5 +1,5 @@
 locals {
-  env         = get_env("TG_ENV", "dev")
+  env         = get_env("TG_ENV", "stage")
   workspace   = get_env("TG_WORKSPACE", "default")
   env_config  = read_terragrunt_config(find_in_parent_folders("config/${local.env}.hcl"))
 }

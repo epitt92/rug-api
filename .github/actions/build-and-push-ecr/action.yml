@@ -74,4 +74,4 @@ runs:
         docker push $ECR_REGISTRY/${{ inputs.ecr-repository }}:$IMAGE_TAG
         echo "image=$ECR_REGISTRY/${{ inputs.ecr-repository }}:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-        curl -L -H "Authorization: Bearer ${{ inputs.GH_TOKEN }}" -H "Accept: application/vnd.github.v3+json" -X PATCH "https://api.github.com/repos/diffusion-io/rug-ml/actions/variables/${{inputs.IMAGE_VARIABLE}}" -d '{"name":"${{inputs.IMAGE_VARIABLE}}","value":"${{env.ECR_REGISTRY}}/${{ inputs.ecr-repository }}:${{env.IMAGE_TAG}}"}'
+        curl -L -H "Authorization: Bearer ${{ inputs.GH_TOKEN }}" -H "Accept: application/vnd.github.v3+json" -X PATCH "https://api.github.com/repos/diffusion-io/rug-api/actions/variables/${{inputs.IMAGE_VARIABLE}}" -d '{"name":"${{inputs.IMAGE_VARIABLE}}","value":"${{env.ECR_REGISTRY}}/${{ inputs.ecr-repository }}:${{env.IMAGE_TAG}}"}'
