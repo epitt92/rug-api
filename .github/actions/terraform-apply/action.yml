@@ -41,7 +41,7 @@ runs:
 
     - name: Terragrunt Apply terraform apps
       shell: bash
-      working-directory: ./terraform/apps/rug
+      working-directory: ./terraform/apps/rug-ai
       run: terragrunt run-all apply --terragrunt-non-interactive 
       env:
         TG_ENV: ${{ inputs.env }}
