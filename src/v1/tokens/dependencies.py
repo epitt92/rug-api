@@ -40,8 +40,8 @@ def get_supply_summary(go_plus_response: dict) -> dict:
     for key in simple_keys:
         if go_plus_response.get(key):
             response = bool(int(go_plus_response.get(key)))
-            items.append({'title':simple_mapping[key][response]['title'], 
-                            'description': simple_mapping[key][response]['description'], 
+            items.append({'title':simple_mapping[key][response]['title'],
+                            'description': simple_mapping[key][response]['description'],
                             'severity': simple_mapping[key][response]['severity']})
 
     # Add ownership renounced field
@@ -65,21 +65,22 @@ def get_supply_summary(go_plus_response: dict) -> dict:
     else:
         items.append({'title': 'Not Mintable', 'description': 'The contract does not have minting functionality.', 'severity': 0})
 
-    score = 100
-
-    # Run manual checks to determine score
+    additional_summary = ''
     if bool(go_plus_response.get('selfdestruct')):
-        score = max(min(score - 20, 50), 0)
+        additional_summary += 'The owner could destroy the contract at any time. '
     if bool(go_plus_response.get('is_mintable')):
-        score = max(min(score - 50, 5), 0)
+        additional_summary += 'The owner could mint new tokens at any time. '
     if bool(go_plus_response.get('is_proxy')):
-        score = max(min(score - 5, 70), 0)
+        additional_summary += 'The contract is a proxy contract. '
     if not bool(go_plus_response.get('is_open_source')):
-        score = max(min(score - 5, 70), 0)
+        additional_summary += 'The contract is not open source. '
     if bool(go_plus_response.get('hidden_owner')):
-        score = max(min(score - 40, 70), 0)
+        additional_summary += 'The contract owner is hidden. '
 
-    return {'items': items, 'score': score}
+    score = calculate_score(items=items)
+    summary = create_brief_summary(items=items, additional_summary=additional_summary)
+
+    return {'items': items, 'score': score, 'summary': summary}
 
 
 def get_transferrability_summary(go_plus_response: dict) -> dict:
@@ -90,10 +91,10 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
     for key in simple_keys:
         if go_plus_response.get(key):
             response = bool(int(go_plus_response.get(key)))
-            items.append({'title': simple_mapping[key][response]['title'], 
-                                      'description': simple_mapping[key][response]['description'], 
+            items.append({'title': simple_mapping[key][response]['title'],
+                                      'description': simple_mapping[key][response]['description'],
                                       'severity': simple_mapping[key][response]['severity']})
-    
+
     # Add buy tax field
     if go_plus_response.get('buy_tax'):
         buy_tax = float(go_plus_response.get('buy_tax'))
@@ -136,22 +137,78 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
     else:
         items.append({'title': 'Transfers Not Pausable', 'description': 'The contract does not have transfer pausing functionality.', 'severity': 0})
 
-    score = 100
 
-    # Run manual checks to determine score
+    additional_summary = ''
     if bool(go_plus_response.get('is_honeypot')):
-        score = max(min(score, 0), 0)
+        additional_summary += ' This token is a honeypot.'
     if bool(go_plus_response.get('trading_cooldown')):
-        score = max(min(score - 10, 80), 0)
+        additional_summary += ' This token has a trading cooldown.'
     if bool(go_plus_response.get('cannot_sell_all')):
-        score = max(min(score - 15, 80), 0)
+        additional_summary += ' This token has a sell cooldown.'
     if bool(go_plus_response.get('owner_change_balance')):
-        score = max(min(score - 50, 25), 0)
+        additional_summary += ' This token has a balance changing owner.'
     if bool(go_plus_response.get('is_blacklisted')):
-        score = max(min(score - 10, 80), 0)
+        additional_summary += ' This token is blacklisted.'
     if bool(go_plus_response.get('is_whitelisted')):
-        score = max(min(score - 30, 80), 0)
+        additional_summary += ' This token is whitelisted.'
     if bool(go_plus_response.get('honeypot_with_same_creator')):
-        score = max(min(score, 0), 0)
+        additional_summary += ' This token has the same creator as a known honeypot.'
 
-    return {'items': items, 'score': score}
+    score = calculate_score(items=items)
+    summary = create_brief_summary(items=items, additional_summary=additional_summary)
+
+    return {'items': items, 'score': score, 'summary': summary}
+
+
+def calculate_score(items: list) -> int:
+    """
+    Given a list of ContractItem objects, calculate the overall score of the contract.
+    We use a sigmoid function described as below:
+    f(X) = 100 * ( 1 -  1/(1 + e^(SUM(xi + k)^p - h)) )
+    where xi is the severity of the ith item, and k, p, and h are constants.
+
+    Below, the description of the constants:
+        k: It is a correction factor that adjusts the base value of the severity penalty.
+        p: It is a factor that reduces the impact of low penalties (from 0 to 1) and increases the
+            impact of high penalties (1 or larger).
+        h: Threshold value that, if equal to the sum of the penalties, the score is 50.
+
+    Args:
+        items (list): List of ContractItem objects.
+    Returns :
+        (int): Score from 0 to 100 that represents the overall score of the contract.
+    """
+    # Constants
+    k = 0.25
+    p = 2
+    h = 5
+
+    # Calculate score
+    penalty_param = sum(item['severity'] + k for item in items)**p
+    score = 100 * (1 - 1 / (1 + math.exp(penalty_param - h)))
+
+    return int(score)
+
+
+def create_brief_summary(items: list, additional_summary: str) -> str:
+    """
+    Given a list of ContractItem objects, create a brief summary of the contract.
+    The summary is a string that contains the intro text.
+
+    Args:
+        items (list): List of ContractItem objects.
+        additional_summary (str): Additional summary to be added to the end of the intro text.
+    Returns:
+        (str): Brief summary of the contract.
+    """
+    if len(items) == 0:
+        # There is no concerns, give a standardized summary
+        intro_summary = ('No major concerns were found with this token. '
+                         'However, please note that this is not a guarantee of safety.')
+    else:
+        # There are concerns, give a standardized summary
+        intro_summary = ('Issues were found with this token. For further details, '
+                         'please see the list of issues below.')
+
+    full_summary = intro_summary + 'Be aware that: ' if len(additional_summary) > 0 else '' + additional_summary
+    return full_summary
