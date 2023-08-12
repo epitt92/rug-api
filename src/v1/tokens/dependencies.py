@@ -32,6 +32,16 @@ def get_go_plus_summary(chain: ChainEnum, token_address: str):
     return request_response.json()
 
 
+def get_block_explorer_data(chain: ChainEnum, token_address: str):
+    # TODO Implement this
+    return
+
+
+def get_moralis_data(chain: ChainEnum, token_address: str):
+    # TODO Implement this
+    return
+
+
 def get_supply_summary(go_plus_response: dict) -> dict:
     items = []
 

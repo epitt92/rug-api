@@ -35,25 +35,6 @@ SUPPLY_REPORT_DAO = DAO("supplyreports")
 TRANSFERRABILITY_REPORT_DAO = DAO("transferrabilityreports")
 TOKEN_METRICS_DAO = DAO("tokenmetrics")
 
-token_metadata = {'ethereum': {}}
-token_ai_summary = {'ethereum': {}}
-supply_info = {'ethereum': {}}
-transferrability_info = {'ethereum': {}}
-score_mapping = {'ethereum': {}}
-review_mapping = {'ethereum': {}}
-
-async def patch_token_metadata(chain: ChainEnum, token_address: str, updateKey: TokenMetadataEnum, updateValue):    
-    _token_address = token_address.lower()
-
-    if _token_address not in token_metadata[chain.value]:
-        await initialize_token_metadata(chain, _token_address)
-    
-    token_info_dict = token_metadata[chain.value][_token_address].dict()
-    token_info_dict.update(**{updateKey: updateValue})
-    token_metadata[chain.value][_token_address] = TokenMetadata(**token_info_dict)
-
-    return token_metadata[chain.value][_token_address]
-
 
 @router.get("/info/updated/{chain}/{token_address}")
 async def get_token_last_updated(chain: ChainEnum, token_address: str):
@@ -64,17 +45,6 @@ async def get_token_last_updated(chain: ChainEnum, token_address: str):
         raise HTTPException(status_code=404, detail=f"Token {_token_address} on chain {chain} has never been initialized.")
     
     return token_metadata[chain.value][_token_address].lastUpdatedTimestamp
-
-
-async def initialize_token_metadata(chain: ChainEnum, token_address: str):
-    validate_token_address(token_address)
-    _token_address = token_address.lower()
-
-    if _token_address not in token_metadata[chain.value]:
-        data = await get_block_explorer_data(_token_address)
-        token_metadata[chain.value][_token_address] = TokenMetadata(name=data.get("name"), symbol=data.get("symbol"), chain=Chain(chainId=CHAIN_ID_MAPPING[chain.value]), tokenAddress=_token_address)
-    
-    return token_metadata[chain.value][_token_address]
 
 
 @router.get("/explorer_data/{token_address}", include_in_schema=False)
