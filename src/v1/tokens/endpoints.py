@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-import time, os, requests, json
+import time, os, requests, json, logging
 from dotenv import load_dotenv
 
 from src.v1.shared.dependencies import get_random_score, get_primary_key
@@ -11,7 +11,7 @@ from src.v1.shared.DAO import DAO
 from src.v1.tokens.constants import CLUSTER_RESPONSE, AI_SUMMARY_DESCRIPTION, AI_COMMENTS, AI_SCORE, BURN_TAG
 from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary, get_go_plus_summary
-from src.v1.tokens.schemas import TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, ClusterResponse
+from src.v1.tokens.schemas import AIComment, AISummary, TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, ClusterResponse
 from src.v1.tokens.models import TokenMetadataEnum
 from src.v1.sourcecode.endpoints import get_source_code
 from src.v1.chart.endpoints import get_chart_data
@@ -162,51 +162,35 @@ async def post_token_liquidity_info(chain: ChainEnum, token_address: str):
     metadata = await token_metadata_check(chain, _token_address)
 
     if metadata.contractDeployer is None:
-        try:
-            url = f'https://api.gopluslabs.io/api/v1/token_security/{CHAIN_ID_MAPPING[chain.value]}'
-
-            params = {
-                'contract_addresses': _token_address
-            }
-
-            request_response = requests.get(url, params=params)
-            request_response.raise_for_status()
+        data = get_go_plus_summary(chain, _token_address)
             
-            if request_response.status_code == 200:
-                data = request_response.json()
+        await patch_token_metadata(chain, _token_address, 'contractDeployer', data['result'][_token_address]['creator_address'])
+        await patch_token_metadata(chain, _token_address, 'holders', int(data['result'][_token_address]['holder_count']))
+        await patch_token_metadata(chain, _token_address, 'buyTax', float(data['result'][_token_address]['buy_tax']))
+        await patch_token_metadata(chain, _token_address, 'sellTax', float(data['result'][_token_address]['sell_tax']))
 
-                await patch_token_metadata(chain, _token_address, 'contractDeployer', data['result'][_token_address]['creator_address'])
-                await patch_token_metadata(chain, _token_address, 'holders', int(data['result'][_token_address]['holder_count']))
-                await patch_token_metadata(chain, _token_address, 'buyTax', float(data['result'][_token_address]['buy_tax']))
-                await patch_token_metadata(chain, _token_address, 'sellTax', float(data['result'][_token_address]['sell_tax']))
+        # Liquidity token calculations
+        liquidityUsd = sum([float(item['liquidity']) for item in data['result'][_token_address]['dex']])
 
-                # Liquidity token calculations
-                liquidityUsd = sum([float(item['liquidity']) for item in data['result'][_token_address]['dex']])
+        # Locked and burned liquidity calculations
+        lp_holders = data['result'][_token_address]['lp_holders']
 
-                # Locked and burned liquidity calculations
-                lp_holders = data['result'][_token_address]['lp_holders']
+        lockedLiquidity, burnedLiquidity = 0.0, 0.0
+        for lp in lp_holders:
+            if lp.get('percent'):
+                percent = float(lp.get('percent'))
+                if lp.get("tag") == BURN_TAG:
+                    burnedLiquidity += percent
+                elif lp.get("is_locked") == 1:
+                    lockedLiquidity += float(lp.get('percent'))
 
-                lockedLiquidity, burnedLiquidity = 0.0, 0.0
-                for lp in lp_holders:
-                    if lp.get('percent'):
-                        percent = float(lp.get('percent'))
-                        if lp.get("tag") == BURN_TAG:
-                            burnedLiquidity += percent
-                        elif lp.get("is_locked") == 1:
-                            lockedLiquidity += float(lp.get('percent'))
+        await patch_token_metadata(chain, _token_address, 'liquidityUsd', liquidityUsd)
+        if lockedLiquidity > 0.001:
+            await patch_token_metadata(chain, _token_address, 'lockedLiquidity', lockedLiquidity)
+        if burnedLiquidity > 0.001:
+            await patch_token_metadata(chain, _token_address, 'burnedLiquidity', burnedLiquidity)
+        await patch_token_metadata(chain, _token_address, 'lastUpdatedTimestamp', time.time())
 
-                await patch_token_metadata(chain, _token_address, 'liquidityUsd', liquidityUsd)
-                if lockedLiquidity > 0.001:
-                    await patch_token_metadata(chain, _token_address, 'lockedLiquidity', lockedLiquidity)
-                if burnedLiquidity > 0.001:
-                    await patch_token_metadata(chain, _token_address, 'burnedLiquidity', burnedLiquidity)
-            else:
-                raise HTTPException(status_code=500, detail=f"An unknown error occurred during the call to fetch token security information for {_token_address} on chain {chain}.")
-
-            await patch_token_metadata(chain, _token_address, 'lastUpdatedTimestamp', time.time())
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"An unknown error occurred during the call to fetch token security information for {_token_address} on chain {chain}. {e}")
-    
     return token_metadata[chain.value][_token_address]
 
 
@@ -236,31 +220,41 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str)
     
     pk = get_primary_key(_token_address, chain)
 
-    # TODO: Add a DAO check for both supply and transferrability summary
+    # Add a DAO check for both supply and transferrability summary
     _supply_summary = SUPPLY_REPORT_DAO.find_most_recent_by_pk(pk)
     _transferrability_summary = TRANSFERRABILITY_REPORT_DAO.find_most_recent_by_pk(pk)
+
+    found = False
 
     # If this data is found and is not stale, return it
     if _supply_summary and _transferrability_summary:
         if (time.time() - int(_supply_summary.get('timestamp'))) < SUPPLY_REPORT_STALENESS_THRESHOLD and (time.time() - int(_transferrability_summary.get('timestamp'))) < TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD:
-            return _supply_summary.get('summary'), _transferrability_summary.get('summary')
+            logging.info(f"Supply and transferrability summary found for {_token_address} on chain {chain.value} in DynamoDB")
+            found = True
+            supply_summary = _supply_summary.get('summary')
+            transferrability_summary = _transferrability_summary.get('summary')
+    
+    if not found:
+        data = get_go_plus_summary(chain, _token_address)
 
-    data = get_go_plus_summary(chain, _token_address)
+        data_response = data['result'][_token_address]
 
-    data_response = data['result'][_token_address]
+        # Process this data and produce a supply and a transferrability summary
+        supply_summary = get_supply_summary(data_response)
+        transferrability_summary = get_transferrability_summary(data_response)
 
-    # Process this data and produce a supply and a transferrability summary
-    supply_summary = get_supply_summary(data_response)
-    transferrability_summary = get_transferrability_summary(data_response)
+        # Cache this data to the database
+        SUPPLY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(supply_summary)})
+        TRANSFERRABILITY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(transferrability_summary)})
 
-    # Cache this data to the database
-    SUPPLY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(supply_summary)})
-    TRANSFERRABILITY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(transferrability_summary)})
+    # Format the data and return it
+    supply_summary = ContractResponse(items=supply_summary.get("items"), score=supply_summary.get("score"), description=supply_summary.get("summary"))
+    transferrability_summary = ContractResponse(items=transferrability_summary.get("items"), score=transferrability_summary.get("score"), description=transferrability_summary.get("summary"))
 
     return supply_summary, transferrability_summary
 
 
-async def post_token_score(chain: ChainEnum, token_address: str):
+async def get_token_score(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
@@ -290,24 +284,46 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
     return token_metadata[chain.value][_token_address]
 
 
-@router.get("/ai/{chain}/{token_address}", response_model=AISummary, include_in_schema=False)
-async def get_token_ai_summary(chain: ChainEnum, token_address: str):
+@router.get("/ai/{chain}/{token_address}", include_in_schema=True)
+async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
-    if _token_address not in token_ai_summary[chain.value]:
-        # TODO: Wire this up to the rug-ml API as a request
-        aiSummary = AISummary(description=AI_SUMMARY_DESCRIPTION, numIssues=7, overallScore=AI_SCORE, comments=AI_COMMENTS)
-        token_ai_summary[chain.value][_token_address] = aiSummary
+    URL = os.environ.get('DEV_ML_API_URL') + f'/v1/audit/token_scan/{token_address.lower()}'
 
-    return token_ai_summary[chain.value][_token_address]
+    response = requests.get(URL)
+    response.raise_for_status()
+
+    data = response.json().get("data")
+
+    description = data.get("tokenSummary")
+    overallScore = float(data.get("tokenScore"))
+
+    files = data.get("filesResult")
+
+    numIssues = sum([len(item.get("result")) for item in files])
+
+    comments = []
+    for smart_contract in files:
+        for issue in smart_contract.get("result"):
+            comment = AIComment(
+                commentType="Function",
+                title=issue.get("title"),
+                description=issue.get("description"),
+                severity=issue.get("level"),
+                fileName=smart_contract.get("fileName"),
+                sourceCode=smart_contract.get("sourceCode")
+            )
+            comments.append(comment)
+
+    return AISummary(description=description, numIssues=numIssues, overallScore=overallScore, comments=comments)
 
 
-@router.get("/cluster/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=False)
-async def get_token_cluster_summary(chain: ChainEnum, token_address: str):
+@router.get("/cluster/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=True)
+async def get_token_clustering(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
 
-    URL = os.environ.get('DEV_ML_API_URL') + f'v1/clustering/{chain.value}/{token_address.lower()}'
+    URL = os.environ.get('DEV_ML_API_URL') + f'/v1/clustering/{chain.value}/{token_address.lower()}'
 
     response = requests.get(URL)
     response.raise_for_status()
@@ -324,12 +340,14 @@ async def get_token_info(chain: ChainEnum, token_address: str):
     
     tokenMetadata = await get_token_metrics(chain, token_address)
 
-    score = await post_token_score(chain, _token_address)
+    # Get the AI summary for the token
+    _AISummary = await get_token_audit_summary(chain, token_address)
+    
+    score = await get_token_score(chain, _token_address)
 
-    ai_summary = await get_token_ai_summary(chain, _token_address)
-    topHolders = await get_token_cluster_summary(chain, _token_address)
+    topHolders = None
 
-    return TokenInfoResponse(tokenSummary=tokenMetadata, score=score, contractSummary=ai_summary, holderChart=topHolders)
+    return TokenInfoResponse(tokenSummary=tokenMetadata, score=score, contractSummary=_AISummary, holderChart=topHolders)
 
 
 @router.get("/review/{chain}/{token_address}", response_model=TokenReviewResponse)
@@ -340,20 +358,14 @@ async def get_token_detailed_review(chain: ChainEnum, token_address: str):
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
     # Get the clustering report for the token
-    # TODO
-    # liquiditySummary = await get_token_cluster_summary(chain, token_address)
+    # liquiditySummary = await get_token_clustering(chain, token_address)
+    liquiditySummary = None
 
     # Get and cache the source code for the token
     sourceCode = await get_source_code(chain, token_address)
 
-    # Get the AI summary for the token
-    # TODO
-
-    # Get the overall score information for the token
-    # TODO
-
     # Get the token summary for the token
-    token_info = await post_token_info(chain, token_address)
+    token_info = await get_token_info(chain, token_address)
 
     return TokenReviewResponse(tokenSummary=token_info.tokenSummary, 
                                score=token_info.score, 
@@ -361,5 +373,5 @@ async def get_token_detailed_review(chain: ChainEnum, token_address: str):
                                holderChart=token_info.holderChart, 
                                supplySummary=supplySummary, 
                                transferrabilitySummary=transferrabilitySummary, 
-                               liquiditySummary=None, 
+                               liquiditySummary=liquiditySummary, 
                                sourceCode=sourceCode)

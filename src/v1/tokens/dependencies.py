@@ -1,4 +1,4 @@
-import requests
+import requests, math, logging
 
 from src.v1.tokens.schemas import ContractResponse, ContractItem
 from src.v1.tokens.constants import ZERO_ADDRESS, ANTI_WHALE_MAPPING, HIDDEN_OWNER_MAPPING, OPEN_SOURCE_MAPPING, HONEYPOT_MAPPING, PROXY_MAPPING, TRADING_COOLDOWN_MAPPING, CANNOT_SELL_ALL_MAPPING, OWNER_CHANGE_BALANCE_MAPPING, SELF_DESTRUCT_MAPPING, BLACKLIST_MAPPING, WHITELIST_MAPPING, HONEYPOT_SAME_CREATOR
@@ -184,7 +184,7 @@ def calculate_score(items: list) -> int:
     h = 5
 
     # Calculate score
-    penalty_param = sum(item['severity'] + k for item in items)**p
+    penalty_param = sum(item['severity'] + k for item in items) ** p
     score = 100 * (1 - 1 / (1 + math.exp(penalty_param - h)))
 
     return int(score)
@@ -204,11 +204,14 @@ def create_brief_summary(items: list, additional_summary: str) -> str:
     if len(items) == 0:
         # There is no concerns, give a standardized summary
         intro_summary = ('No major concerns were found with this token. '
-                         'However, please note that this is not a guarantee of safety.')
+                         'However, please note that this is not a guarantee of safety. ')
     else:
         # There are concerns, give a standardized summary
         intro_summary = ('Issues were found with this token. For further details, '
-                         'please see the list of issues below.')
+                         'please see the list of issues below. ')
 
-    full_summary = intro_summary + 'Be aware that: ' if len(additional_summary) > 0 else '' + additional_summary
+    extension = 'Be aware that: ' if len(additional_summary) > 0 else ''
+
+    full_summary = intro_summary + extension + additional_summary
+
     return full_summary
