@@ -1,9 +1,11 @@
-import requests, math, logging
+import requests, math, logging, os, dotenv
 
 from src.v1.tokens.schemas import ContractResponse, ContractItem
-from src.v1.tokens.constants import ZERO_ADDRESS, ANTI_WHALE_MAPPING, HIDDEN_OWNER_MAPPING, OPEN_SOURCE_MAPPING, HONEYPOT_MAPPING, PROXY_MAPPING, TRADING_COOLDOWN_MAPPING, CANNOT_SELL_ALL_MAPPING, OWNER_CHANGE_BALANCE_MAPPING, SELF_DESTRUCT_MAPPING, BLACKLIST_MAPPING, WHITELIST_MAPPING, HONEYPOT_SAME_CREATOR
+from src.v1.tokens.constants import BURN_TAG, ZERO_ADDRESS, ANTI_WHALE_MAPPING, HIDDEN_OWNER_MAPPING, OPEN_SOURCE_MAPPING, HONEYPOT_MAPPING, PROXY_MAPPING, TRADING_COOLDOWN_MAPPING, CANNOT_SELL_ALL_MAPPING, OWNER_CHANGE_BALANCE_MAPPING, SELF_DESTRUCT_MAPPING, BLACKLIST_MAPPING, WHITELIST_MAPPING, HONEYPOT_SAME_CREATOR
 from src.v1.shared.constants import CHAIN_ID_MAPPING
 from src.v1.shared.models import ChainEnum
+
+dotenv.load_dotenv()
 
 simple_mapping = {
     'anti_whale_modifiable': ANTI_WHALE_MAPPING,
@@ -20,7 +22,9 @@ simple_mapping = {
     'honeypot_with_same_creator': HONEYPOT_SAME_CREATOR
 }
 
-def get_go_plus_summary(chain: ChainEnum, token_address: str):
+def get_go_plus_data(chain: ChainEnum, token_address: str):
+    _token_address = token_address.lower()
+
     url = f'https://api.gopluslabs.io/api/v1/token_security/{CHAIN_ID_MAPPING[chain.value]}'
 
     params = {
@@ -29,20 +33,86 @@ def get_go_plus_summary(chain: ChainEnum, token_address: str):
 
     request_response = requests.get(url, params=params)
     request_response.raise_for_status()
-    return request_response.json()
+
+    data = request_response.json()['result']
+    return data[_token_address]
+
+def get_go_plus_summary(chain: ChainEnum, token_address: str):
+    data = get_go_plus_data(chain, token_address)
+
+    # Format response data into output format
+    output = {}
+
+    output['contractDeployer'] = data['creator_address']
+    output['holders'] = int(data['holder_count'])
+    output['buyTax'] = float(data['buy_tax'])
+    output['sellTax'] = float(data['sell_tax'])
+
+    # Liquidity token calculations
+    output['liquidityUsd'] = sum([float(item['liquidity']) for item in data['dex']])
+
+    # Locked and burned liquidity calculations
+    lp_holders = data['lp_holders']
+
+    lockedLiquidity, burnedLiquidity = 0.0, 0.0
+    for lp in lp_holders:
+        if lp.get('percent'):
+            percent = float(lp.get('percent'))
+            if lp.get("tag") == BURN_TAG:
+                burnedLiquidity += percent
+            elif lp.get("is_locked") == 1:
+                lockedLiquidity += float(lp.get('percent'))
+
+    output['lockedLiquidity'] = lockedLiquidity if lockedLiquidity > 0.001 else 0.0
+    output['burnedLiquidity'] = burnedLiquidity if burnedLiquidity > 0.001 else 0.0
+
+    return output
 
 
 def get_block_explorer_data(chain: ChainEnum, token_address: str):
-    # TODO Implement this
-    return
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
 
+    if _chain == 'ethereum':
+        api_key = os.getenv('ETHEREUM_BLOCK_EXPLORER_API_KEY')
+        api_url = os.getenv('ETHEREUM_BLOCK_EXPLORER_URL')
 
-def get_moralis_data(chain: ChainEnum, token_address: str):
-    # TODO Implement this
-    return
+        params = {
+            'module': 'token',
+            'action': 'tokeninfo',
+            'contractaddress': token_address,
+            'apikey': api_key
+        }
+
+        logging.info(f'API URL: {api_url}')
+        logging.info(f'Params: {params}')
+
+        result = requests.get(api_url, params=params)
+        result.raise_for_status()
+        data = result.json()['result'][0]
+    else:
+        logging.error(f'Chain {_chain} not supported by Block Explorer API.')
+        raise Exception(f'Chain {_chain} not supported by Block Explorer API.')
+
+    output = {}
+    output['name'] = data['tokenName']
+    output['symbol'] = data['symbol']
+    output['decimals'] = int(data['divisor'])
+    output['totalSupply'] = int(data['totalSupply']) / (10 ** int(data['divisor']))
+
+    # TODO: Temporarily make circulating supply the same as total supply
+    output['circulatingSupply'] = data['totalSupply']
+    output['totalSupplyPercentage'] = 1.0
+
+    output['website'] = data['website'] if data['website'] != '' else None
+    output['twitter'] = data['twitter'] if data['twitter'] != '' else None
+    output['telegram'] = data['telegram'] if data['telegram'] != '' else None
+    output['discord'] = data['discord'] if data['discord'] != '' else None
+
+    return output
 
 
 def get_supply_summary(go_plus_response: dict) -> dict:
+    logging.info(f'go plus response keys: {go_plus_response.keys()}')
     items = []
 
     simple_keys = ['hidden_owner', 'is_open_source', 'is_proxy', 'selfdestruct']

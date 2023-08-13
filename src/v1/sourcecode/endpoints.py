@@ -13,10 +13,20 @@ dotenv.load_dotenv()
 SOURCE_CODE_DAO = DAO('sourcecode')
 
 async def fetch_raw_code(chain: ChainEnum, token_address: str) -> str:
-    response = requests.get(f"https://api.etherscan.io/api?module=contract&action=getsourcecode&address={token_address}&apikey={os.environ.get('ETHERSCAN_API_KEY')}")
-    data = response.json().get('result')[0]
-    source = data.get('SourceCode')
-    return source
+    logging.info(f'Chain: {chain}')
+
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
+
+    logging.info(f'Chain: {_chain}')
+
+    if _chain == 'ethereum':
+        response = requests.get(f"{os.environ.get('ETHEREUM_BLOCK_EXPLORER_URL')}?module=contract&action=getsourcecode&address={token_address}&apikey={os.environ.get('ETHEREUM_BLOCK_EXPLORER_API_KEY')}")
+        data = response.json().get('result')[0]
+
+        logging.info(f'Data: {data}')
+        
+        source = data.get('SourceCode')
+        return source
 
 
 async def parse_raw_code(source: str) -> dict:
@@ -60,7 +70,7 @@ async def get_source_code(chain: ChainEnum, token_address: str):
 
     # If source code is found, return it
     if not _source_code_map:
-        _source_code_map = await get_source_code_map(chain, _token_address)
+        _source_code_map = await get_source_code_map(chain.value, _token_address)
 
         # Write source code map to DAO file
         SOURCE_CODE_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'sourcecode': _source_code_map})
@@ -69,7 +79,6 @@ async def get_source_code(chain: ChainEnum, token_address: str):
 
     output = []
     for key, value in _source_code_map.items():
-        logging.error(f'key: {key}, value: {value}')
         output.append(SourceCodeFile(name=key, sourceCode=value))
 
     return SourceCodeResponse(files=output)
