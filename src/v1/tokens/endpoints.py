@@ -140,7 +140,8 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
-    URL = os.environ.get('DEV_ML_API_URL') + f'/v1/audit/token_scan/{token_address.lower()}'
+    # TODO: Add support for multiple chains to this analysis
+    URL = os.environ.get('ML_API_URL') + f'/v1/audit/token_scan/{token_address.lower()}'
 
     response = requests.get(URL)
     response.raise_for_status()
