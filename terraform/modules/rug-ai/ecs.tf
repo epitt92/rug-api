@@ -53,12 +53,16 @@ module "rug_app_service" {
     {
       name  = "version"
       value = "v0.0.6"
+    },
+    {
+      name = "ETHEREUM_BLOCK_EXPLORER_URL"
+      value = "https://api.etherscan.io/api"
     }
   ]
   alb_certifcate_arn                      = aws_acm_certificate.cert.arn
   secrets                                 = [
     {
-      name      = "ETHERSCAN_API_KEY"
+      name      = "ETHEREUM_BLOCK_EXPLORER_API_KEY"
       valueFrom = aws_secretsmanager_secret.RUG_API_ETHERSCAN_API_KEY.arn
     }
   ]
