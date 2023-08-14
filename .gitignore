@@ -111,6 +111,7 @@ sandbox/liquidity.ipynb
 dummy.json
 review_response.json
 *.ipynb
+sink.json
 
 
 #terraform and terragrunt files

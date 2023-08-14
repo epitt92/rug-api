@@ -12,6 +12,8 @@ from src.v1.sourcecode.schemas import SourceCodeResponse
 #                                                    #
 ######################################################
 
+severity_mapping = {"high": 3, "medium": 2, "low": 1}
+
 class AIComment(BaseModel):
     commentType: str = None
     title: str = None
@@ -20,10 +22,16 @@ class AIComment(BaseModel):
     fileName: str = None
     sourceCode: str = None
 
+    @root_validator(pre=True)
+    def pre_process(cls, values):
+        if values['severity'] in severity_mapping:
+            values['severity'] = severity_mapping.get(values['severity'])
+        return values
+
 class AISummary(BaseModel):
-    description: str
     numIssues: int
     overallScore: float
+    description: str
     comments: List[AIComment]
 
 ######################################################

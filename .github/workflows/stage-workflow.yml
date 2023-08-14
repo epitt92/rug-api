@@ -23,6 +23,12 @@ jobs:
     container: jakediffusion/rug:v1
     steps:
       - uses: actions/checkout@v2
+      - name: Configure AWS credentials from AWS account
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE }}
+          aws-region: eu-west-2  
+          role-session-name: GitHub-OIDC-TERRAFORM
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
