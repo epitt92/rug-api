@@ -2,5 +2,6 @@ from enum import Enum
 
 class ChainEnum(Enum):
     ethereum = "ethereum"
-    bsc = "bsc"
+    bnb = "bnb"
     arbitrum = "arbitrum"
+    base = "base"
