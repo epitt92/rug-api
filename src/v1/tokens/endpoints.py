@@ -201,16 +201,11 @@ async def get_token_info(chain: ChainEnum, token_address: str):
     # Get the supply and transferrability summary information
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
-    # class Score(BaseModel):
-    #     value: confloat(ge=0.0, le=100.0) = None
-    #     description: constr(max_length=250) = None
-
     supplyScore = Score(value=supplySummary.score, description=supplySummary.description)
     transferrabilityScore = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
 
     score = ScoreResponse(overallScore=(supplyScore.value + transferrabilityScore.value) / 2, supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
 
-    # TODO: Fetch this from the block explorer and format it into donut format
     holderChart = None
 
     return TokenInfoResponse(tokenSummary=tokenSummary, score=score, holderChart=holderChart)
