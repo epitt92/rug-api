@@ -13,20 +13,23 @@ dotenv.load_dotenv()
 SOURCE_CODE_DAO = DAO('sourcecode')
 
 async def fetch_raw_code(chain: ChainEnum, token_address: str) -> str:
-    logging.info(f'Chain: {chain}')
-
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
 
-    logging.info(f'Chain: {_chain}')
+    prefix = os.environ.get(f'{_chain.upper()}_BLOCK_EXPLORER_URL')
+    api_key = os.environ.get(f'{_chain.upper()}_BLOCK_EXPLORER_API_KEY')
+    
+    payload = {
+        'module': 'contract',
+        'action': 'getsourcecode',
+        'address': token_address,
+        'apikey': api_key
+    }
 
-    if _chain == 'ethereum':
-        response = requests.get(f"{os.environ.get('ETHEREUM_BLOCK_EXPLORER_URL')}?module=contract&action=getsourcecode&address={token_address}&apikey={os.environ.get('ETHEREUM_BLOCK_EXPLORER_API_KEY')}")
-        data = response.json().get('result')[0]
-
-        logging.info(f'Data: {data}')
-        
-        source = data.get('SourceCode')
-        return source
+    response = requests.get(prefix, params=payload)
+    data = response.json().get('result')[0]
+    
+    source = data.get('SourceCode')
+    return source
 
 
 async def parse_raw_code(source: str) -> dict:

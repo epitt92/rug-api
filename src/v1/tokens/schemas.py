@@ -162,11 +162,9 @@ class TokenMetadata(TokenBase, SocialMedia, MarketData):
 class TokenInfoResponse(BaseModel):
     tokenSummary: TokenMetadata = None
     score: ScoreResponse = None
-    contractSummary: AISummary = None
     holderChart: ClusterResponse = None
 
 class TokenReviewResponse(TokenInfoResponse):
     supplySummary: ContractResponse = None
     transferrabilitySummary: ContractResponse = None
-    liquiditySummary: ClusterResponse = None
     sourceCode: SourceCodeResponse = None
