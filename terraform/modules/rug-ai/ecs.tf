@@ -15,6 +15,11 @@ data "aws_ssm_parameter" "ecs_cluster_name_parameter_store" {
   name = "/rug/ecs/cluster/name"
 }
 
+
+data "aws_ssm_parameter" "rug_ml_api_endpoint_parameter_store" {
+  name = "/rug/ml/api/endpoint"
+}
+
 module "rug_app_service" {
   source                      = "git::https://github.com/diffusion-io/rug-terraform.git//modules/ecs-with-loadbalancer?ref=v0.0.5"
   
@@ -52,13 +57,21 @@ module "rug_app_service" {
   tf_environment                          = [
     {
       name  = "version"
-      value = "v0.0.6"
+      value = "v0.0.7"
+    },
+    {
+      name = "ETHEREUM_BLOCK_EXPLORER_URL"
+      value = "https://api.etherscan.io/api"
+    },
+    {
+      name =  "ML_API_URL"
+      value = data.aws_ssm_parameter.rug_ml_api_endpoint_parameter_store.value
     }
   ]
   alb_certifcate_arn                      = aws_acm_certificate.cert.arn
   secrets                                 = [
     {
-      name      = "ETHERSCAN_API_KEY"
+      name      = "ETHEREUM_BLOCK_EXPLORER_API_KEY"
       valueFrom = aws_secretsmanager_secret.RUG_API_ETHERSCAN_API_KEY.arn
     }
   ]
