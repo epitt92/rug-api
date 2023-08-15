@@ -1,4 +1,4 @@
-import random
+import random, logging
 from typing import Union
 
 from src.v1.shared.constants import *
@@ -10,37 +10,14 @@ def get_chain(chain: ChainEnum):
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
 
     if _chain == 'ethereum':
-        output = {
-            'chainId': ETHEREUM_CHAIN_ID,
-            'name': ETHEREUM_CHAIN_NAME,
-            'logoUrl': ETHEREUM_LOGO_URL,
-            'nativeAsset': ETHEREUM_NATIVE_ASSET,
-        }
-    elif _chain == 'bsc':
-        output = {
-            'chainId': BSC_CHAIN_ID,
-            'name': BSC_CHAIN_NAME,
-            'logoUrl': BSC_LOGO_URL,
-            'nativeAsset': BSC_NATIVE_ASSET,
-        }
+        return Chain(chainId=ETHEREUM_CHAIN_ID)
     elif _chain == 'arbitrum':
-        output = {
-            'chainId': ARBITRUM_CHAIN_ID,
-            'name': ARBITRUM_CHAIN_NAME,
-            'logoUrl': ARBITRUM_LOGO_URL,
-            'nativeAsset': ARBITRUM_NATIVE_ASSET,
-        }
+        return Chain(chainId=ARBITRUM_CHAIN_ID)
     elif _chain == 'base':
-        output = {
-            'chainId': BASE_CHAIN_ID,
-            'name': BASE_CHAIN_NAME,
-            'logoUrl': BASE_LOGO_URL,
-            'nativeAsset': BASE_NATIVE_ASSET,
-        }
+        logging.info(f"Returning base chain: {BASE_CHAIN_ID}")
+        return Chain(chainId=BASE_CHAIN_ID)
     else:
         raise ValueError(f"Invalid chain: {_chain}")
-    
-    return Chain(**output)
 
 def get_random_score(supply_score, supply_description, transferrability_score, transferrability_description):
     output = ScoreResponse(

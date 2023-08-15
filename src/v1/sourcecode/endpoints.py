@@ -1,10 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 import requests, json, time, dotenv, logging, os
 
 from src.v1.shared.DAO import DAO
 from src.v1.shared.dependencies import get_primary_key
-from src.v1.sourcecode.models import ChainEnum
 from src.v1.sourcecode.schemas import SourceCodeResponse, SourceCodeFile
+
+from src.v1.shared.models import ChainEnum
 
 router = APIRouter()
 
@@ -26,9 +27,15 @@ async def fetch_raw_code(chain: ChainEnum, token_address: str) -> str:
     }
 
     response = requests.get(prefix, params=payload)
+    data = response.json()
+
+    logging.info(f'Fetched raw source code for {token_address} on chain {chain}')
     data = response.json().get('result')[0]
     
     source = data.get('SourceCode')
+
+    logging.info(f'Fetched source code for {token_address} on chain {chain}')
+
     return source
 
 
@@ -42,13 +49,14 @@ async def parse_raw_code(source: str) -> dict:
             parsed_source = json.loads(clean_source)
             return parsed_source.get('sources')
         except Exception as e:
-            logging.info(f'An error occurred: {e}')
+            raise HTTPException(status_code=500, detail=f"Failed to parse source code file. Error: {e}")
     else:
         return source
-    
+
 
 @router.get("/{chain}/{token_address}/map", include_in_schema=True)
 async def get_source_code_map(chain: ChainEnum, token_address: str):
+    logging.info(f'Fetching source code map for {token_address} on chain {chain}, via map...')
     source = await parse_raw_code(await fetch_raw_code(chain, token_address))
     if isinstance(source, str):
         if len(source) == 0:
@@ -76,7 +84,10 @@ async def get_source_code(chain: ChainEnum, token_address: str):
         _source_code_map = await get_source_code_map(chain.value, _token_address)
 
         # Write source code map to DAO file
-        SOURCE_CODE_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'sourcecode': _source_code_map})
+        if _source_code_map is not None:
+            SOURCE_CODE_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'sourcecode': _source_code_map})
+        else:
+            raise HTTPException(status_code=404, detail=f'No source code found for {token_address} on chain {chain.value}')
     else:
         _source_code_map = _source_code_map.get('sourcecode')
 

@@ -6,7 +6,7 @@ from decimal import Decimal
 from src.v1.shared.dependencies import get_random_score, get_primary_key, get_chain
 from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
 from src.v1.shared.models import ChainEnum
-from src.v1.shared.schemas import Chain, ScoreResponse
+from src.v1.shared.schemas import Chain, ScoreResponse, Score
 from src.v1.shared.exceptions import validate_token_address
 from src.v1.shared.DAO import DAO
 
@@ -200,10 +200,15 @@ async def get_token_info(chain: ChainEnum, token_address: str):
 
     # Get the supply and transferrability summary information
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
-    supplyScore, transferrabilityScore = supplySummary.score, transferrabilitySummary.score
-    supplyDescription, transferrabilityDescription = supplySummary.description, transferrabilitySummary.description
 
-    score = ScoreResponse(overallScore=(supplyScore + transferrabilityScore) / 2, supplyScore=Score(score=supplyScore, transferrabilityScore=transferrabilityScore)
+    # class Score(BaseModel):
+    #     value: confloat(ge=0.0, le=100.0) = None
+    #     description: constr(max_length=250) = None
+
+    supplyScore = Score(value=supplySummary.score, description=supplySummary.description)
+    transferrabilityScore = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
+
+    score = ScoreResponse(overallScore=(supplyScore.value + transferrabilityScore.value) / 2, supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
 
     # TODO: Fetch this from the block explorer and format it into donut format
     holderChart = None
