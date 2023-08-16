@@ -29,9 +29,6 @@ module "rug_app_service" {
   stage                       = var.stage
   workspace                   = var.workspace
   account_id                  = var.account_id
-  secret_manager_arns = [
-    aws_secretsmanager_secret.RUG_API_ETHERSCAN_API_KEY.arn,
-  ]
   ssm_arns                    = ["arn:aws:ssm:${var.region}:${var.account_id}:parameter/*"] //TODO each portal-frontend should start with reserved word
   lb_arn                      = aws_alb.rug_ai.arn
   cluster_id                  = data.aws_ssm_parameter.ecs_cluster_id_parameter_store.value
@@ -82,6 +79,12 @@ module "rug_app_service" {
     }
   ]
   alb_certifcate_arn                      = aws_acm_certificate.cert.arn
+  secret_manager_arns = [
+    aws_secretsmanager_secret.ETHEREUM_BLOCK_EXPLORER_API_KEY.arn,
+    aws_secretsmanager_secret.ARBITRUM_BLOCK_EXPLORER_API_KEY.arn,
+    aws_secretsmanager_secret.BASE_BLOCK_EXPLORER_API_KEY.arn,
+    aws_secretsmanager_secret.BNB_BLOCK_EXPLORER_API_KEY.arn
+  ]
   secrets                                 = [
     {
       name      = "ETHEREUM_BLOCK_EXPLORER_API_KEY"
