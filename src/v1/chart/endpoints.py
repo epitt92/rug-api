@@ -4,6 +4,7 @@ import requests, logging
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.constants import CHAIN_ID_MAPPING
 from src.v1.chart.constants import FREQUENCY_MAPPING
+from src.v1.chart.dependencies import process_market_data
 from src.v1.chart.models import FrequencyEnum
 from src.v1.chart.schemas import ChartResponse, ChartData
 
@@ -30,7 +31,7 @@ async def get_pool_address(chain: ChainEnum, token_address: str):
         else:
             raise HTTPException(status_code=500, detail=f"Failed to get GoPlus data for token {token_address} on chain {chain_id}. The response did not contain DEX information.")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get GoPlus data for token {token_address} on chain {chain_id}.")
+        raise HTTPException(status_code=500, detail=f"Failed to get GoPlus data for token {token_address} on chain {chain_id}. Exception: {e}")
 
 
 @router.get("/{chain}/{token_address}", response_model=ChartResponse)
@@ -41,7 +42,16 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
 
     # Call CoinGecko API with pool address and correct frequency
     try:
-        url = f"https://api.geckoterminal.com/api/v2/networks/eth/pools/{pool_address}/ohlcv/{FREQUENCY_MAPPING[frequency.value]['candleType']}"
+        if chain == ChainEnum.ethereum:
+            network = 'eth'
+        elif chain == ChainEnum.arbitrum:
+            network = 'arbitrum'
+        elif chain == ChainEnum.base:
+            network = 'base'
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}. The chain {chain} is not supported.")
+        
+        url = f"https://api.geckoterminal.com/api/v2/networks/{network}/pools/{pool_address}/ohlcv/{FREQUENCY_MAPPING[frequency.value]['candleType']}"
         params = {
             "aggregate": FREQUENCY_MAPPING[frequency.value]['candleDuration'],
             "limit": FREQUENCY_MAPPING[frequency.value]['limit']
@@ -51,7 +61,8 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
 
         if response.status_code == 200:
             data = response.json()
-            logging.info(f'Raw response data: {data}')
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}. The response status code was {response.status_code}.")
     except:
         raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}.")
 
@@ -59,37 +70,48 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
 
     if not market_data:
         raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}: No data was returned.")
+
+    return process_market_data(market_data)
+
+
+@router.get("/{chain}/pool/{pool_address}", response_model=ChartResponse)
+async def get_chart_data_from_pool(chain: ChainEnum, pool_address: str, frequency: FrequencyEnum):
+    logging.info(f'Fetching chart data for pool {pool_address} on chain {chain}, via chart...')
+
+    # Call CoinGecko API with pool address and correct frequency
+    try:
+        logging.info(f'Chain: {chain}')
+        logging.info(f'ChainEnum: {ChainEnum.ethereum}')
+
+        if chain == ChainEnum.ethereum:
+            network = 'eth'
+        elif chain == ChainEnum.arbitrum:
+            network = 'arbitrum'
+        elif chain == ChainEnum.base:
+            network = 'base'
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}. The chain {chain} is not supported.")
         
-    # Refactor response to correct formatting
-    N = len(market_data)
+        url = f"https://api.geckoterminal.com/api/v2/networks/{network}/pools/{pool_address}/ohlcv/{FREQUENCY_MAPPING[frequency.value]['candleType']}"
 
-    if N == 0:
-        raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}: No data was returned.")
+        logging.info(f'Attempting to fetch data via URL: {url}')
+        params = {
+            "aggregate": FREQUENCY_MAPPING[frequency.value]['candleDuration'],
+            "limit": FREQUENCY_MAPPING[frequency.value]['limit']
+        }
 
-    output = []
-    timestampArray = []
-    priceArray = []
-    marketCapArray = []
+        response = requests.get(url, params=params)
 
-    # CoinGecko returns data in reverse chronological order
-    for i in reversed(range(N)):
-        row = market_data[i]
-        timestamp, price, volume, marketCap = row[0], row[4], row[5], row[4]
+        if response.status_code == 200:
+            data = response.json()
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for pool {pool_address} on chain {chain}. The response status code was {response.status_code}.")
+    except:
+        raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for pool {pool_address} on chain {chain}.")
 
-        timestampArray.append(timestamp)
-        priceArray.append(price)
-        marketCapArray.append(marketCap)
+    market_data = data['data']['attributes'].get('ohlcv_list')
 
-        output.append(ChartData(timestamp=timestamp, price=price, volume=volume, marketCap=marketCap))
+    if not market_data:
+        raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for pool {pool_address} on chain {chain}: No data was returned.")
 
-    timestampMin = min(timestampArray)
-    timestampMax = max(timestampArray)
-    priceMin = min(priceArray)
-    priceMax = max(priceArray)
-
-    # Modify priceMin and priceMax to add buffers
-    l = (priceMax - priceMin) / 0.9
-    priceMin -= l * 0.05
-    priceMax += l * 0.05
-
-    return ChartResponse(priceMin=priceMin, priceMax=priceMax, marketCapMin=priceMin, marketCapMax=priceMax, timestampMin=timestampMin, timestampMax=timestampMax, numDatapoints=N, data=output, latestPrice=priceArray[-1], latestMarketCap=marketCapArray[-1], latestReturn=(priceArray[-1] - priceArray[0]) / priceArray[0])
+    return process_market_data(market_data)
