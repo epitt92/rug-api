@@ -6,16 +6,19 @@ from decimal import Decimal
 from src.v1.shared.dependencies import get_random_score, get_primary_key, get_chain
 from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
 from src.v1.shared.models import ChainEnum
-from src.v1.shared.schemas import Chain, ScoreResponse
+from src.v1.shared.schemas import Chain, ScoreResponse, Score
 from src.v1.shared.exceptions import validate_token_address
 from src.v1.shared.DAO import DAO
+
 from src.v1.tokens.constants import CLUSTER_RESPONSE, AI_SUMMARY_DESCRIPTION, AI_COMMENTS, AI_SCORE, BURN_TAG
 from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
 from src.v1.tokens.dependencies import get_go_plus_summary, get_block_explorer_data, get_go_plus_data
 from src.v1.tokens.schemas import AIComment, AISummary, TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, ClusterResponse
 from src.v1.tokens.models import TokenMetadataEnum
+
 from src.v1.sourcecode.endpoints import get_source_code
+
 from src.v1.chart.endpoints import get_chart_data
 from src.v1.chart.models import FrequencyEnum
 
@@ -105,8 +108,14 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         market_data = get_go_plus_summary(chain, _token_address)
 
         # Fetch and process token social data from Etherscan
-        explorer_data = get_block_explorer_data(chain, _token_address)
+        try:
+            explorer_data = get_block_explorer_data(chain, _token_address)
+        except Exception as e:
+            logging.error(f'Failed to fetch block explorer data for {_token_address} on chain {chain}')
+            explorer_data = {}
 
+        # TODO: Add support for calling name and symbol from RPC directly as a fallback
+        
         _token_metrics = {
             'timestamp': lastUpdatedTimestamp,
             'summary': {
@@ -134,6 +143,7 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
     }
 
     return TokenMetadata(**_token_metrics)
+
 
 @router.get("/ai/{chain}/{token_address}", include_in_schema=True)
 async def get_token_audit_summary(chain: ChainEnum, token_address: str):
@@ -193,16 +203,19 @@ async def get_token_info(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
     
-    tokenMetadata = await get_token_metrics(chain, token_address)
+    tokenSummary = await get_token_metrics(chain, token_address)
 
-    # Get the AI summary for the token
-    _AISummary = await get_token_audit_summary(chain, token_address)
-    
-    score = None
+    # Get the supply and transferrability summary information
+    supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
-    topHolders = None
+    supplyScore = Score(value=supplySummary.score, description=supplySummary.description)
+    transferrabilityScore = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
 
-    return TokenInfoResponse(tokenSummary=tokenMetadata, score=score, contractSummary=_AISummary, holderChart=topHolders)
+    score = ScoreResponse(overallScore=(supplyScore.value + transferrabilityScore.value) / 2, supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
+
+    holderChart = None
+
+    return TokenInfoResponse(tokenSummary=tokenSummary, score=score, holderChart=holderChart)
 
 
 @router.get("/review/{chain}/{token_address}", response_model=TokenReviewResponse)
@@ -212,9 +225,6 @@ async def get_token_detailed_review(chain: ChainEnum, token_address: str):
     # Get the supply and transferrability summary information
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
-    # Get the clustering report for the token
-    liquiditySummary = None
-
     # Get and cache the source code for the token
     sourceCode = await get_source_code(chain, token_address)
 
@@ -223,9 +233,7 @@ async def get_token_detailed_review(chain: ChainEnum, token_address: str):
 
     return TokenReviewResponse(tokenSummary=token_info.tokenSummary, 
                                score=token_info.score, 
-                               contractSummary=token_info.contractSummary, 
                                holderChart=token_info.holderChart, 
                                supplySummary=supplySummary, 
                                transferrabilitySummary=transferrabilitySummary, 
-                               liquiditySummary=liquiditySummary, 
                                sourceCode=sourceCode)

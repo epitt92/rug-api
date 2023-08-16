@@ -10,7 +10,7 @@ from router import v1_router
 dotenv.load_dotenv()
 
 TITLE = 'rug.ai API'
-VERSION = 1.13
+VERSION = 1.14
 
 def custom_schema():
     openapi_schema = get_openapi(title=TITLE, version=VERSION, routes=app.routes)

@@ -8,7 +8,7 @@ from src.v1.shared.constants import (ETHEREUM_CHAIN_ID, BSC_CHAIN_ID, ARBITRUM_C
 
 class Score(BaseModel):
     value: confloat(ge=0.0, le=100.0) = None
-    description: constr(max_length=250) = None
+    description: constr(max_length=512) = None
 
 class ScoreResponse(BaseModel):
     overallScore: confloat(ge=0.0, le=100.0) = None
@@ -18,9 +18,8 @@ class ScoreResponse(BaseModel):
 
 class ChainIdEnum(Enum):
     ethereum = ETHEREUM_CHAIN_ID
-    bsc = BSC_CHAIN_ID
     arbitrum = ARBITRUM_CHAIN_ID
-    base: BASE_CHAIN_ID
+    base = BASE_CHAIN_ID
 
 class Chain(BaseModel):
     chainId: ChainIdEnum
@@ -35,10 +34,6 @@ class Chain(BaseModel):
             values['name'] = ETHEREUM_CHAIN_NAME
             values['logoUrl'] = ETHEREUM_LOGO_URL
             values['nativeAsset'] = ETHEREUM_NATIVE_ASSET
-        elif chain_id == BSC_CHAIN_ID:
-            values['name'] = BSC_CHAIN_NAME
-            values['logoUrl'] = BSC_LOGO_URL
-            values['nativeAsset'] = BSC_NATIVE_ASSET
         elif chain_id == ARBITRUM_CHAIN_ID:
             values['name'] = ARBITRUM_CHAIN_NAME
             values['logoUrl'] = ARBITRUM_LOGO_URL
@@ -50,8 +45,8 @@ class Chain(BaseModel):
         return values
 
 class TokenBase(BaseModel):
-    name: str
-    symbol: str
+    name: str = None
+    symbol: str = None
     tokenAddress: constr(max_length=42)
     chain: Chain
     logoUrl: HttpUrl = None
