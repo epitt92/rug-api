@@ -52,10 +52,14 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
         if response.status_code == 200:
             data = response.json()
             logging.info(f'Raw response data: {data}')
-            market_data = data['data']['attributes']['ohlcv_list']
     except:
         raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}.")
 
+    market_data = data['data']['attributes'].get('ohlcv_list')
+
+    if not market_data:
+        raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}: No data was returned.")
+        
     # Refactor response to correct formatting
     N = len(market_data)
 
