@@ -35,6 +35,8 @@ async def get_pool_address(chain: ChainEnum, token_address: str):
 
 @router.get("/{chain}/{token_address}", response_model=ChartResponse)
 async def get_chart_data(chain: ChainEnum, token_address: str, frequency: FrequencyEnum):
+    logging.info(f'Fetching chart data for {token_address} on chain {chain}, via chart...')
+
     pool_address = await get_pool_address(chain, token_address)
 
     # Call CoinGecko API with pool address and correct frequency
@@ -49,12 +51,16 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
 
         if response.status_code == 200:
             data = response.json()
+            logging.info(f'Raw response data: {data}')
             market_data = data['data']['attributes']['ohlcv_list']
     except:
-        raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain.value}.")
+        raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}.")
 
     # Refactor response to correct formatting
     N = len(market_data)
+
+    if N == 0:
+        raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}: No data was returned.")
 
     output = []
     timestampArray = []
