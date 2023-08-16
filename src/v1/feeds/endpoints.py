@@ -113,5 +113,8 @@ async def get_token_events(number_of_events: int = 50):
     df = pd.DataFrame(processed_rows).drop(['time', 'address', 'blockchain', 'timestamp'], axis=1)
     pdf = df.pivot(index='eventHash', columns='measureName', values='value')
 
+    # Convert the timestamp to an integer
+    pdf['timestamp'] = pdf['timestamp'].apply(lambda x: int(float(x)))
+
     # Return the data as a list of dictionaries
     return pdf.to_dict('records')
