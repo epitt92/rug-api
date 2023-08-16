@@ -10,7 +10,7 @@ locals {
   region                                            = "eu-west-2"
   encrypt                                           = true
   dynamodb_table                                    = "dynamodb-state-locking"
-  autoscaling_enabled                               = false
+  autoscaling_enabled                               = true
   tags                                              = {
     Stage     = "${local.stage}"    
     Cloud     = "aws"           
