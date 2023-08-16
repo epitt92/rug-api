@@ -54,7 +54,7 @@ def get_go_plus_summary(chain: ChainEnum, token_address: str):
 
     if data.get('total_supply'):
         # TODO: Rescale this by decimals?
-        output['totalSupply'] = int(data.get('total_supply'))
+        output['totalSupply'] = int(float(data.get('total_supply')))
 
     output['contractDeployer'] = data.get('creator_address')
 
