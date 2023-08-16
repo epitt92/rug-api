@@ -90,7 +90,7 @@ async def get_chart_data_from_pool(chain: ChainEnum, pool_address: str, frequenc
         elif chain == ChainEnum.base:
             network = 'base'
         else:
-            raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}. The chain {chain} is not supported.")
+            raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for pool {pool_address} on chain {chain}. The chain {chain} is not supported.")
         
         url = f"https://api.geckoterminal.com/api/v2/networks/{network}/pools/{pool_address}/ohlcv/{FREQUENCY_MAPPING[frequency.value]['candleType']}"
 
