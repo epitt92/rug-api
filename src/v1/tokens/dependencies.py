@@ -118,23 +118,30 @@ def get_block_explorer_data(chain: ChainEnum, token_address: str):
 
         result = requests.get(prefix, params=params)
         result.raise_for_status()
-        
-        data = result.json()['result'][0]
 
-        output = {}
-        output['name'] = data['tokenName']
-        output['symbol'] = data['symbol']
-        output['decimals'] = int(data['divisor'])
-        output['totalSupply'] = int(data['totalSupply']) / (10 ** int(data['divisor']))
+        logging.info(f'Requested block explorer data for {token_address}')
+        logging.info(f'Data: {result.json()}')
 
-        # TODO: Temporarily make circulating supply the same as total supply
-        output['circulatingSupply'] = data['totalSupply']
-        output['totalSupplyPercentage'] = 1.0
+        if result.json()['status'] == '200':
+            data = result.json()['result'][0]   
 
-        output['website'] = data['website'] if data['website'] != '' else None
-        output['twitter'] = data['twitter'] if data['twitter'] != '' else None
-        output['telegram'] = data['telegram'] if data['telegram'] != '' else None
-        output['discord'] = data['discord'] if data['discord'] != '' else None
+            output = {}
+            output['name'] = data['tokenName']
+            output['symbol'] = data['symbol']
+            output['decimals'] = int(data['divisor'])
+            output['totalSupply'] = int(data['totalSupply']) / (10 ** int(data['divisor']))
+
+            # TODO: Temporarily make circulating supply the same as total supply
+            output['circulatingSupply'] = data['totalSupply']
+            output['totalSupplyPercentage'] = 1.0
+
+            output['website'] = data['website'] if data['website'] != '' else None
+            output['twitter'] = data['twitter'] if data['twitter'] != '' else None
+            output['telegram'] = data['telegram'] if data['telegram'] != '' else None
+            output['discord'] = data['discord'] if data['discord'] != '' else None
+        else:
+            error = result.json().get('result')
+            raise HTTPException(status_code=500, detail=f'Error getting block explorer data: {str(error)}')
     except Exception as e:
        raise HTTPException(status_code=500, detail=f'Error getting block explorer data: {e}')
 
