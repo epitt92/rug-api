@@ -52,6 +52,7 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
             raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}. The chain {chain} is not supported.")
         
         url = f"https://api.geckoterminal.com/api/v2/networks/{network}/pools/{pool_address}/ohlcv/{FREQUENCY_MAPPING[frequency.value]['candleType']}"
+
         params = {
             "aggregate": FREQUENCY_MAPPING[frequency.value]['candleDuration'],
             "limit": FREQUENCY_MAPPING[frequency.value]['limit']
@@ -59,8 +60,11 @@ async def get_chart_data(chain: ChainEnum, token_address: str, frequency: Freque
 
         response = requests.get(url, params=params)
 
+        logging.info(f"CoinGecko API response status code: {response.status_code}")
+
         if response.status_code == 200:
             data = response.json()
+            logging.info(f"CoinGecko API response data: {data}")
         else:
             raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for token {token_address} on chain {chain}. The response status code was {response.status_code}.")
     except:

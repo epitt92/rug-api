@@ -35,14 +35,26 @@ def get_go_plus_data(chain: ChainEnum, token_address: str):
     request_response = requests.get(url, params=params)
     request_response.raise_for_status()
 
+    # logging.info(f'Fetched Go+ data for {token_address} on chain {chain}: {request_response.json()}')
+
     data = request_response.json()['result']
     return data[_token_address]
 
 def get_go_plus_summary(chain: ChainEnum, token_address: str):
+    logging.info(f'Fetching Go+ summary for {token_address} on chain {chain}...')
     data = get_go_plus_data(chain, token_address)
+
+    logging.info(f'Go+ summary data: {data}')
 
     # Format response data into output format
     output = {}
+
+    output['name'] = data.get('token_name')
+    output['symbol'] = data.get('token_symbol')
+
+    if data.get('total_supply'):
+        # TODO: Rescale this by decimals?
+        output['totalSupply'] = int(data.get('total_supply'))
 
     output['contractDeployer'] = data.get('creator_address')
 
@@ -51,7 +63,10 @@ def get_go_plus_summary(chain: ChainEnum, token_address: str):
     else:
         output['holders'] = None
 
-    if data.get('buy_tax'):
+    logging.info(f'Data keys: {data.keys()}')
+    logging.info(f'Data buy tax: {data.get("buy_tax")}')
+
+    if data.get('buy_tax') and len(data.get('buy_tax')) > 0:
         buy_tax = data.get('buy_tax')
         if isinstance(buy_tax, str):
             if len(buy_tax) > 0:
@@ -60,8 +75,10 @@ def get_go_plus_summary(chain: ChainEnum, token_address: str):
                 output['buyTax'] = None
         else:
             raise HTTPException(status_code=500, detail=f'Buy tax {buy_tax} is not a string')
+    else:
+        output['buyTax'] = None
 
-    if data.get('sell_tax'):
+    if data.get('sell_tax') and len(data.get('sell_tax')) > 0:
         sell_tax = data.get('sell_tax')
         if isinstance(sell_tax, str):
             if len(sell_tax) > 0:
@@ -70,6 +87,8 @@ def get_go_plus_summary(chain: ChainEnum, token_address: str):
                 output['sellTax'] = None
         else:
             raise HTTPException(status_code=500, detail=f'Sell tax {sell_tax} is not a string')
+    else:
+        output['sellTax'] = None
 
     # Liquidity token calculations
     if data.get('dex'):
