@@ -20,6 +20,11 @@ data "aws_ssm_parameter" "rug_ml_api_endpoint_parameter_store" {
   name = "/rug/ml/api/endpoint"
 }
 
+data "aws_ssm_parameter" "rug_timestream_db_arn_parameter_store" {
+  provider = aws.eu-west-1
+  name = "/rug_feed/timestream_db_arn"
+}
+
 module "rug_app_service" {
   source                      = "git::https://github.com/diffusion-io/rug-terraform.git//modules/ecs-with-loadbalancer?ref=v0.0.5"
   
@@ -84,6 +89,13 @@ module "rug_app_service" {
 
         Resource = [
           "*"
+        ]
+      },
+      {
+        Action   = ["timestream:*"]
+        Effect   = "Allow"
+        Resource = [
+          data.aws_ssm_parameter.rug_timestream_db_arn_parameter_store.value
         ]
       }
     ]

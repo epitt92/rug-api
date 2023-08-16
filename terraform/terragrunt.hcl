@@ -11,6 +11,10 @@ generate "provider" {
     provider "aws" {
     region = "${local.env_config.locals.region}"
     }
+    provider "aws" {
+    alias  = "eu-west-1"
+    region = "eu-west-1"
+    }
     EOF
 }
 
