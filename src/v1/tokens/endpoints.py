@@ -108,8 +108,14 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         market_data = get_go_plus_summary(chain, _token_address)
 
         # Fetch and process token social data from Etherscan
-        explorer_data = get_block_explorer_data(chain, _token_address)
+        try:
+            explorer_data = get_block_explorer_data(chain, _token_address)
+        except Exception as e:
+            logging.error(f'Failed to fetch block explorer data for {_token_address} on chain {chain}')
+            explorer_data = {}
 
+        # TODO: Add support for calling name and symbol from RPC directly as a fallback
+        
         _token_metrics = {
             'timestamp': lastUpdatedTimestamp,
             'summary': {
@@ -137,6 +143,7 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
     }
 
     return TokenMetadata(**_token_metrics)
+
 
 @router.get("/ai/{chain}/{token_address}", include_in_schema=True)
 async def get_token_audit_summary(chain: ChainEnum, token_address: str):
