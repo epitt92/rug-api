@@ -118,7 +118,8 @@ module "rug_app_service" {
         Action   = ["timestream:*"]
         Effect   = "Allow"
         Resource = [
-          data.aws_ssm_parameter.rug_timestream_db_arn_parameter_store.value
+          # data.aws_ssm_parameter.rug_timestream_db_arn_parameter_store.value
+          "*"
         ]
       }
     ]
