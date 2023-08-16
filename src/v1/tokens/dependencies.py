@@ -165,6 +165,7 @@ def get_supply_summary(go_plus_response: dict) -> dict:
         elif not renounced_ownership:
             items.append({'title':'Has Owner', 'description': 'The contract owner has not renounced ownership of the contract, meaning that any owner enabled functions could be utilized to modify the token.', 'severity': 2})
     else:
+        renounced_ownership, can_recall = None, None
         logging.error(f'Could not find owner address or can_take_back_ownership in go plus response.')
 
     # Add mintability field
@@ -253,6 +254,9 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
     if go_plus_response.get('can_take_back_ownership') and go_plus_response.get('owner_address'):
         renounced_ownership = bool(go_plus_response.get('owner_address') == ZERO_ADDRESS)
         can_recall = bool(int(go_plus_response.get('can_take_back_ownership')))
+    else:
+        renounced_ownership = None
+        can_recall = None
 
     if go_plus_response.get('transfer_pausable'):
         if bool(int(go_plus_response.get('transfer_pausable'))):
