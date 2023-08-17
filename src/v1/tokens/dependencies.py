@@ -247,11 +247,11 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
     if go_plus_response.get('buy_tax'):
         buy_tax = float(go_plus_response.get('buy_tax'))
         if buy_tax > 0.1:
-            items.append({'title': '{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is very high.', 'severity': 3})
+            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is very high.', 'severity': 3})
         elif buy_tax > 0.05:
-            items.append({'title': '{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is high.', 'severity': 2})
+            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is high.', 'severity': 2})
         elif buy_tax > 0.01:
-            items.append({'title': '{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is fairly low.', 'severity': 1})
+            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is fairly low.', 'severity': 1})
         elif buy_tax > 0.001:
             items.append({'title': 'Low Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.2f}% which is very low.', 'severity': 0})
         else:
@@ -261,11 +261,11 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
     if go_plus_response.get('sell_tax'):
         sell_tax = float(go_plus_response.get('sell_tax'))
         if sell_tax > 0.1:
-            items.append({'title': '{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is very high.', 'severity': 3})
+            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is very high.', 'severity': 3})
         elif sell_tax > 0.05:
-            items.append({'title': '{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is high.', 'severity': 2})
+            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is high.', 'severity': 2})
         elif sell_tax > 0.01:
-            items.append({'title': '{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is fairly low.', 'severity': 1})
+            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is fairly low.', 'severity': 1})
         elif sell_tax > 0.001:
             items.append({'title': 'Low Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.2f}% which is very low.', 'severity': 0})
         else:
