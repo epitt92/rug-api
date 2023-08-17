@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-import time, os, requests, json, logging
+import time, os, requests, json, logging, math
 from dotenv import load_dotenv
 from decimal import Decimal
 
@@ -74,7 +74,7 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str)
 
         # Cache this data to the database
         SUPPLY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(supply_summary)})
-        TRANSFERRABILITY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(transferrability_summary)})
+        # TRANSFERRABILITY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(transferrability_summary)})
 
     # Format the data and return it
     supply_summary = ContractResponse(items=supply_summary.get("items"), score=supply_summary.get("score"), description=supply_summary.get("summary"))
@@ -211,7 +211,7 @@ async def get_token_info(chain: ChainEnum, token_address: str):
     supplyScore = Score(value=supplySummary.score, description=supplySummary.description)
     transferrabilityScore = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
 
-    score = ScoreResponse(overallScore=(supplyScore.value + transferrabilityScore.value) / 2, supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
+    score = ScoreResponse(overallScore=math.sqrt(supplyScore.value * transferrabilityScore.value), supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
 
     holderChart = None
 
