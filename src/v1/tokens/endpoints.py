@@ -151,12 +151,15 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     _token_address = token_address.lower()
 
     # TODO: Add support for multiple chains to this analysis
-    URL = os.environ.get('ML_API_URL') + f'/v1/audit/token_scan/{token_address.lower()}'
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
+    URL = os.environ.get('ML_API_URL') + f'/v1/audit/{_chain}/{token_address.lower()}'
 
     response = requests.get(URL)
     response.raise_for_status()
 
     data = response.json().get("data")
+
+    logging.info(f'AI response for {_token_address} on chain {chain.value}: {data.keys()}')
 
     if data:
         description = data.get("tokenSummary")
@@ -169,13 +172,14 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
         comments = []
         for smart_contract in files:
             for issue in smart_contract.get("result"):
+                # TODO: Add support for source code
+
                 comment = AIComment(
                     commentType="Function",
                     title=issue.get("title"),
                     description=issue.get("description"),
                     severity=issue.get("level"),
-                    fileName=smart_contract.get("fileName"),
-                    sourceCode=smart_contract.get("sourceCode")
+                    fileName=smart_contract.get("fileName")
                 )
                 comments.append(comment)
     else:
