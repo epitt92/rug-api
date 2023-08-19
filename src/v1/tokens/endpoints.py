@@ -163,6 +163,10 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
 
     if data:
         description = data.get("tokenSummary")
+
+        if not data.get('tokenScore') and not data.get('filesResult'):
+            raise HTTPException(status_code=500, detail=f"Failed to fetch AI data for {_token_address} on chain {chain.value}: {description}")
+
         overallScore = float(data.get("tokenScore"))
 
         files = data.get("filesResult")
