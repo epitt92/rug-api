@@ -145,7 +145,7 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
     return TokenMetadata(**_token_metrics)
 
 
-@router.get("/ai/{chain}/{token_address}", include_in_schema=True)
+@router.get("/audit/{chain}/{token_address}", include_in_schema=True)
 async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
