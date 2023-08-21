@@ -44,8 +44,6 @@ def get_go_plus_summary(chain: ChainEnum, token_address: str):
     logging.info(f'Fetching Go+ summary for {token_address} on chain {chain}...')
     data = get_go_plus_data(chain, token_address)
 
-    logging.info(f'Go+ summary data: {data}')
-
     # Format response data into output format
     output = {}
 
@@ -62,9 +60,6 @@ def get_go_plus_summary(chain: ChainEnum, token_address: str):
         output['holders'] = int(data['holder_count'])
     else:
         output['holders'] = None
-
-    logging.info(f'Data keys: {data.keys()}')
-    logging.info(f'Data buy tax: {data.get("buy_tax")}')
 
     if data.get('buy_tax') and len(data.get('buy_tax')) > 0:
         buy_tax = data.get('buy_tax')
@@ -252,11 +247,11 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
     if go_plus_response.get('buy_tax'):
         buy_tax = float(go_plus_response.get('buy_tax'))
         if buy_tax > 0.1:
-            items.append({'title': '{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is very high.', 'severity': 3})
+            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is very high.', 'severity': 3})
         elif buy_tax > 0.05:
-            items.append({'title': '{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is high.', 'severity': 2})
+            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is high.', 'severity': 2})
         elif buy_tax > 0.01:
-            items.append({'title': '{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is fairly low.', 'severity': 1})
+            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is fairly low.', 'severity': 1})
         elif buy_tax > 0.001:
             items.append({'title': 'Low Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.2f}% which is very low.', 'severity': 0})
         else:
@@ -266,11 +261,11 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
     if go_plus_response.get('sell_tax'):
         sell_tax = float(go_plus_response.get('sell_tax'))
         if sell_tax > 0.1:
-            items.append({'title': '{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is very high.', 'severity': 3})
+            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is very high.', 'severity': 3})
         elif sell_tax > 0.05:
-            items.append({'title': '{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is high.', 'severity': 2})
+            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is high.', 'severity': 2})
         elif sell_tax > 0.01:
-            items.append({'title': '{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is fairly low.', 'severity': 1})
+            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is fairly low.', 'severity': 1})
         elif sell_tax > 0.001:
             items.append({'title': 'Low Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.2f}% which is very low.', 'severity': 0})
         else:
@@ -289,9 +284,9 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
             if renounced_ownership and not can_recall:
                 items.append({'title': 'Transfers Pausable', 'description': 'The contract has transfer pausing functionality, but our algorithms detected that ownership of the contract has been revoked and cannot be recalled. It is possible that this token could be vulnerable, proceed with caution when interacting with this token.', 'severity': 2})
             elif renounced_ownership and can_recall:
-                items.append({'title': 'Transfers Pausable', 'description': 'The contract has transfer pausing functionality, but since ownership has been revoked, the owner may not be able to pause transfers currently. However, our algorithms detected that the owner can recall ownership at any time, proceed with caution when interacting with this contract.', 'severity': 3})
+                items.append({'title': 'Transfers Pausable', 'description': 'The contract has transfer pausing functionality, but since ownership has been revoked, the owner may not be able to pause transfers currently. However, our algorithms detected that the owner can recall ownership at any time, proceed with caution when interacting with this contract.', 'severity': 2})
             elif not renounced_ownership:
-                items.append({'title': 'Transfers Pausable', 'description': 'The contract has transfer pausing functionality, meaning that the owner could pause transfers at any time. Since the ownership of this token is not renounced, traders should proceed with caution.', 'severity': 3})
+                items.append({'title': 'Transfers Pausable', 'description': 'The contract has transfer pausing functionality, meaning that the owner could pause transfers at any time. Since the ownership of this token is not renounced, traders should proceed with caution.', 'severity': 2})
         else:
             items.append({'title': 'Transfers Not Pausable', 'description': 'The contract does not have transfer pausing functionality.', 'severity': 0})
 
@@ -325,6 +320,8 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
         if bool(go_plus_response.get('honeypot_with_same_creator')):
             additional_summary += ' This token has the same creator as a known honeypot.'
 
+    logging.info(f'transferrability items: {items}')
+
     score = calculate_score(items=items)
     summary = create_brief_summary(items=items, additional_summary=additional_summary)
 
@@ -351,12 +348,20 @@ def calculate_score(items: list) -> int:
     """
     # Constants
     k = 0.25
-    p = 2
-    h = 5
+    p = 1.2
+    h = 6
+
+    severities = [item['severity'] for item in items]
+
+    penalty_param = 0
+
+    for severity in severities:
+        penalty_param += severity + k
 
     # Calculate score
-    penalty_param = sum(item['severity'] + k for item in items) ** p
-    score = 100 * (1 - 1 / (1 + math.exp(penalty_param - h)))
+    penalty_param = penalty_param ** p
+
+    score = 100 * (1 - 1 / (1 + math.exp(-(penalty_param - h))))
 
     return int(score)
 

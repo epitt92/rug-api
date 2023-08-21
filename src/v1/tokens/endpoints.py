@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-import time, os, requests, json, logging
+import time, os, requests, json, logging, math
 from dotenv import load_dotenv
 from decimal import Decimal
 
@@ -74,7 +74,7 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str)
 
         # Cache this data to the database
         SUPPLY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(supply_summary)})
-        TRANSFERRABILITY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(transferrability_summary)})
+        # TRANSFERRABILITY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(transferrability_summary)})
 
     # Format the data and return it
     supply_summary = ContractResponse(items=supply_summary.get("items"), score=supply_summary.get("score"), description=supply_summary.get("summary"))
@@ -145,21 +145,28 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
     return TokenMetadata(**_token_metrics)
 
 
-@router.get("/ai/{chain}/{token_address}", include_in_schema=True)
+@router.get("/audit/{chain}/{token_address}", include_in_schema=True)
 async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
     _token_address = token_address.lower()
 
     # TODO: Add support for multiple chains to this analysis
-    URL = os.environ.get('ML_API_URL') + f'/v1/audit/token_scan/{token_address.lower()}'
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
+    URL = os.environ.get('ML_API_URL') + f'/v1/audit/{_chain}/{token_address.lower()}'
 
     response = requests.get(URL)
     response.raise_for_status()
 
     data = response.json().get("data")
 
+    logging.info(f'AI response for {_token_address} on chain {chain.value}: {data.keys()}')
+
     if data:
         description = data.get("tokenSummary")
+
+        if not data.get('tokenScore') and not data.get('filesResult'):
+            raise HTTPException(status_code=500, detail=f"Failed to fetch AI data for {_token_address} on chain {chain.value}: {description}")
+
         overallScore = float(data.get("tokenScore"))
 
         files = data.get("filesResult")
@@ -169,13 +176,14 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
         comments = []
         for smart_contract in files:
             for issue in smart_contract.get("result"):
+                # TODO: Add support for source code
+
                 comment = AIComment(
                     commentType="Function",
                     title=issue.get("title"),
                     description=issue.get("description"),
                     severity=issue.get("level"),
-                    fileName=smart_contract.get("fileName"),
-                    sourceCode=smart_contract.get("sourceCode")
+                    fileName=smart_contract.get("fileName")
                 )
                 comments.append(comment)
     else:
@@ -211,7 +219,7 @@ async def get_token_info(chain: ChainEnum, token_address: str):
     supplyScore = Score(value=supplySummary.score, description=supplySummary.description)
     transferrabilityScore = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
 
-    score = ScoreResponse(overallScore=(supplyScore.value + transferrabilityScore.value) / 2, supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
+    score = ScoreResponse(overallScore=math.sqrt(supplyScore.value * transferrabilityScore.value), supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
 
     holderChart = None
 

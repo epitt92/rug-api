@@ -85,7 +85,7 @@ ANTI_WHALE_MAPPING = {
           'severity': 0},
     False: {'title': "Does Not Have Anti-Whale Functionality",
            'description': "The token does not have anti-whale functionality, meaning there are no restrictions imposed on the amount of tokens a single address can hold or trade. Traders should review the [rug.ai](https://rug.ai) Liquidity Report for more information on the holder distribution for this token.",
-           'severity': 1}
+           'severity': 0}
 }
 
 HIDDEN_OWNER_MAPPING = {
@@ -178,7 +178,7 @@ BLACKLIST_MAPPING = {
 WHITELIST_MAPPING = {
     True: {'title': 'Whitelist',
            'description': "The token has whitelist functionality, which means only approved addresses can interact with the token. This capability restricts the token's accessibility and use to a specific set of addresses.",
-           'severity': 2},
+           'severity': 1},
     False: {'title': "No Whitelist",
            'description': "The token does not have whitelist functionality, meaning there are no restrictions imposed by the token on which addresses can interact with it.",
             'severity': 0}
