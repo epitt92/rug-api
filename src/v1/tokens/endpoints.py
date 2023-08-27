@@ -20,6 +20,7 @@ from src.v1.sourcecode.endpoints import get_source_code
 
 from src.v1.chart.endpoints import get_chart_data
 from src.v1.chart.models import FrequencyEnum
+from src.v1.chart.schemas import ChartResponse
 
 load_dotenv()
 
@@ -59,7 +60,6 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str)
     # If this data is found and is not stale, return it
     if _supply_summary and _transferrability_summary:
         if (time.time() - int(_supply_summary.get('timestamp'))) < SUPPLY_REPORT_STALENESS_THRESHOLD and (time.time() - int(_transferrability_summary.get('timestamp'))) < TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD:
-            logging.info(f"Supply and transferrability summary found for {_token_address} on chain {chain.value} in DynamoDB")
             found = True
             supply_summary = _supply_summary.get('summary')
             transferrability_summary = _transferrability_summary.get('summary')
@@ -96,7 +96,6 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         token_metrics_last_updated = _token_metrics.get('timestamp')
 
         if ((time.time() - int(token_metrics_last_updated)) < TOKEN_METRICS_STALENESS_THRESHOLD):
-            logging.info(f"Token metrics found for {_token_address} on chain {chain.value} in DynamoDB")
             found = True
     
     if not found:
@@ -110,9 +109,14 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         try:
             explorer_data = get_block_explorer_data(chain, _token_address)
         except Exception as e:
-            logging.error(f'Failed to fetch block explorer data for {_token_address} on chain {chain}')
+            logging.warning(f'Failed to fetch block explorer data for {_token_address} on chain {chain}. Using empty dictionary and continuing...')
             explorer_data = {}
 
+        # Fetch latestPrice information from chart data
+        chart = await get_chart_data(chain, _token_address, FrequencyEnum.one_day)
+        if chart:
+            market_data['latestPrice'] = chart.latestPrice if isinstance(chart, ChartResponse) else chart.get('latestPrice')
+            
         # TODO: Add support for calling name and symbol from RPC directly as a fallback
         
         _token_metrics = {
@@ -127,9 +131,6 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         for key in _token_metrics['summary']:
             if isinstance(_token_metrics['summary'][key], float):
                 _token_metrics['summary'][key] = Decimal(str(_token_metrics['summary'][key]))
-
-        logging.info(f'Caching token metrics for {_token_address} on chain {chain.value} in DynamoDB')
-        logging.info(f'Token metrics: {_token_metrics}')
 
         TOKEN_METRICS_DAO.insert_one(partition_key_value=pk, item=_token_metrics)
 
@@ -157,8 +158,6 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     response.raise_for_status()
 
     data = response.json().get("data")
-
-    logging.info(f'AI response for {_token_address} on chain {chain.value}: {data.keys()}')
 
     if data:
         description = data.get("tokenSummary")
@@ -214,7 +213,6 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
 @router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
 async def get_token_info(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
-    _token_address = token_address.lower()
     
     tokenSummary = await get_token_metrics(chain, token_address)
 
