@@ -20,7 +20,8 @@ class AIComment(BaseModel):
     description: str = None
     severity: int = None
     fileName: str = None
-    sourceCode: str = None
+    lines: List[int] = None
+    sourceCode: List[str] = None
 
     @root_validator(pre=True)
     def pre_process(cls, values):

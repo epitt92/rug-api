@@ -10,7 +10,6 @@ from src.v1.shared.schemas import Chain, ScoreResponse, Score
 from src.v1.shared.exceptions import validate_token_address
 from src.v1.shared.DAO import DAO
 
-from src.v1.tokens.constants import CLUSTER_RESPONSE, AI_SUMMARY_DESCRIPTION, AI_COMMENTS, AI_SCORE, BURN_TAG
 from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
 from src.v1.tokens.dependencies import get_go_plus_summary, get_block_explorer_data, get_go_plus_data
@@ -176,14 +175,19 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
         comments = []
         for smart_contract in files:
             for issue in smart_contract.get("result"):
-                # TODO: Add support for source code
+                lines = issue.get("lines")
+
+                if lines:
+                    lines = [int(item) for item in lines]
 
                 comment = AIComment(
                     commentType="Function",
                     title=issue.get("title"),
                     description=issue.get("description"),
                     severity=issue.get("level"),
-                    fileName=smart_contract.get("fileName")
+                    fileName=smart_contract.get("fileName"),
+                    sourceCode=issue.get("function_code"),
+                    lines=lines
                 )
                 comments.append(comment)
     else:
@@ -192,19 +196,20 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     return AISummary(description=description, numIssues=numIssues, overallScore=overallScore, comments=comments)
 
 
-@router.get("/cluster/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=True)
+@router.get("/cluster/{chain}/{token_address}", include_in_schema=True)
 async def get_token_clustering(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
 
-    URL = os.environ.get('DEV_ML_API_URL') + f'/v1/clustering/{chain.value}/{token_address.lower()}'
+    URL = os.environ.get('ML_API_URL') + f'/v1/clustering/{chain.value}/{token_address.lower()}'
 
-    response = requests.get(URL)
-    response.raise_for_status()
+    try:
+        response = requests.get(URL)
+        response.raise_for_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch clustering data for {token_address} on chain {chain.value}: {e}")
 
-    CLUSTER_RESPONSE = ClusterResponse(**response.json())
+    return response.json()
     
-    return CLUSTER_RESPONSE
-
 
 @router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
 async def get_token_info(chain: ChainEnum, token_address: str):
