@@ -13,7 +13,7 @@ from src.v1.shared.DAO import DAO
 from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
 from src.v1.tokens.dependencies import get_go_plus_summary, get_block_explorer_data, get_go_plus_data
-from src.v1.tokens.schemas import AIComment, AISummary, TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, ClusterResponse
+from src.v1.tokens.schemas import Holder, Cluster, ClusterResponse, AIComment, AISummary, TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary
 from src.v1.tokens.models import TokenMetadataEnum
 
 from src.v1.sourcecode.endpoints import get_source_code
@@ -210,6 +210,28 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
     return response.json()
     
 
+@router.get("/holderchart/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=True)
+async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: int = 10):
+    validate_token_address(token_address)
+
+    URL = os.environ.get('ML_API_URL') + f'/v1/clustering/holders/{chain.value}/{token_address.lower()}'
+
+    try:
+        response = requests.get(URL)
+        response.raise_for_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch holder data for {token_address} on chain {chain.value}: {e}")
+
+    data = response.json()
+    top_holders = sorted(data.keys(), key=lambda k: data[k]["numTokens"], reverse=True)[:numClusters]
+
+    holders = {holder: data[holder] for holder in top_holders}
+
+    clusters = [Cluster(members=[Holder(address=holder, numTokens=float(holders[holder]["numTokens"]), percentage=float(holders[holder]["percentTokens"]))]) for holder in holders]
+    
+    return ClusterResponse(clusters=clusters)
+
+
 @router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
 async def get_token_info(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
@@ -224,7 +246,7 @@ async def get_token_info(chain: ChainEnum, token_address: str):
 
     score = ScoreResponse(overallScore=math.sqrt(supplyScore.value * transferrabilityScore.value), supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
 
-    holderChart = None
+    holderChart = await get_holder_chart(chain, token_address)
 
     return TokenInfoResponse(tokenSummary=tokenSummary, score=score, holderChart=holderChart)
 
