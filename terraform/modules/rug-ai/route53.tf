@@ -42,3 +42,9 @@ resource "aws_route53_record" "cert_validation" {
   type            = each.value.type
   zone_id         = aws_route53_zone.primary.zone_id
 }
+
+resource "aws_ssm_parameter" "rug_ml_api" {
+  name = "/rug/ai/api/endpoint"
+  type = "String"
+  value = "https://${aws_route53_record.rug_ai.name}"
+}

@@ -55,7 +55,7 @@ module "rug_app_service" {
   tf_environment                          = [
     {
       name  = "version"
-      value = "v0.0.7"
+      value = "v0.0.8"
     },
     {
       name = "ETHEREUM_BLOCK_EXPLORER_URL"
