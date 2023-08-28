@@ -231,6 +231,15 @@ async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: in
     
     return ClusterResponse(clusters=clusters)
 
+async def get_score_info(chain: ChainEnum, token_address: str):
+    supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
+
+    supplyScore = Score(value=supplySummary.score, description=supplySummary.description)
+    transferrabilityScore = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
+
+    score = ScoreResponse(overallScore=math.sqrt(supplyScore.value * transferrabilityScore.value), supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
+    return score
+
 
 @router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
 async def get_token_info(chain: ChainEnum, token_address: str):
@@ -238,14 +247,8 @@ async def get_token_info(chain: ChainEnum, token_address: str):
     
     tokenSummary = await get_token_metrics(chain, token_address)
 
-    # Get the supply and transferrability summary information
-    supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
-
-    supplyScore = Score(value=supplySummary.score, description=supplySummary.description)
-    transferrabilityScore = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
-
-    score = ScoreResponse(overallScore=math.sqrt(supplyScore.value * transferrabilityScore.value), supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
-
+    score = await get_score_info(chain, token_address)
+    
     holderChart = await get_holder_chart(chain, token_address)
 
     return TokenInfoResponse(tokenSummary=tokenSummary, score=score, holderChart=holderChart)

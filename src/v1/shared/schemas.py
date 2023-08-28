@@ -15,6 +15,7 @@ class ScoreResponse(BaseModel):
     supplyScore: Score = None
     transferrabilityScore: Score = None
     liquidityScore: Score = None
+    auditScore: Score = None
 
 class ChainIdEnum(Enum):
     ethereum = ETHEREUM_CHAIN_ID
@@ -68,5 +69,5 @@ class TokenBase(BaseModel):
 
 class Token(TokenBase):
     decimals: int = None
-    score: ScoreResponse = None
+    score: float = None
     deployedAgo: int = None
