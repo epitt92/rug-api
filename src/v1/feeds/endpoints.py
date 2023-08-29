@@ -19,19 +19,17 @@ write_client = TimestreamEventAdapter()
 
 router = APIRouter()
 
-
 @router.post("/eventclick")
-async def post_event_click(eventHash: str, token_address: str, blockchain: str):
-    # TODO: Fix these entries to have correct values (maybe store more information from the JSON?)
-    data = {'eventHash': eventHash}
+async def post_event_click(eventHash: str, userId: str):
+    data = {'eventHash': eventHash, 'userId': userId}
     write_client.post(table_name='eventlogs', message=data)
     return {"message": f"Event view for {eventHash} recorded."}
 
 
 @router.post("/tokenview")
-async def post_token_view(chain: ChainEnum, token_address: str):
+async def post_token_view(chain: ChainEnum, token_address: str, userId: str):
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
-    data = {'chain': _chain, 'token_address': token_address.lower()}
+    data = {'chain': _chain, 'token_address': token_address.lower(), 'userId': userId}
     write_client.post(table_name='reviewlogs', message=data)
     return {"message": f"Token view for token {token_address} on chain {chain} recorded."}
 
@@ -67,8 +65,11 @@ async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
 
     result = [process_row(row) for row in response["Rows"]]
 
+    # TODO: Add validation check for chain and token_address being valid
+
     token_info = [await get_token_metrics(eval(f"ChainEnum.{row.get('chain')}"), row.get('token_address')) for row in result if row]
     
+    # TODO: Replace this with an RPC call for name and symbol, since rest of token metrics not needed
     token_info = [{'name': item.name,
                    'symbol': item.symbol,
                    'tokenAddress': item.tokenAddress,
@@ -79,6 +80,77 @@ async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
     score_info = [{'score': item.overallScore} for item in score_info]
 
     return [{**token_info[i], **score_info[i]} for i in range(len(token_info))]
+
+
+@router.get("/topevents")
+async def get_most_viewed_events(limit: int = 10, numMinutes: int = 30):
+    # Fetch (chain, token_address) pairs for most viewed tokens
+    if limit > 100:
+        limit = 100
+
+    # Query to calculate the most viewed tokens in the past numMinutes minutes
+    query = f'''
+        SELECT "eventHash", COUNT("eventHash") as "count"
+        FROM "rug_api_db"."eventlogs" AS te
+        WHERE time between ago({numMinutes}m) and now()
+        GROUP BY "eventHash"
+        ORDER BY "count" DESC
+        LIMIT {limit}
+        '''
+
+    response = read_client.query(QueryString=query)
+
+    def process_row(row):
+        try:
+            return {
+                'eventHash': row['Data'][0]['ScalarValue'],
+                'count': int(row['Data'][1]['ScalarValue'])
+            }
+        except Exception as e:
+            logging.error(f'process_row(row) error: {e}')
+            return
+
+    result = [process_row(row).get('eventHash') for row in response["Rows"]]
+
+    query = f'''
+        SELECT te.*
+        FROM "rug_feed_db"."tokenevents" AS te
+        WHERE te.eventHash IN ({','.join([f"'{item}'" for item in result])})
+    '''
+ 
+    response = read_client.query(QueryString=query)
+
+    def process_row(row):
+        try:
+            if row['Data'][6].get('ScalarValue') is None:
+                value = row['Data'][7]['ScalarValue']
+            else:
+                value = row['Data'][6]['ScalarValue']
+
+            return {
+                'eventHash': row['Data'][0]['ScalarValue'],
+                'address': row['Data'][1]['ScalarValue'],
+                'blockchain': row['Data'][2]['ScalarValue'],
+                'timestamp': row['Data'][3]['ScalarValue'],
+                'measureName': row['Data'][4]['ScalarValue'],
+                'time': row['Data'][5]['ScalarValue'],
+                'value': value
+            }
+        except Exception as e:
+            logging.error(f'process_row(row) error: {e}')
+            return
+
+    processed_rows = [process_row(row) for row in response["Rows"]]
+
+    # Handle the data as a pandas dataframe to pivot the data
+    df = pd.DataFrame(processed_rows).drop(['time', 'address', 'blockchain', 'timestamp'], axis=1).drop_duplicates()
+
+    pdf = df.pivot(index='eventHash', columns='measureName', values='value')
+
+    # Convert the timestamp to an integer
+    pdf['timestamp'] = pdf['timestamp'].apply(lambda x: int(float(x)))
+
+    return pdf.to_dict('records')
 
 
 @router.get("/tokenevents", include_in_schema=True)

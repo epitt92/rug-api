@@ -47,7 +47,6 @@ class TimestreamEventAdapter():
         if table_name == 'eventlogs':
             return {
                 'Dimensions': [
-                    {'Name': 'timestamp', 'Value': str(int(time.time()))},
                     {'Name': 'eventHash', 'Value': data.get('eventHash')},
                 ]
             }
