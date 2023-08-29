@@ -35,13 +35,10 @@ def get_go_plus_data(chain: ChainEnum, token_address: str):
     request_response = requests.get(url, params=params)
     request_response.raise_for_status()
 
-    # logging.info(f'Fetched Go+ data for {token_address} on chain {chain}: {request_response.json()}')
-
     data = request_response.json()['result']
     return data[_token_address]
 
 def get_go_plus_summary(chain: ChainEnum, token_address: str):
-    logging.info(f'Fetching Go+ summary for {token_address} on chain {chain}...')
     data = get_go_plus_data(chain, token_address)
 
     # Format response data into output format
@@ -133,10 +130,7 @@ def get_block_explorer_data(chain: ChainEnum, token_address: str):
         result = requests.get(prefix, params=params)
         result.raise_for_status()
 
-        logging.info(f'Requested block explorer data for {token_address}')
-        logging.info(f'Data: {result.json()}')
-
-        if result.json()['status'] == '200':
+        try:
             data = result.json()['result'][0]   
 
             output = {}
@@ -153,17 +147,17 @@ def get_block_explorer_data(chain: ChainEnum, token_address: str):
             output['twitter'] = data['twitter'] if data['twitter'] != '' else None
             output['telegram'] = data['telegram'] if data['telegram'] != '' else None
             output['discord'] = data['discord'] if data['discord'] != '' else None
-        else:
-            error = result.json().get('result')
-            raise HTTPException(status_code=500, detail=f'Error getting block explorer data: {str(error)}')
+        except Exception as e:
+            logging.warning(f'Error getting block explorer data: {e}. Throwing HTTP 500...')
+            raise HTTPException(status_code=500, detail=f'Error getting block explorer data: {e}')
     except Exception as e:
+       logging.warning(f'Error getting block explorer data: {e}. Throwing HTTP 500...')
        raise HTTPException(status_code=500, detail=f'Error getting block explorer data: {e}')
 
     return output
 
 
 def get_supply_summary(go_plus_response: dict) -> dict:
-    logging.info(f'go plus response keys: {go_plus_response.keys()}')
     items = []
 
     simple_keys = ['hidden_owner', 'is_open_source', 'is_proxy', 'selfdestruct']
@@ -187,7 +181,7 @@ def get_supply_summary(go_plus_response: dict) -> dict:
             items.append({'title':'Has Owner', 'description': 'The contract owner has not renounced ownership of the contract, meaning that any owner enabled functions could be utilized to modify the token.', 'severity': 2})
     else:
         renounced_ownership, can_recall = None, None
-        logging.error(f'Could not find owner address or can_take_back_ownership in go plus response.')
+        logging.warning(f'Could not find owner address or can_take_back_ownership in go plus response.')
 
     # Add mintability field
     if go_plus_response.get('is_mintable'):
@@ -319,8 +313,6 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
     if go_plus_response.get('honeypot_with_same_creator'):
         if bool(go_plus_response.get('honeypot_with_same_creator')):
             additional_summary += ' This token has the same creator as a known honeypot.'
-
-    logging.info(f'transferrability items: {items}')
 
     score = calculate_score(items=items)
     summary = create_brief_summary(items=items, additional_summary=additional_summary)

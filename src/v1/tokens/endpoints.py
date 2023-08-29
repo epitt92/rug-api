@@ -10,17 +10,17 @@ from src.v1.shared.schemas import Chain, ScoreResponse, Score
 from src.v1.shared.exceptions import validate_token_address
 from src.v1.shared.DAO import DAO
 
-from src.v1.tokens.constants import CLUSTER_RESPONSE, AI_SUMMARY_DESCRIPTION, AI_COMMENTS, AI_SCORE, BURN_TAG
 from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
 from src.v1.tokens.dependencies import get_go_plus_summary, get_block_explorer_data, get_go_plus_data
-from src.v1.tokens.schemas import AIComment, AISummary, TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary, ClusterResponse
+from src.v1.tokens.schemas import Holder, Cluster, ClusterResponse, AIComment, AISummary, TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary
 from src.v1.tokens.models import TokenMetadataEnum
 
 from src.v1.sourcecode.endpoints import get_source_code
 
 from src.v1.chart.endpoints import get_chart_data
 from src.v1.chart.models import FrequencyEnum
+from src.v1.chart.schemas import ChartResponse
 
 load_dotenv()
 
@@ -60,7 +60,6 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str)
     # If this data is found and is not stale, return it
     if _supply_summary and _transferrability_summary:
         if (time.time() - int(_supply_summary.get('timestamp'))) < SUPPLY_REPORT_STALENESS_THRESHOLD and (time.time() - int(_transferrability_summary.get('timestamp'))) < TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD:
-            logging.info(f"Supply and transferrability summary found for {_token_address} on chain {chain.value} in DynamoDB")
             found = True
             supply_summary = _supply_summary.get('summary')
             transferrability_summary = _transferrability_summary.get('summary')
@@ -97,7 +96,6 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         token_metrics_last_updated = _token_metrics.get('timestamp')
 
         if ((time.time() - int(token_metrics_last_updated)) < TOKEN_METRICS_STALENESS_THRESHOLD):
-            logging.info(f"Token metrics found for {_token_address} on chain {chain.value} in DynamoDB")
             found = True
     
     if not found:
@@ -111,9 +109,14 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         try:
             explorer_data = get_block_explorer_data(chain, _token_address)
         except Exception as e:
-            logging.error(f'Failed to fetch block explorer data for {_token_address} on chain {chain}')
+            logging.warning(f'Failed to fetch block explorer data for {_token_address} on chain {chain}. Using empty dictionary and continuing...')
             explorer_data = {}
 
+        # Fetch latestPrice information from chart data
+        chart = await get_chart_data(chain, _token_address, FrequencyEnum.one_day)
+        if chart:
+            market_data['latestPrice'] = chart.latestPrice if isinstance(chart, ChartResponse) else chart.get('latestPrice')
+            
         # TODO: Add support for calling name and symbol from RPC directly as a fallback
         
         _token_metrics = {
@@ -128,9 +131,6 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         for key in _token_metrics['summary']:
             if isinstance(_token_metrics['summary'][key], float):
                 _token_metrics['summary'][key] = Decimal(str(_token_metrics['summary'][key]))
-
-        logging.info(f'Caching token metrics for {_token_address} on chain {chain.value} in DynamoDB')
-        logging.info(f'Token metrics: {_token_metrics}')
 
         TOKEN_METRICS_DAO.insert_one(partition_key_value=pk, item=_token_metrics)
 
@@ -159,8 +159,6 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
 
     data = response.json().get("data")
 
-    logging.info(f'AI response for {_token_address} on chain {chain.value}: {data.keys()}')
-
     if data:
         description = data.get("tokenSummary")
 
@@ -176,14 +174,19 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
         comments = []
         for smart_contract in files:
             for issue in smart_contract.get("result"):
-                # TODO: Add support for source code
+                lines = issue.get("lines")
+
+                if lines:
+                    lines = [int(item) for item in lines]
 
                 comment = AIComment(
                     commentType="Function",
                     title=issue.get("title"),
                     description=issue.get("description"),
                     severity=issue.get("level"),
-                    fileName=smart_contract.get("fileName")
+                    fileName=smart_contract.get("fileName"),
+                    sourceCode=issue.get("function_code"),
+                    lines=lines
                 )
                 comments.append(comment)
     else:
@@ -192,36 +195,61 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     return AISummary(description=description, numIssues=numIssues, overallScore=overallScore, comments=comments)
 
 
-@router.get("/cluster/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=True)
+@router.get("/cluster/{chain}/{token_address}", include_in_schema=True)
 async def get_token_clustering(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
 
-    URL = os.environ.get('DEV_ML_API_URL') + f'/v1/clustering/{chain.value}/{token_address.lower()}'
+    URL = os.environ.get('ML_API_URL') + f'/v1/clustering/{chain.value}/{token_address.lower()}'
 
-    response = requests.get(URL)
-    response.raise_for_status()
+    try:
+        response = requests.get(URL)
+        response.raise_for_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch clustering data for {token_address} on chain {chain.value}: {e}")
 
-    CLUSTER_RESPONSE = ClusterResponse(**response.json())
+    return response.json()
     
-    return CLUSTER_RESPONSE
 
-
-@router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
-async def get_token_info(chain: ChainEnum, token_address: str):
+@router.get("/holderchart/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=True)
+async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: int = 10):
     validate_token_address(token_address)
-    _token_address = token_address.lower()
-    
-    tokenSummary = await get_token_metrics(chain, token_address)
 
-    # Get the supply and transferrability summary information
+    URL = os.environ.get('ML_API_URL') + f'/v1/clustering/holders/{chain.value}/{token_address.lower()}'
+
+    try:
+        response = requests.get(URL)
+        response.raise_for_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch holder data for {token_address} on chain {chain.value}: {e}")
+
+    data = response.json()
+    top_holders = sorted(data.keys(), key=lambda k: data[k]["numTokens"], reverse=True)[:numClusters]
+
+    holders = {holder: data[holder] for holder in top_holders}
+
+    clusters = [Cluster(members=[Holder(address=holder, numTokens=float(holders[holder]["numTokens"]), percentage=float(holders[holder]["percentTokens"]))]) for holder in holders]
+    
+    return ClusterResponse(clusters=clusters)
+
+async def get_score_info(chain: ChainEnum, token_address: str):
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
     supplyScore = Score(value=supplySummary.score, description=supplySummary.description)
     transferrabilityScore = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
 
     score = ScoreResponse(overallScore=math.sqrt(supplyScore.value * transferrabilityScore.value), supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
+    return score
 
-    holderChart = None
+
+@router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
+async def get_token_info(chain: ChainEnum, token_address: str):
+    validate_token_address(token_address)
+    
+    tokenSummary = await get_token_metrics(chain, token_address)
+
+    score = await get_score_info(chain, token_address)
+    
+    holderChart = await get_holder_chart(chain, token_address)
 
     return TokenInfoResponse(tokenSummary=tokenSummary, score=score, holderChart=holderChart)
 

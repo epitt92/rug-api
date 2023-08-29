@@ -10,10 +10,10 @@ from router import v1_router
 dotenv.load_dotenv()
 
 TITLE = 'rug.ai API'
-VERSION = 1.14
+VERSION = 2.0
 
 
-app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, favicon='https://rug.ai/favicon.ico')
+app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, version=VERSION, favicon='https://rug.ai/favicon.ico')
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 @app.get('/favicon.ico', include_in_schema=False)
