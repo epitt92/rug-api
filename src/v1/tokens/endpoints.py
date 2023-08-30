@@ -231,6 +231,8 @@ async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: in
     
     return ClusterResponse(clusters=clusters)
 
+
+@router.get("/score/{chain}/{token_address}", response_model=ScoreResponse, include_in_schema=True)
 async def get_score_info(chain: ChainEnum, token_address: str):
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
