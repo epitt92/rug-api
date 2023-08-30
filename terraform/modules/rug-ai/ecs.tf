@@ -126,6 +126,3 @@ module "rug_app_service" {
   }
 
 }
-
-cpu    = 2048
-memory = 4096
