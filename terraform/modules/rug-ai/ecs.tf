@@ -38,8 +38,8 @@ module "rug_app_service" {
   autoscaling_cpu_target      = 70
   autoscaling_max_capacity    = 4
   backend_config = {
-    cpu    = 512
-    memory = 1024
+    cpu    = var.stage == "dev" ? 512 : 2048 
+    memory = var.stage == "dev" ? 1024 : 4096
   }
   docker_image_backend                    = replace("${var.rug_ecr_image}", " ", "")
   gitlab_credentials_parameter_secret_arn = ""
@@ -127,3 +127,5 @@ module "rug_app_service" {
 
 }
 
+cpu    = 2048
+memory = 4096
