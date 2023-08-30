@@ -15,5 +15,6 @@ locals {
     Stage     = "${local.stage}"    
     Cloud     = "aws"           
   }
+  
 
 }
