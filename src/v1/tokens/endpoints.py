@@ -112,11 +112,15 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
             logging.warning(f'Failed to fetch block explorer data for {_token_address} on chain {chain}. Using empty dictionary and continuing...')
             explorer_data = {}
 
-        # Fetch latestPrice information from chart data
-        chart = await get_chart_data(chain, _token_address, FrequencyEnum.one_day)
-        if chart:
-            market_data['latestPrice'] = chart.latestPrice if isinstance(chart, ChartResponse) else chart.get('latestPrice')
-            
+        try:
+            # Fetch latestPrice information from chart data
+            chart = await get_chart_data(chain, _token_address, FrequencyEnum.one_day)
+            if chart:
+                market_data['latestPrice'] = chart.latestPrice if isinstance(chart, ChartResponse) else chart.get('latestPrice')
+        except Exception as e:
+            logging.warning(f'Failed to fetch chart data as part of `info` for {_token_address} on chain {chain}. Using empty dictionary and continuing...')
+            market_data['latestPrice'] = None
+
         # TODO: Add support for calling name and symbol from RPC directly as a fallback
         
         _token_metrics = {
