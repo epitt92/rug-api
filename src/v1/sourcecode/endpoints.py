@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 import requests, json, time, dotenv, logging, os
+from botocore.exceptions import ClientError
 
 from src.v1.shared.DAO import DAO
 from src.v1.shared.dependencies import get_primary_key
@@ -84,25 +85,36 @@ async def get_source_code(chain: ChainEnum, token_address: str):
     # Check if the token source code has already been cached
     pk = get_primary_key(_token_address, chain.value)
 
+    logging.info(f'Fetching source code for {token_address} on chain {chain} from the database...')
+
     # Attempt to fetch transfers from DAO object
     _source_code_map = SOURCE_CODE_DAO.find_most_recent_by_pk(pk)
     
-    logging.info(f'Fetching source code for {token_address} on chain {chain}...')
-    logging.info(f'Source code: {_source_code_map}')
-
     # If source code is found, return it
     if not _source_code_map:
         logging.info(f'No source code found for {token_address} on chain {chain}. Fetching from API...')
         _source_code_map = await get_source_code_map(chain.value, _token_address)
 
-        logging.info(f'Source code: {_source_code_map}')
-        logging.info(f'Source code map keys: {_source_code_map.keys()}')
         # Write source code map to DAO file
         if _source_code_map is not None:
-            SOURCE_CODE_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'sourcecode': _source_code_map})
+            try:
+                logging.info(f'Writing source code map for {token_address} on chain {chain} to DAO...')
+                SOURCE_CODE_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'sourcecode': _source_code_map})
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+                    logging.warning(f'Source code map for {token_address} on chain {chain} already exists in DAO.')
+                    logging.warning(f'We do not allow duplicate writes for source code, since it is immutable.')
+                    raise e
+                else:
+                    logging.warning(f'An unknown boto3 exception occurred while writing source code map for {token_address} on chain {chain} to DAO: {e}')
+                    raise e
+            except Exception as e:
+                logging.warning(f'An unknown exception occurred while writing source code map for {token_address} on chain {chain} to DAO: {e}')
+                raise e
         else:
             raise HTTPException(status_code=404, detail=f'No source code found for {token_address} on chain {chain.value}')
     else:
+        logging.info(f'Found source code for {token_address} on chain {chain} in DAO.')
         _source_code_map = _source_code_map.get('sourcecode')
 
     output = []
