@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 import random, json, boto3, os, dotenv, pandas as pd, logging
+from botocore.exceptions import ClientError
 
 from src.v1.feeds.schemas import FeedResponse, Token
 from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter
@@ -122,7 +123,13 @@ async def get_most_viewed_events(limit: int = 10, numMinutes: int = 30):
         LIMIT {limit}
         '''
 
-    response = read_client.query(QueryString=query)
+    try:
+        response = read_client.query(QueryString=query)
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ValidationException':
+            logging.warning(f'An exception occurred whilst querying the database due to a validation error: {e}')
+            logging.warning(f'The query used was: {query}')
+            return []
 
     def process_row(row):
         try:
@@ -136,13 +143,22 @@ async def get_most_viewed_events(limit: int = 10, numMinutes: int = 30):
 
     result = [process_row(row).get('eventHash') for row in response["Rows"]]
 
+    if len(result) == 0:
+        return []
+    
     query = f'''
         SELECT te.*
         FROM "rug_feed_db"."tokenevents" AS te
         WHERE te.eventHash IN ({','.join([f"'{item}'" for item in result])})
     '''
- 
-    response = read_client.query(QueryString=query)
+    
+    try:
+        response = read_client.query(QueryString=query)
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ValidationException':
+            logging.warning(f'An exception occurred whilst querying the database due to a validation error: {e}')
+            logging.warning(f'The query used was: {query}')
+            return []
 
     def process_row(row):
         try:
@@ -166,15 +182,22 @@ async def get_most_viewed_events(limit: int = 10, numMinutes: int = 30):
 
     processed_rows = [process_row(row) for row in response["Rows"]]
 
-    # Handle the data as a pandas dataframe to pivot the data
-    df = pd.DataFrame(processed_rows).drop(['time', 'address', 'blockchain', 'timestamp'], axis=1).drop_duplicates()
+    if len(processed_rows) == 0:
+        return []
 
-    pdf = df.pivot(index='eventHash', columns='measureName', values='value')
-
-    # Convert the timestamp to an integer
-    pdf['timestamp'] = pdf['timestamp'].apply(lambda x: int(float(x)))
-
-    return pdf.to_dict('records')
+    try:
+        # Handle the data as a pandas dataframe to pivot the data
+        df = pd.DataFrame(processed_rows).drop(['time', 'address', 'blockchain', 'timestamp'], axis=1).drop_duplicates()
+        pdf = df.pivot(index='eventHash', columns='measureName', values='value')
+        # Convert the timestamp to an integer
+        pdf['timestamp'] = pdf['timestamp'].apply(lambda x: int(float(x)))
+        return pdf.to_dict('records')
+    except KeyError as e:
+        logging.error(f'A KeyError exception was thrown during the DataFrame processing step: {e}')
+        return []
+    except Exception as e:
+        logging.error(f'An unknown exception was thrown during the DataFrame processing step: {e}')
+        return []
 
 
 @router.get("/tokenevents", include_in_schema=True)
