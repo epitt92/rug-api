@@ -5,6 +5,7 @@ from src.v1.feeds.schemas import FeedResponse, Token
 from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter
 from src.v1.shared.models import ChainEnum
 from src.v1.tokens.endpoints import get_token_metrics, get_score_info
+from src.v1.shared.exceptions import validate_token_address
 
 dotenv.load_dotenv()
 
@@ -28,6 +29,7 @@ async def post_event_click(eventHash: str, userId: str):
 
 @router.post("/tokenview")
 async def post_token_view(chain: ChainEnum, token_address: str, userId: str):
+    validate_token_address(chain, token_address)
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
     data = {'chain': _chain, 'token_address': token_address.lower(), 'userId': userId}
     write_client.post(table_name='reviewlogs', message=data)
@@ -54,22 +56,33 @@ async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
 
     def process_row(row):
         try:
-            return {
-                'chain': row['Data'][0]['ScalarValue'],
-                'token_address': row['Data'][1]['ScalarValue'],
-                'count': int(row['Data'][2]['ScalarValue'])
-            }
+            chain = row['Data'][0]['ScalarValue']
+            token_address = row['Data'][1]['ScalarValue']
+            count = int(row['Data'][2]['ScalarValue'])
         except Exception as e:
-            logging.error(f'process_row(row) error: {e}')
-            return
+            logging.error(f'An exception occurred whilst processing the row with chain {chain}, token_address {token_address} and count {count}: {e}')
+            return None
+        
+        try:
+            validate_token_address(chain, token_address)
+        except Exception as e:
+            logging.error(f'An exception occurred whilst validating the token address {token_address} on chain {chain}: {e}')
+            return None
+
+        return {
+            'chain': row['Data'][0]['ScalarValue'],
+            'token_address': row['Data'][1]['ScalarValue'],
+            'count': int(row['Data'][2]['ScalarValue'])
+        }
 
     result = [process_row(row) for row in response["Rows"]]
 
-    # TODO: Add validation check for chain and token_address being valid
+    # Filter out process entries for which an exception occurred
+    result = [row for row in result if row]
 
     token_info = [await get_token_metrics(eval(f"ChainEnum.{row.get('chain')}"), row.get('token_address')) for row in result if row]
     
-    # TODO: Replace this with an RPC call for name and symbol, since rest of token metrics not needed
+    # Replace this with an RPC call for name and symbol, since rest of token metrics not needed
     token_info = [{'name': item.name,
                    'symbol': item.symbol,
                    'tokenAddress': item.tokenAddress,
