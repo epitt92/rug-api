@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 import time, os, requests, json, logging, math
 from dotenv import load_dotenv
 from decimal import Decimal
+from botocore.exceptions import ClientError
 
 from src.v1.shared.dependencies import get_random_score, get_primary_key, get_chain
 from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
@@ -60,10 +61,17 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str)
     # If this data is found and is not stale, return it
     if _supply_summary and _transferrability_summary:
         if (time.time() - int(_supply_summary.get('timestamp'))) < SUPPLY_REPORT_STALENESS_THRESHOLD and (time.time() - int(_transferrability_summary.get('timestamp'))) < TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD:
-            found = True
             supply_summary = _supply_summary.get('summary')
             transferrability_summary = _transferrability_summary.get('summary')
-    
+            if supply_summary and transferrability_summary:
+                found = True
+            else:
+                logging.warning(f'A non-stale report was found but one of the summary values was null. Re-calculating and re-caching...')
+        else:
+            logging.info(f'A previous report was found but it did not pass the staleness check:')
+            logging.info(f'Supply report staleness: {time.time() - int(_supply_summary.get("timestamp"))}')
+            logging.info(f'Transferrability report staleness: {time.time() - int(_transferrability_summary.get("timestamp"))}')
+
     if not found:
         data = get_go_plus_data(chain, _token_address)
 
@@ -72,8 +80,14 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str)
         transferrability_summary = get_transferrability_summary(data)
 
         # Cache this data to the database
-        SUPPLY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(supply_summary)})
-        # TRANSFERRABILITY_REPORT_DAO.insert_one(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(transferrability_summary)})
+        try:
+            SUPPLY_REPORT_DAO.insert_new(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(supply_summary)})
+            TRANSFERRABILITY_REPORT_DAO.insert_new(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(transferrability_summary)})
+        except ClientError as e:
+            raise e
+        except Exception as e:
+            logging.warning(f'An unknown exception occurred which was not caught by boto3 exception handling...')
+            raise e
 
     # Format the data and return it
     supply_summary = ContractResponse(items=supply_summary.get("items"), score=supply_summary.get("score"), description=supply_summary.get("summary"))
@@ -97,14 +111,22 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
 
         if ((time.time() - int(token_metrics_last_updated)) < TOKEN_METRICS_STALENESS_THRESHOLD):
             found = True
-    
+        else:
+            logging.warning(f'A previous token metrics report was found but it did not pass the staleness check:')
+            logging.warning(f'Token metrics staleness: {time.time() - int(token_metrics_last_updated)}')
+            logging.info(f'Re-calculating token metrics and re-caching...')
+
     if not found:
         # Fetch the data from all sources and then cache it in the database
         lastUpdatedTimestamp = int(time.time())
 
-        # Fetch and process market data from GoPlus
-        market_data = get_go_plus_summary(chain, _token_address)
-
+        try:
+            # Fetch and process market data from GoPlus
+            market_data = get_go_plus_summary(chain, _token_address)
+        except Exception as e:
+            logging.warning(f'Failed to fetch GoPlus data for {_token_address} on chain {chain}. Using empty dictionary and continuing...')
+            market_data = {}
+        
         # Fetch and process token social data from Etherscan
         try:
             explorer_data = get_block_explorer_data(chain, _token_address)
@@ -112,17 +134,20 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
             logging.warning(f'Failed to fetch block explorer data for {_token_address} on chain {chain}. Using empty dictionary and continuing...')
             explorer_data = {}
 
-        try:
-            # Fetch latestPrice information from chart data
-            chart = await get_chart_data(chain, _token_address, FrequencyEnum.one_day)
-            if chart:
-                market_data['latestPrice'] = chart.latestPrice if isinstance(chart, ChartResponse) else chart.get('latestPrice')
-        except Exception as e:
-            logging.warning(f'Failed to fetch chart data as part of `info` for {_token_address} on chain {chain}. Using empty dictionary and continuing...')
-            market_data['latestPrice'] = None
+        # TODO: This check cannot occur because CoinGecko has heavy rate-limiting
+        # TODO: The backend service cannot call CoinGecko directly, this will be fixed when we create a backend service for this
+
+        # try:
+        #     # Fetch latestPrice information from chart data
+        #     chart = await get_chart_data(chain, _token_address, FrequencyEnum.one_day)
+        #     if chart:
+        #         market_data['latestPrice'] = chart.latestPrice if isinstance(chart, ChartResponse) else chart.get('latestPrice')
+        # except Exception as e:
+        #     logging.warning(f'Failed to fetch chart data as part of `info` for {_token_address} on chain {chain}. Using empty dictionary and continuing...')
+        #     market_data['latestPrice'] = None
 
         # TODO: Add support for calling name and symbol from RPC directly as a fallback
-        
+
         _token_metrics = {
             'timestamp': lastUpdatedTimestamp,
             'summary': {
@@ -135,8 +160,16 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         for key in _token_metrics['summary']:
             if isinstance(_token_metrics['summary'][key], float):
                 _token_metrics['summary'][key] = Decimal(str(_token_metrics['summary'][key]))
-
-        TOKEN_METRICS_DAO.insert_one(partition_key_value=pk, item=_token_metrics)
+        
+        try:
+            TOKEN_METRICS_DAO.insert_new(partition_key_value=pk, item=_token_metrics)
+        except ClientError as e:
+            logging.warning(f'Failed to cache token metrics for {_token_address} on chain {chain}.')
+            logging.warning(f'ClientError: {e}')
+            raise e
+        except Exception as e:
+            logging.warning(f'An unknown exception occurred which was not caught by boto3 exception handling...')
+            raise e
 
     _token_metrics = {
         **_token_metrics['summary'],
@@ -158,22 +191,32 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
     URL = os.environ.get('ML_API_URL') + f'/v1/audit/{_chain}/{token_address.lower()}'
 
-    response = requests.get(URL)
-    response.raise_for_status()
+    try:
+        response = requests.get(URL)
+        response.raise_for_status()
+    except Exception as e:
+        raise e
 
-    data = response.json().get("data")
+    response = response.json()
+
+    if response.get("status") == 102:
+        # The token is queued for analysis by another user, returning this
+        return response.json()
+
+    data = response.get("data")
 
     if data:
         description = data.get("tokenSummary")
 
         if not data.get('tokenScore') and not data.get('filesResult'):
-            raise HTTPException(status_code=500, detail=f"Failed to fetch AI data for {_token_address} on chain {chain.value}: {description}")
+            detail = "Failed to fetch AI data for {_token_address} on chain {chain.value}: Response did not have tokenScore or filesResult entries."
+            raise HTTPException(status_code=500, detail=detail)
 
         overallScore = float(data.get("tokenScore"))
-
         files = data.get("filesResult")
-
         numIssues = sum([len(item.get("result")) for item in files])
+
+        logging.info(f'Audit report for {_token_address} on chain {chain.value} fetched successfully. Score: {overallScore}, numIssues: {numIssues}.')
 
         comments = []
         for smart_contract in files:
@@ -194,7 +237,7 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
                 )
                 comments.append(comment)
     else:
-        return None
+        raise HTTPException(status_code=500, detail=f"Failed to fetch AI data for {_token_address} on chain {chain.value}: Response did not have data entry.")
 
     return AISummary(description=description, numIssues=numIssues, overallScore=overallScore, comments=comments)
 
@@ -209,7 +252,7 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
         response = requests.get(URL)
         response.raise_for_status()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch clustering data for {token_address} on chain {chain.value}: {e}")
+        raise e
 
     return response.json()
     
