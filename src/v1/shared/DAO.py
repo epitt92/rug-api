@@ -125,3 +125,17 @@ class DAO:
         self.table.put_item(
             Item=item,
             ConditionExpression=f'attribute_not_exists({self.partition_key_name})')
+
+    def insert_new(
+        self,
+        partition_key_value: str,
+        item: Dict[Any, Any]) -> None:
+        """
+        Insert a document with a partition key.
+
+        Args:
+            partition_key_value (str): Value of the partition key
+            item (dict): Document to be inserted
+        """
+        item[self.partition_key_name] = partition_key_value
+        self.table.put_item(Item=item)
