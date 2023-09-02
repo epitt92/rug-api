@@ -6,6 +6,7 @@ from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter
 from src.v1.shared.models import ChainEnum
 from src.v1.tokens.endpoints import get_token_metrics, get_score_info
 from src.v1.shared.exceptions import validate_token_address
+from src.v1.shared.dependencies import get_token_contract_details, get_chain
 
 dotenv.load_dotenv()
 
@@ -29,7 +30,7 @@ async def post_event_click(eventHash: str, userId: str):
 
 @router.post("/tokenview")
 async def post_token_view(chain: ChainEnum, token_address: str, userId: str):
-    validate_token_address(chain, token_address)
+    validate_token_address(token_address)
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
     data = {'chain': _chain, 'token_address': token_address.lower(), 'userId': userId}
     write_client.post(table_name='reviewlogs', message=data)
@@ -64,7 +65,7 @@ async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
             return None
         
         try:
-            validate_token_address(chain, token_address)
+            validate_token_address(token_address)
         except Exception as e:
             logging.error(f'An exception occurred whilst validating the token address {token_address} on chain {chain}: {e}')
             return None
@@ -79,20 +80,30 @@ async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
 
     # Filter out process entries for which an exception occurred
     result = [row for row in result if row]
-
-    token_info = [await get_token_metrics(eval(f"ChainEnum.{row.get('chain')}"), row.get('token_address')) for row in result if row]
     
-    # Replace this with an RPC call for name and symbol, since rest of token metrics not needed
-    token_info = [{'name': item.name,
-                   'symbol': item.symbol,
-                   'tokenAddress': item.tokenAddress,
-                   'chain': item.chain} for item in token_info]
+    output = []
+    for item in result:
+        if item.get('token_address') and item.get('chain'):
+            logging.info(f'Fetching token details for token {item.get("token_address")} on chain {item.get("chain")}...')
+            try:
+                token_contract_info = await get_token_details(item.get('chain'), item.get('token_address'))
+            except Exception as e:
+                logging.error(f'An exception occurred whilst fetching token details for token {item.get("token_address")} on chain {item.get("chain")}: {e}')
+                continue
 
-    score_info = [await get_score_info(eval(f"ChainEnum.{row.get('chain')}"), row.get('token_address')) for row in result if row]
-    
-    score_info = [{'score': item.overallScore} for item in score_info]
+            logging.info(f'Token name and symbol identified as {token_contract_info.get("name")} ({token_contract_info.get("symbol")})')
 
-    return [{**token_info[i], **score_info[i]} for i in range(len(token_info))]
+            score_info = await get_score_info(eval(f"ChainEnum.{item.get('chain')}"), item.get('token_address'))
+            score = score_info.overallScore
+
+            output.append({
+                'name': token_contract_info.get('name'),
+                'symbol': token_contract_info.get('symbol'),
+                'token_address': item.get('token_address'),
+                'chain': get_chain(item.get('chain')),
+                'score': score})
+
+    return output
 
 
 @router.get("/topevents")
@@ -197,3 +208,10 @@ async def get_token_events(number_of_events: int = 50):
 
     # Return the data as a list of dictionaries
     return pdf.to_dict('records')
+
+@router.get('tokendetails/{chain}/{token_address}')
+async def get_token_details(chain: ChainEnum, token_address: str):
+    token_address = token_address.lower()
+    validate_token_address(token_address)
+    token_details = await get_token_contract_details(chain, token_address)
+    return token_details
