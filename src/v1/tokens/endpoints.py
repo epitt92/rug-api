@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from decimal import Decimal
 from botocore.exceptions import ClientError
 
-from src.v1.shared.dependencies import get_random_score, get_primary_key, get_chain
+from src.v1.shared.dependencies import get_primary_key, get_chain, get_token_contract_details
 from src.v1.shared.constants import CHAIN_ID_MAPPING, ETHEREUM_CHAIN_ID
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.schemas import Chain, ScoreResponse, Score
@@ -120,10 +120,13 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         # Fetch the data from all sources and then cache it in the database
         lastUpdatedTimestamp = int(time.time())
 
+        failed = False
+
         try:
             # Fetch and process market data from GoPlus
             market_data = get_go_plus_summary(chain, _token_address)
         except Exception as e:
+            failed = True
             logging.warning(f'Failed to fetch GoPlus data for {_token_address} on chain {chain}. Using empty dictionary and continuing...')
             market_data = {}
         
@@ -131,6 +134,8 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         try:
             explorer_data = get_block_explorer_data(chain, _token_address)
         except Exception as e:
+            failed = True
+
             logging.warning(f'Failed to fetch block explorer data for {_token_address} on chain {chain}. Using empty dictionary and continuing...')
             explorer_data = {}
 
@@ -281,12 +286,33 @@ async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: in
 
 @router.get("/score/{chain}/{token_address}", response_model=ScoreResponse, include_in_schema=True)
 async def get_score_info(chain: ChainEnum, token_address: str):
+    # Fetch required data from various sources
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
-    supplyScore = Score(value=supplySummary.score, description=supplySummary.description)
-    transferrabilityScore = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
+    # Format data into Score format objects
+    supply = Score(value=supplySummary.score, description=supplySummary.description)
+    transferrability = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
+    liquidity = Score(value=None, description=None)
+    audit = Score(value=None, description=None)
 
-    score = ScoreResponse(overallScore=math.sqrt(supplyScore.value * transferrabilityScore.value), supplyScore=supplyScore, transferrabilityScore=transferrabilityScore)
+    scores = [supply, transferrability, liquidity, audit]
+
+    def calculate_overall_score(scores: List[Score]) -> float:
+        _scores = [score.value for score in scores]
+        
+        # Filter out None type entries
+        _scores = [score for score in _scores if score]
+
+        # Calculate and return the geometric mean of all valid score contributors
+        return 
+
+    # Format response into ScoreResponse format object
+    score = ScoreResponse(overallScore=calculate_overall_score(scores), 
+                          supplyScore=supply, 
+                          transferrabilityScore=transferrability,
+                          liquidityScore=liquidity,
+                          auditScore=audit)
+    
     return score
 
 
