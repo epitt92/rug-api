@@ -10,7 +10,7 @@ from router import v1_router
 dotenv.load_dotenv()
 
 TITLE = 'rug.ai API'
-VERSION = 2.0
+VERSION = "2.0"
 
 
 app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, version=VERSION, favicon='https://rug.ai/favicon.ico')
