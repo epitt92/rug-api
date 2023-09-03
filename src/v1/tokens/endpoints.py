@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 import time, os, requests, json, logging, math
+from typing import List
 from dotenv import load_dotenv
 from decimal import Decimal
 from botocore.exceptions import ClientError
