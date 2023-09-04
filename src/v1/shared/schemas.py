@@ -1,5 +1,6 @@
 from pydantic import BaseModel, HttpUrl, confloat, constr, validator, root_validator
 from enum import Enum
+from typing import Optional
 
 from src.v1.shared.constants import (ETHEREUM_CHAIN_ID, BSC_CHAIN_ID, ARBITRUM_CHAIN_ID, BASE_CHAIN_ID,
         ETHEREUM_CHAIN_NAME, BSC_CHAIN_NAME, ARBITRUM_CHAIN_NAME, BASE_CHAIN_NAME,
@@ -7,15 +8,15 @@ from src.v1.shared.constants import (ETHEREUM_CHAIN_ID, BSC_CHAIN_ID, ARBITRUM_C
         ETHEREUM_NATIVE_ASSET, BSC_NATIVE_ASSET, ARBITRUM_NATIVE_ASSET, BASE_NATIVE_ASSET)
 
 class Score(BaseModel):
-    value: confloat(ge=0.0, le=100.0) = None
-    description: constr(max_length=512) = None
+    value: Optional[confloat(ge=0.0, le=100.0)] = None
+    description: Optional[constr(max_length=512)] = None
 
 class ScoreResponse(BaseModel):
-    overallScore: confloat(ge=0.0, le=100.0) = None
-    supplyScore: Score = None
-    transferrabilityScore: Score = None
-    liquidityScore: Score = None
-    auditScore: Score = None
+    overallScore: Optional[confloat(ge=0.0, le=100.0)] = None
+    supplyScore: Score
+    transferrabilityScore: Score
+    liquidityScore: Score
+    auditScore: Score
 
 class ChainIdEnum(Enum):
     ethereum = ETHEREUM_CHAIN_ID

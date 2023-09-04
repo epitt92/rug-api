@@ -176,7 +176,7 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
         except Exception as e:
             logging.warning(f'An unknown exception occurred which was not caught by boto3 exception handling...')
             raise e
-
+        
     _token_metrics = {
         **_token_metrics['summary'],
         **{
@@ -316,7 +316,12 @@ async def get_score_info(chain: ChainEnum, token_address: str):
         _scores = [score for score in _scores if score]
 
         # Calculate and return the geometric mean of all valid score contributors
-        return 
+
+        output = 1.0
+        for score in _scores:
+            output *= score
+
+        return math.pow(output, 1.0 / len(_scores))
 
     # Format response into ScoreResponse format object
     score = ScoreResponse(overallScore=calculate_overall_score(scores), 

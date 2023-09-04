@@ -1,5 +1,5 @@
 from pydantic import BaseModel, HttpUrl, root_validator, validator, confloat
-from typing import List
+from typing import List, Optional
 from enum import Enum
 import logging
 
@@ -129,11 +129,11 @@ class ContractResponse(BaseModel):
 ######################################################
 
 class SocialMedia(BaseModel):
-    twitter: HttpUrl = None
-    telegram: HttpUrl = None
-    discord: HttpUrl = None
-    webUrl: HttpUrl = None
-    buyLink: HttpUrl = None
+    twitter: Optional[HttpUrl] = None
+    telegram: Optional[HttpUrl] = None
+    discord: Optional[HttpUrl] = None
+    webUrl: Optional[HttpUrl] = None
+    buyLink: Optional[HttpUrl] = None
 
 class MarketData(BaseModel):
     lockedLiquidity: float = None
