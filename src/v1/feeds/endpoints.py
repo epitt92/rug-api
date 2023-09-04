@@ -22,6 +22,9 @@ write_client = TimestreamEventAdapter()
 
 router = APIRouter()
 
+# TODO: Must add database caching for these queries as they are very expensive and likely to return identical data for all users
+# What is the optimal way to cache these?
+
 @router.post("/eventclick")
 async def post_event_click(eventHash: str, userId: str):
     data = {'eventHash': eventHash, 'userId': userId}

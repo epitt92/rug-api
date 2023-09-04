@@ -205,7 +205,7 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
 
     response = response.json()
 
-    if response.get("status") == 102:
+    if response.get("data").get("status") == 102:
         # The token is queued for analysis by another user, returning this
         return response.json()
 
@@ -259,8 +259,14 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
         response.raise_for_status()
     except Exception as e:
         raise e
+    
+    response = response.json()
 
-    return response.json()
+    if response.get("data").get("status") == 102:
+        # The token is queued for analysis by another user, returning this
+        return response.json()
+
+    return response
     
 
 @router.get("/holderchart/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=True)
