@@ -262,9 +262,14 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
     
     response = response.json()
 
-    if response.get("data").get("status") == 102:
+    try:
+        status = response.get("data").get("status")
+    except:
+        status = None
+
+    if status == 102:
         # The token is queued for analysis by another user, returning this
-        return response.json()
+        return response.get("data")
 
     return response
     
