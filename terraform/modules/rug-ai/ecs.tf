@@ -84,9 +84,9 @@ module "rug_app_service" {
     aws_secretsmanager_secret.ARBITRUM_BLOCK_EXPLORER_API_KEY.arn,
     aws_secretsmanager_secret.BASE_BLOCK_EXPLORER_API_KEY.arn,
     aws_secretsmanager_secret.BNB_BLOCK_EXPLORER_API_KEY.arn,
-    aws_secretsmanager_secret.ETHEREUM_RPC_URL.arn,
-    aws_secretsmanager_secret.ARBITRUM_RPC_URL.arn,
-    aws_secretsmanager_secret.BASE_RPC_URL.arn
+    aws_secretsmanager_secret.RUG_API_ETHEREUM_RPC_URL.arn,
+    aws_secretsmanager_secret.RUG_API_ARBITRUM_RPC_URL.arn,
+    aws_secretsmanager_secret.RUG_API_BASE_RPC_URL.arn
   ]
   secrets = [
     {
@@ -107,15 +107,15 @@ module "rug_app_service" {
     },
     {
       name     = "ETHEREUM_RPC_URL"
-      valueFrom = aws_secretsmanager_secret.ETHEREUM_RPC_URL.arn
+      valueFrom = aws_secretsmanager_secret.RUG_API_ETHEREUM_RPC_URL.arn
     },
     {
       name     = "ARBITRUM_RPC_URL"
-      valueFrom = aws_secretsmanager_secret.ARBITRUM_RPC_URL.arn
+      valueFrom = aws_secretsmanager_secret.RUG_API_ARBITRUM_RPC_URL.arn
     },
     {
       name     = "BASE_RPC_URL"
-      valueFrom = aws_secretsmanager_secret.BASE_RPC_URL.arn
+      valueFrom = aws_secretsmanager_secret.RUG_API_BASE_RPC_URL.arn
     }
   ]
   custom_policy = {
