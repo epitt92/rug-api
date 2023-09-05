@@ -212,7 +212,7 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
 
     if status:
         # The token is queued for analysis by another user, returning this
-        return response.json()
+        return response.get("data")
 
     data = response.get("data")
 
