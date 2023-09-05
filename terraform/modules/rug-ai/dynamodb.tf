@@ -59,3 +59,18 @@ resource "aws_dynamodb_table" "rugsource_code_table" {
 
 }
 
+resource "aws_dynamodb_table" "feeds_table" {
+  name         = "feeds"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "feedtype"
+  range_key      = "timestamp"
+
+  attribute {
+    name = "feedtype"
+    type = "S"
+  }
+  attribute {
+    name = "timestamp"
+    type = "N"
+  }
+}

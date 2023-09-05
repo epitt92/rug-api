@@ -140,7 +140,7 @@ def get_block_explorer_data(chain: ChainEnum, token_address: str):
             output['totalSupply'] = int(data['totalSupply']) / (10 ** int(data['divisor']))
 
             # TODO: Temporarily make circulating supply the same as total supply
-            output['circulatingSupply'] = data['totalSupply']
+            output['circulatingSupply'] = output['totalSupply']
             output['totalSupplyPercentage'] = 1.0
 
             output['website'] = data['website'] if data['website'] != '' else None
