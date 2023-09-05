@@ -319,14 +319,18 @@ async def get_score_info(chain: ChainEnum, token_address: str):
         
         # Calculate and return the geometric mean of all valid score contributors
 
-        output = 1.0
+        output, N = 1.0, 0
         for score in _scores:
             if score == 0:
                 return 0.0
             elif score:
                 output *= score
+                N += 1
 
-        return math.pow(output, 1.0 / len(_scores))
+        if N == 0:
+            return 0.0
+
+        return math.pow(output, 1.0 / N)
 
     # Format response into ScoreResponse format object
     score = ScoreResponse(overallScore=calculate_overall_score(scores), 
