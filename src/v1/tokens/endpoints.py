@@ -205,7 +205,12 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
 
     response = response.json()
 
-    if response.get("data").get("status") == 102:
+    try:
+        status = response.get("data").get("status")
+    except:
+        status = None
+
+    if status:
         # The token is queued for analysis by another user, returning this
         return response.json()
 
@@ -312,14 +317,14 @@ async def get_score_info(chain: ChainEnum, token_address: str):
     def calculate_overall_score(scores: List[Score]) -> float:
         _scores = [score.value for score in scores]
         
-        # Filter out None type entries
-        _scores = [score for score in _scores if score]
-
         # Calculate and return the geometric mean of all valid score contributors
 
         output = 1.0
         for score in _scores:
-            output *= score
+            if score == 0:
+                return 0.0
+            elif score:
+                output *= score
 
         return math.pow(output, 1.0 / len(_scores))
 
