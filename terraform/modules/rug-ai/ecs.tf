@@ -33,13 +33,14 @@ module "rug_app_service" {
   lb_arn                   = aws_alb.rug_ai.arn
   cluster_id               = data.aws_ssm_parameter.ecs_cluster_id_parameter_store.value
   cluster_name             = data.aws_ssm_parameter.ecs_cluster_name_parameter_store.value
+  desired_count            = var.stage == "dev" ? 1 : 2
   container_port           = 80
   autoscaling_enabled      = var.autoscaling_enabled
   autoscaling_cpu_target   = 70
   autoscaling_max_capacity = 4
   backend_config = {
-    cpu    = var.stage == "dev" ? 512 : 8192
-    memory = var.stage == "dev" ? 1024 : 16384
+    cpu    = var.stage == "dev" ? 512 : 1024
+    memory = var.stage == "dev" ? 1024 : 2048
   }
   docker_image_backend                    = replace("${var.rug_ecr_image}", " ", "")
   gitlab_credentials_parameter_secret_arn = ""
