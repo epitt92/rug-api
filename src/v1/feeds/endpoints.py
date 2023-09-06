@@ -33,17 +33,17 @@ async def post_event_click(eventHash: str, userId: str):
 
 
 @router.post("/tokenview")
-async def post_token_view(chain: ChainEnum, token_address: str, userId: str):
-    validate_token_address(token_address)
+async def post_token_view(chain: ChainEnum, tokenAddress: str, userId: str):
+    validate_token_address(tokenAddress)
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
-    data = {'chain': _chain, 'token_address': token_address.lower(), 'userId': userId}
+    data = {'chain': _chain, 'token_address': tokenAddress.lower(), 'userId': userId}
     write_client.post(table_name='reviewlogs', message=data)
-    return {"message": f"Token view for token {token_address} on chain {chain} recorded."}
+    return {"message": f"Token view for token {tokenAddress} on chain {chain} recorded."}
 
 
 @router.get("/mostviewed")
 async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
-    # Fetch (chain, token_address) pairs for most viewed tokens
+    # Fetch (chain, tokenAddress) pairs for most viewed tokens
     if limit > 100:
         limit = 100
 
@@ -62,21 +62,21 @@ async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
     def process_row(row):
         try:
             chain = row['Data'][0]['ScalarValue']
-            token_address = row['Data'][1]['ScalarValue']
+            tokenAddress = row['Data'][1]['ScalarValue']
             count = int(row['Data'][2]['ScalarValue'])
         except Exception as e:
-            logging.error(f'An exception occurred whilst processing the row with chain {chain}, token_address {token_address} and count {count}: {e}')
+            logging.error(f'An exception occurred whilst processing the row with chain {chain}, tokenAddress {tokenAddress} and count {count}: {e}')
             return None
         
         try:
-            validate_token_address(token_address)
+            validate_token_address(tokenAddress)
         except Exception as e:
-            logging.error(f'An exception occurred whilst validating the token address {token_address} on chain {chain}: {e}')
+            logging.error(f'An exception occurred whilst validating the token address {tokenAddress} on chain {chain}: {e}')
             return None
 
         return {
             'chain': row['Data'][0]['ScalarValue'],
-            'token_address': row['Data'][1]['ScalarValue'],
+            'tokenAddress': row['Data'][1]['ScalarValue'],
             'count': int(row['Data'][2]['ScalarValue'])
         }
 
@@ -87,32 +87,35 @@ async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
     
     output = []
     for item in result:
-        if item.get('token_address') and item.get('chain'):
-            logging.info(f'Fetching token details for token {item.get("token_address")} on chain {item.get("chain")}...')
+        if item.get('tokenAddress') and item.get('chain'):
+            logging.info(f'Fetching token details for token {item.get("tokenAddress")} on chain {item.get("chain")}...')
             try:
-                token_contract_info = await get_token_details(item.get('chain'), item.get('token_address'))
+                token_contract_info = await get_token_details(item.get('chain'), item.get('tokenAddress'))
             except Exception as e:
-                logging.error(f'An exception occurred whilst fetching token details for token {item.get("token_address")} on chain {item.get("chain")}: {e}')
+                logging.error(f'An exception occurred whilst fetching token details for token {item.get("tokenAddress")} on chain {item.get("chain")}: {e}')
                 continue
 
             logging.info(f'Token name and symbol identified as {token_contract_info.get("name")} ({token_contract_info.get("symbol")})')
 
-            score_info = await get_score_info(eval(f"ChainEnum.{item.get('chain')}"), item.get('token_address'))
-            score = score_info.overallScore
+            try:
+                score_info = await get_score_info(eval(f"ChainEnum.{item.get('chain')}"), item.get('tokenAddress'))
+            except Exception as e:
+                logging.error(f'An exception occurred whilst fetching score info for token {item.get("tokenAddress")} on chain {item.get("chain")}: {e}')
+                score_info = None
 
             output.append({
                 'name': token_contract_info.get('name'),
                 'symbol': token_contract_info.get('symbol'),
-                'token_address': item.get('token_address'),
+                'tokenAddress': item.get('tokenAddress'),
                 'chain': get_chain(item.get('chain')),
-                'score': score})
+                'score': score_info})
 
     return output
 
 
 @router.get("/topevents")
 async def get_most_viewed_events(limit: int = 10, numMinutes: int = 30):
-    # Fetch (chain, token_address) pairs for most viewed tokens
+    # Fetch (chain, tokenAddress) pairs for most viewed tokens
     if limit > 100:
         limit = 100
 
@@ -235,9 +238,9 @@ async def get_token_events(number_of_events: int = 50):
     # Return the data as a list of dictionaries
     return pdf.to_dict('records')
 
-@router.get('tokendetails/{chain}/{token_address}')
-async def get_token_details(chain: ChainEnum, token_address: str):
-    token_address = token_address.lower()
-    validate_token_address(token_address)
-    token_details = await get_token_contract_details(chain, token_address)
+@router.get('tokendetails/{chain}/{tokenAddress}')
+async def get_token_details(chain: ChainEnum, tokenAddress: str):
+    tokenAddress = tokenAddress.lower()
+    validate_token_address(tokenAddress)
+    token_details = await get_token_contract_details(chain, tokenAddress)
     return token_details
