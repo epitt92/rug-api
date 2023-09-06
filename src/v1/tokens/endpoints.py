@@ -261,9 +261,9 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
 
     try:
         response = requests.get(URL)
-        response.raise_for_status()
     except Exception as e:
-        raise e
+        logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
+        return None
     
     response = response.json()
 
@@ -280,19 +280,20 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
     
 
 @router.get("/holderchart/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=True)
-async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: int = 10):
+async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: int = 5):
     validate_token_address(token_address)
 
     URL = os.environ.get('ML_API_URL') + f'/v1/clustering/holders/{chain.value}/{token_address.lower()}'
 
     try:
         response = requests.get(URL)
-        response.raise_for_status()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch holder data for {token_address} on chain {chain.value}: {e}")
+        logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
+        raise e
 
     data = response.json()
-    top_holders = sorted(data.keys(), key=lambda k: data[k]["numTokens"], reverse=True)[:numClusters]
+
+    top_holders = sorted(data.keys(), key=lambda k: data[k]["percentTokens"], reverse=True)[:numClusters]
 
     holders = {holder: data[holder] for holder in top_holders}
 
