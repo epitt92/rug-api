@@ -22,7 +22,7 @@ data "aws_ssm_parameter" "rug_timestream_db_arn_parameter_store" {
 }
 
 module "rug_app_service" {
-  source = "git::https://github.com/diffusion-io/rug-terraform.git//modules/ecs-with-loadbalancer?ref=v0.0.5"
+  source = "git::https://github.com/diffusion-io/rug-terraform.git//modules/ecs-with-loadbalancer?ref=v0.0.9"
 
   prefix                   = "rug-ai"
   region                   = var.region
@@ -33,11 +33,12 @@ module "rug_app_service" {
   lb_arn                   = aws_alb.rug_ai.arn
   cluster_id               = data.aws_ssm_parameter.ecs_cluster_id_parameter_store.value
   cluster_name             = data.aws_ssm_parameter.ecs_cluster_name_parameter_store.value
-  desired_count            = var.stage == "dev" ? 1 : 2
+  desired_count            = 2
   container_port           = 80
   autoscaling_enabled      = var.autoscaling_enabled
   autoscaling_cpu_target   = 70
-  autoscaling_max_capacity = 4
+  autoscaling_max_capacity = 8
+  autoscaling_min_capacity = 2
   backend_config = {
     cpu    = var.stage == "dev" ? 512 : 1024
     memory = var.stage == "dev" ? 1024 : 2048
