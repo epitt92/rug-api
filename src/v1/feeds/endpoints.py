@@ -181,10 +181,30 @@ async def get_most_viewed_token_result(limit: int = 10, numMinutes: int = 30):
             score_ = score_info.json() if score_info else None
 
             if chain_:
-                chain_ = json.loads(chain_)
+                try:
+                    if isinstance(chain_, str):
+                        chain_ = json.loads(chain_)
+                    elif isinstance(chain_, dict):
+                        chain_ = chain_
+                    else:
+                        logging.error(f'Chain was an unexpected type: {type(chain_)}')
+                        chain_ = None
+                except Exception as e:
+                    logging.error(f'An exception occurred whilst parsing the chain info for token {item.get("tokenAddress")} on chain {item.get("chain")}: {e}')
+                    chain_ = None
 
             if score_:
-                score_ = json.loads(score_)
+                try:
+                    if isinstance(score_, str):
+                        score_ = json.loads(score_)
+                    elif isinstance(score_, dict):
+                        score_ = score_
+                    else:
+                        logging.error(f'Score was an unexpected type: {type(score_)}')
+                        score_ = None
+                except Exception as e:
+                    logging.error(f'An exception occurred whilst parsing the score info for token {item.get("tokenAddress")} on chain {item.get("chain")}: {e}')
+                    score_ = None
 
             output.append({
                 'name': token_contract_info.get('name'),
@@ -370,7 +390,17 @@ async def get_most_viewed_events_result(limit: int = 10, numMinutes: int = 30):
                 score_ = score_info.json() if score_info else None
 
                 if score_:
-                    score_ = json.loads(score_)
+                    try:
+                        if isinstance(score_, str):
+                            score_ = json.loads(score_)
+                        elif isinstance(score_, dict):
+                            score_ = score_
+                        else:
+                            logging.error(f'Score was an unexpected type: {type(score_)}')
+                            score_ = None
+                    except Exception as e:
+                        logging.error(f'An exception occurred whilst parsing the score info for token {item.get("address")} on chain {item.get("blockchain")}: {e}')
+                        score_ = None
 
                 output[idx]['score'] = score_
             except Exception as e:
