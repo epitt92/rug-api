@@ -279,7 +279,7 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
     return response
     
 
-@router.get("/holderchart/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=True)
+@router.get("/holderchart/{chain}/{token_address}", include_in_schema=True)
 async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: int = 5):
     validate_token_address(token_address)
 
