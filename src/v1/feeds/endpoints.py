@@ -70,9 +70,30 @@ async def get_most_viewed_tokens(limit: int = 50, numMinutes: int = 60):
                     output = _most_viewed_tokens.get('value')
                     for idx, item in enumerate(output):
                         if item.get('chain'):
-                            output[idx]['chain'] = json.loads(item['chain'])
+                            try:
+                                if isinstance(item.get('chain'), str):
+                                    output[idx]['chain'] = json.loads(item['chain'])
+                                elif isinstance(item.get('chain'), dict):
+                                    output[idx]['chain'] = item.get('chain')
+                                else:
+                                    logging.error(f'Chain was an unexpected type: {type(item.get("chain"))}')
+                                    output[idx]['chain'] = None
+                            except Exception as e:
+                                logging.error(f'An exception occurred whilst parsing the chain info {item.get("chain")}: {e}')
+                                output[idx]['chain'] = None
+                                
                         if item.get('score'):
-                            output[idx]['score'] = json.loads(item['score'])
+                            try:
+                                if isinstance(item.get('score'), str):
+                                    output[idx]['score'] = json.loads(item['score'])
+                                elif isinstance(item.get('score'), dict):
+                                    output[idx]['score'] = item.get('score')
+                                else:
+                                    logging.error(f'Score was an unexpected type: {type(item.get("score"))}')
+                                    output[idx]['score'] = None
+                            except Exception as e:
+                                logging.error(f'An exception occurred whilst parsing the score info {item.get("score")}: {e}')
+                                output[idx]['score'] = None
         
                     return output
             found = False
