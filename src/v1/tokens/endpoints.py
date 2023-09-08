@@ -42,7 +42,7 @@ SUPPLY_REPORT_DAO = DAO("supplyreports")
 TRANSFERRABILITY_REPORT_DAO = DAO("transferrabilityreports")
 TOKEN_METRICS_DAO = DAO("tokenmetrics")
 
-@router.get("/info/{chain}/{token_address}", include_in_schema=True)
+@router.get("/supplytransferrabilityinfo/{chain}/{token_address}", include_in_schema=True)
 async def get_supply_transferrability_info(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
 
