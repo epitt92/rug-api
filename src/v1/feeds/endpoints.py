@@ -1,10 +1,13 @@
 from fastapi import APIRouter
-import random, json, boto3, os, dotenv, pandas as pd, logging
+import random, json, boto3, os, dotenv, pandas as pd, logging, time, ast
 from botocore.exceptions import ClientError
+from decimal import Decimal
 
+from src.v1.feeds.constants import TOP_EVENTS_STALENESS_THRESHOLD, TOP_EVENTS_LIMIT, MOST_VIEWED_TOKENS_STALENESS_THRESHOLD, MOST_VIEWED_TOKENS_LIMIT
 from src.v1.feeds.schemas import FeedResponse, Token
 from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter
 from src.v1.shared.models import ChainEnum
+from src.v1.shared.DAO import DAO
 from src.v1.tokens.endpoints import get_token_metrics, get_score_info
 from src.v1.shared.exceptions import validate_token_address
 from src.v1.shared.dependencies import get_token_contract_details, get_chain
@@ -22,8 +25,8 @@ write_client = TimestreamEventAdapter()
 
 router = APIRouter()
 
-# TODO: Must add database caching for these queries as they are very expensive and likely to return identical data for all users
-# What is the optimal way to cache these?
+# DynamoDB Access Object
+FEEDS_DAO = DAO("feeds")
 
 @router.post("/eventclick")
 async def post_event_click(eventHash: str, userId: str):
@@ -42,7 +45,78 @@ async def post_token_view(chain: ChainEnum, tokenAddress: str, userId: str):
 
 
 @router.get("/mostviewed")
-async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
+async def get_most_viewed_tokens(limit: int = 50, numMinutes: int = 60):
+    # Add a DAO check for both supply and transferrability summary
+    _most_viewed_tokens = FEEDS_DAO.find_most_recent_by_pk("mostviewed")
+    
+    logging.info(f'Fetching most viewed tokens with limit {limit} and numMinutes {numMinutes}...')
+
+    current_time, found = int(time.time()), False
+
+    if _most_viewed_tokens:
+        # Check the timestamp on the most recent saved value
+        timestamp = _most_viewed_tokens.get('timestamp')
+
+        # If the timestamp exists in the response, check whether it is valid
+        if timestamp:
+            value = _most_viewed_tokens.get('value')
+            # If the timestamp is less than an hour old, return the cached value
+            if value and (current_time - timestamp < MOST_VIEWED_TOKENS_STALENESS_THRESHOLD):
+                if len(value) < MOST_VIEWED_TOKENS_LIMIT:
+                    found = False
+                else:
+                    found = True
+                    # Parsing the dictionary objects from the DAO result
+                    output = _most_viewed_tokens.get('value')
+                    for idx, item in enumerate(output):
+                        if item.get('chain'):
+                            output[idx]['chain'] = json.loads(item['chain'])
+                        if item.get('score'):
+                            output[idx]['score'] = json.loads(item['score'])
+        
+                    return output
+            found = False
+
+    output = None
+
+    if not found:
+        logging.info(f'No cached value found for most viewed tokens. Calculating from scratch...')
+        output = await get_most_viewed_token_result(limit, numMinutes)
+
+        logging.info(f'Length of calculated most viewed tokens: {len(output)}')
+        if not output:
+            return []
+        
+        def convert_floats_to_decimals(data):
+            if isinstance(data, dict):
+                for key, value in data.items():
+                    data[key] = convert_floats_to_decimals(value)
+                return data
+            elif isinstance(data, list):
+                return [convert_floats_to_decimals(item) for item in data]
+            elif isinstance(data, float):
+                return Decimal(str(data))
+            else:
+                return data
+            
+        output = convert_floats_to_decimals(output)
+        
+        # Write the output to the DAO if it has sufficient length
+        if len(output) > MOST_VIEWED_TOKENS_LIMIT:
+            try:
+                logging.info(f'Writing most viewed tokens to DAO...')
+                FEEDS_DAO.insert_one(partition_key_value="mostviewed", item={'timestamp': int(time.time()), 'value': output})
+            except ClientError as e:
+                logging.warning(f'An unknown boto3 exception occurred while writing most viewed tokens to DAO: {e}')
+                return []
+            except Exception as e:
+                logging.warning(f'An unknown exception occurred while writing most viewed tokens to DAO: {e}')
+                return []
+            
+    return output if output else []
+
+
+async def get_most_viewed_token_result(limit: int = 10, numMinutes: int = 30):
     # Fetch (chain, tokenAddress) pairs for most viewed tokens
     if limit > 100:
         limit = 100
@@ -65,7 +139,7 @@ async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
             tokenAddress = row['Data'][1]['ScalarValue']
             count = int(row['Data'][2]['ScalarValue'])
         except Exception as e:
-            logging.error(f'An exception occurred whilst processing the row with chain {chain}, tokenAddress {tokenAddress} and count {count}: {e}')
+            logging.error(f'An exception occurred whilst processing the row: {row}.\n\n Exception: {e}')
             return None
         
         try:
@@ -103,18 +177,98 @@ async def get_most_viewed_tokens(limit: int = 10, numMinutes: int = 30):
                 logging.error(f'An exception occurred whilst fetching score info for token {item.get("tokenAddress")} on chain {item.get("chain")}: {e}')
                 score_info = None
 
+            chain_ = get_chain(item.get('chain')).json()
+            score_ = score_info.json() if score_info else None
+
+            if chain_:
+                chain_ = json.loads(chain_)
+
+            if score_:
+                score_ = json.loads(score_)
+
             output.append({
                 'name': token_contract_info.get('name'),
                 'symbol': token_contract_info.get('symbol'),
                 'tokenAddress': item.get('tokenAddress'),
-                'chain': get_chain(item.get('chain')),
-                'score': score_info})
+                'chain': chain_,
+                'score': score_})
 
     return output
 
 
 @router.get("/topevents")
-async def get_most_viewed_events(limit: int = 10, numMinutes: int = 30):
+async def get_top_events(limit: int = 50, numMinutes: int = 60):
+    # Add a DAO check for both supply and transferrability summary
+    _top_events = FEEDS_DAO.find_most_recent_by_pk("topevents")
+    
+    logging.info(f'Fetching most viewed tokens with limit {limit} and numMinutes {numMinutes}...')
+
+    current_time, found = int(time.time()), False
+
+    if _top_events:
+        # Check the timestamp on the most recent saved value
+        timestamp = _top_events.get('timestamp')
+
+        # If the timestamp exists in the response, check whether it is valid
+        if timestamp:
+            value = _top_events.get('value')
+            # If the timestamp is less than an hour old, return the cached value
+            if value and (current_time - timestamp < TOP_EVENTS_STALENESS_THRESHOLD):
+                if len(value) < TOP_EVENTS_LIMIT:
+                    found = False
+                else:
+                    found = True
+                    # Parsing the dictionary objects from the DAO result
+                    output = _top_events.get('value')
+                    # for idx, item in enumerate(output):
+                    #     if item.get('chain'):
+                    #         output[idx]['chain'] = json.loads(item['chain'])
+                    #     if item.get('score'):
+                    #         output[idx]['score'] = json.loads(item['score'])
+        
+                    return output
+            found = False
+
+    output = None
+
+    if not found:
+        logging.info(f'No cached value found for top events. Calculating from scratch...')
+        output = await get_most_viewed_events_result(limit, numMinutes)
+
+        logging.info(f'Length of calculated top events: {len(output)}')
+        if not output:
+            return []
+        
+        def convert_floats_to_decimals(data):
+            if isinstance(data, dict):
+                for key, value in data.items():
+                    data[key] = convert_floats_to_decimals(value)
+                return data
+            elif isinstance(data, list):
+                return [convert_floats_to_decimals(item) for item in data]
+            elif isinstance(data, float):
+                return Decimal(str(data))
+            else:
+                return data
+            
+        output = convert_floats_to_decimals(output)
+        
+        # Write the output to the DAO if it has sufficient length
+        if len(output) > TOP_EVENTS_LIMIT:
+            try:
+                logging.info(f'Writing top events to DAO...')
+                FEEDS_DAO.insert_one(partition_key_value="topevents", item={'timestamp': int(time.time()), 'value': output})
+            except ClientError as e:
+                logging.warning(f'An unknown boto3 exception occurred while writing top events to DAO: {e}')
+                return []
+            except Exception as e:
+                logging.warning(f'An unknown exception occurred while writing top events to DAO: {e}')
+                return []
+            
+    return output if output else []
+
+
+async def get_most_viewed_events_result(limit: int = 10, numMinutes: int = 30):
     # Fetch (chain, tokenAddress) pairs for most viewed tokens
     if limit > 100:
         limit = 100
@@ -136,6 +290,8 @@ async def get_most_viewed_events(limit: int = 10, numMinutes: int = 30):
             logging.warning(f'An exception occurred whilst querying the database due to a validation error: {e}')
             logging.warning(f'The query used was: {query}')
             return []
+        
+    logging.info(f'Length of response: {len(response["Rows"])}')
 
     def process_row(row):
         try:
@@ -148,6 +304,9 @@ async def get_most_viewed_events(limit: int = 10, numMinutes: int = 30):
             return
 
     result = [process_row(row).get('eventHash') for row in response["Rows"]]
+    result = [row for row in result if row]
+
+    logging.info(f'Length of result: {len(result)}')
 
     if len(result) == 0:
         return []
@@ -185,19 +344,40 @@ async def get_most_viewed_events(limit: int = 10, numMinutes: int = 30):
         except Exception as e:
             logging.error(f'process_row(row) error: {e}')
             return
+        
+    logging.info(f'Length of response["Rows"]: {len(response["Rows"])}')
 
     processed_rows = [process_row(row) for row in response["Rows"]]
+    processed_rows = [row for row in processed_rows if row]
+
+    logging.info(f'Length of processed_rows: {len(processed_rows)}')
 
     if len(processed_rows) == 0:
         return []
-
+    
     try:
         # Handle the data as a pandas dataframe to pivot the data
         df = pd.DataFrame(processed_rows).drop(['time', 'address', 'blockchain', 'timestamp'], axis=1).drop_duplicates()
         pdf = df.pivot(index='eventHash', columns='measureName', values='value')
         # Convert the timestamp to an integer
         pdf['timestamp'] = pdf['timestamp'].apply(lambda x: int(float(x)))
-        return pdf.to_dict('records')
+
+        output = pdf.to_dict('records')
+
+        for idx, item in enumerate(output):
+            try:
+                score_info = await get_score_info(eval(f"ChainEnum.{item.get('blockchain')}"), item.get('address'))
+                score_ = score_info.json() if score_info else None
+
+                if score_:
+                    score_ = json.loads(score_)
+
+                output[idx]['score'] = score_
+            except Exception as e:
+                logging.error(f'An exception occurred whilst fetching score info for token {item.get("address")} on chain {item.get("blockchain")}: {e}')
+                output[idx]['score'] = None
+
+        return output
     except KeyError as e:
         logging.error(f'A KeyError exception was thrown during the DataFrame processing step: {e}')
         return []
@@ -238,7 +418,8 @@ async def get_token_events(number_of_events: int = 50):
     # Return the data as a list of dictionaries
     return pdf.to_dict('records')
 
-@router.get('tokendetails/{chain}/{tokenAddress}')
+
+@router.get('/tokendetails/{chain}/{tokenAddress}')
 async def get_token_details(chain: ChainEnum, tokenAddress: str):
     tokenAddress = tokenAddress.lower()
     validate_token_address(tokenAddress)

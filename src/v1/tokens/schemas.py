@@ -136,23 +136,23 @@ class SocialMedia(BaseModel):
     buyLink: Optional[HttpUrl] = None
 
 class MarketData(BaseModel):
-    lockedLiquidity: float = None
-    burnedLiquidity: float = None
-    buyTax: float = None
-    sellTax: float = None
-    liquidityUsd: float = None
-    liquiditySingleSided: float = None
-    volume24h: float = None
-    circulatingSupply: float = None
-    totalSupply: float = None
-    totalSupplyPercentage: float = None
+    lockedLiquidity: Optional[float] = None
+    burnedLiquidity: Optional[float] = None
+    buyTax: Optional[float] = None
+    sellTax: Optional[float] = None
+    liquidityUsd: Optional[float] = None
+    liquiditySingleSided: Optional[float] = None
+    volume24h: Optional[float] = None
+    circulatingSupply: Optional[float] = None
+    totalSupply: Optional[float] = None
+    totalSupplyPercentage: Optional[float] = None
 
 class TokenMetadata(TokenBase, SocialMedia, MarketData):
-    contractDeployer: str = None
-    lastUpdatedTimestamp: int = None
-    txCount: int = None
-    holders: int = None
-    latestPrice: float = None
+    contractDeployer: Optional[str] = None
+    lastUpdatedTimestamp: Optional[int] = None
+    txCount: Optional[int] = None
+    holders: Optional[int] = None
+    latestPrice: Optional[float] = None
 
 ######################################################
 #                                                    #
@@ -163,7 +163,7 @@ class TokenMetadata(TokenBase, SocialMedia, MarketData):
 class TokenInfoResponse(BaseModel):
     tokenSummary: TokenMetadata = None
     score: ScoreResponse = None
-    holderChart: ClusterResponse = None
+    holderChart: Optional[ClusterResponse] = None
 
 class TokenReviewResponse(TokenInfoResponse):
     supplySummary: ContractResponse = None

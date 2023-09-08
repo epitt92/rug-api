@@ -42,7 +42,7 @@ SUPPLY_REPORT_DAO = DAO("supplyreports")
 TRANSFERRABILITY_REPORT_DAO = DAO("transferrabilityreports")
 TOKEN_METRICS_DAO = DAO("tokenmetrics")
 
-@router.get("info/{chain}/{token_address}", include_in_schema=True)
+@router.get("/supplytransferrabilityinfo/{chain}/{token_address}", include_in_schema=True)
 async def get_supply_transferrability_info(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
 
@@ -279,7 +279,7 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
     return response
     
 
-@router.get("/holderchart/{chain}/{token_address}", response_model=ClusterResponse, include_in_schema=True)
+@router.get("/holderchart/{chain}/{token_address}", include_in_schema=True)
 async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: int = 5):
     validate_token_address(token_address)
 
@@ -287,19 +287,24 @@ async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: in
 
     try:
         response = requests.get(URL)
+        response.raise_for_status()
     except Exception as e:
         logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
-        raise e
+        return None
 
-    data = response.json()
+    try:
+        data = response.json()
 
-    top_holders = sorted(data.keys(), key=lambda k: data[k]["percentTokens"], reverse=True)[:numClusters]
+        top_holders = sorted(data.keys(), key=lambda k: data[k]["percentTokens"], reverse=True)[:numClusters]
 
-    holders = {holder: data[holder] for holder in top_holders}
+        holders = {holder: data[holder] for holder in top_holders}
 
-    clusters = [Cluster(members=[Holder(address=holder, numTokens=float(holders[holder]["numTokens"]), percentage=float(holders[holder]["percentTokens"]))]) for holder in holders]
-    
-    return ClusterResponse(clusters=clusters)
+        clusters = [Cluster(members=[Holder(address=holder, numTokens=float(holders[holder]["numTokens"]), percentage=float(holders[holder]["percentTokens"]))]) for holder in holders]
+        
+        return ClusterResponse(clusters=clusters)
+    except Exception as e:
+        logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
+        return None
 
 
 @router.get("/score/{chain}/{token_address}", response_model=ScoreResponse, include_in_schema=True)
