@@ -305,6 +305,46 @@ async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: in
     except Exception as e:
         logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
         return None
+    
+
+async def get_clustering_summary_from_cache(chain, token_address):
+    validate_token_address(token_address)
+
+    URL = os.environ.get('ML_API_URL') + f'/v1/clustering/cache/{chain.value}/{token_address.lower()}'
+
+    try:
+        response = requests.get(URL)
+        response.raise_for_status()
+    except Exception as e:
+        logging.error(f'An exception occurred whilst trying to fetch clustering data from cache for token {token_address} on chain {chain}: {e}')
+        return None
+    
+    try:
+        data = response.json()
+        return data.get('data')
+    except Exception as e:
+        logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
+        return None
+
+
+async def get_audit_summary_from_cache(chain, token_address):
+    validate_token_address(token_address)
+
+    URL = os.environ.get('ML_API_URL') + f'/v1/audit/cache/{chain.value}/{token_address.lower()}'
+
+    try:
+        response = requests.get(URL)
+        response.raise_for_status()
+    except Exception as e:
+        logging.error(f'An exception occurred whilst trying to fetch clustering data from cache for token {token_address} on chain {chain}: {e}')
+        return None
+
+    try:
+        data = response.json()
+        return data.get('data')
+    except Exception as e:
+        logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
+        return None
 
 
 @router.get("/score/{chain}/{token_address}", response_model=ScoreResponse, include_in_schema=True)
@@ -312,11 +352,23 @@ async def get_score_info(chain: ChainEnum, token_address: str):
     # Fetch required data from various sources
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
+    liquiditySummary = await get_clustering_summary_from_cache(chain, token_address)
+
+    auditSummary = await get_audit_summary_from_cache(chain, token_address)
+
     # Format data into Score format objects
     supply = Score(value=supplySummary.score, description=supplySummary.description)
     transferrability = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
-    liquidity = Score(value=None, description=None)
-    audit = Score(value=None, description=None)
+
+    if liquiditySummary:
+        liquidity = Score(value=liquiditySummary.get('score'), description=liquiditySummary.get('description'))
+    else:
+        liquidity = Score(value=None, description=None)
+
+    if auditSummary:
+        audit = Score(value=float(auditSummary.get('tokenScore')), description=auditSummary.get('tokenSummary')[:512])
+    else:
+        audit = Score(value=None, description=None)
 
     scores = [supply, transferrability, liquidity, audit]
 
