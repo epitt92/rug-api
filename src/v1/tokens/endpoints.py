@@ -283,25 +283,83 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
 async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: int = 5):
     validate_token_address(token_address)
 
-    URL = os.environ.get('ML_API_URL') + f'/v1/clustering/holders/{chain.value}/{token_address.lower()}'
+    cluster_summary = await get_clustering_summary_from_cache(chain, token_address)
+
+    if not cluster_summary:
+        URL = os.environ.get('ML_API_URL') + f'/v1/clustering/holders/{chain.value}/{token_address.lower()}'
+
+        try:
+            response = requests.get(URL)
+            response.raise_for_status()
+        except Exception as e:
+            logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
+            return None
+
+        try:
+            data = response.json()
+
+            top_holders = sorted(data.keys(), key=lambda k: data[k]["percentTokens"], reverse=True)[:numClusters]
+
+            holders = {holder: data[holder] for holder in top_holders}
+
+            clusters = [Cluster(members=[Holder(address=holder, numTokens=float(holders[holder]["numTokens"]), percentage=float(holders[holder]["percentTokens"]))]) for holder in holders]
+            
+            return ClusterResponse(clusters=clusters)
+        except Exception as e:
+            logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
+            return None
+    
+    # Fetch components
+    components = cluster_summary.get('components')[:numClusters]
+
+    clusters = []
+    for component in components:
+        nodes, nodePercentages = component.get('nodes'), component.get('nodePercentages')
+        label = component.get('componentType')
+
+        assert(len(nodes) == len(nodePercentages))
+
+        members = [Holder(address=nodes[i], percentage=nodePercentages[i]) for i in range(len(nodes))]
+        clusters.append(Cluster(members=members, label=label))
+    
+    return ClusterResponse(clusters=clusters)
+
+
+async def get_clustering_summary_from_cache(chain, token_address):
+    validate_token_address(token_address)
+
+    URL = os.environ.get('ML_API_URL') + f'/v1/clustering/cache/{chain.value}/{token_address.lower()}'
 
     try:
         response = requests.get(URL)
         response.raise_for_status()
     except Exception as e:
+        logging.error(f'An exception occurred whilst trying to fetch clustering data from cache for token {token_address} on chain {chain}: {e}')
+        return None
+    
+    try:
+        data = response.json()
+        return data.get('data')
+    except Exception as e:
         logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
+        return None
+
+
+async def get_audit_summary_from_cache(chain, token_address):
+    validate_token_address(token_address)
+
+    URL = os.environ.get('ML_API_URL') + f'/v1/audit/cache/{chain.value}/{token_address.lower()}'
+
+    try:
+        response = requests.get(URL)
+        response.raise_for_status()
+    except Exception as e:
+        logging.error(f'An exception occurred whilst trying to fetch clustering data from cache for token {token_address} on chain {chain}: {e}')
         return None
 
     try:
         data = response.json()
-
-        top_holders = sorted(data.keys(), key=lambda k: data[k]["percentTokens"], reverse=True)[:numClusters]
-
-        holders = {holder: data[holder] for holder in top_holders}
-
-        clusters = [Cluster(members=[Holder(address=holder, numTokens=float(holders[holder]["numTokens"]), percentage=float(holders[holder]["percentTokens"]))]) for holder in holders]
-        
-        return ClusterResponse(clusters=clusters)
+        return data.get('data')
     except Exception as e:
         logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
         return None
@@ -312,11 +370,23 @@ async def get_score_info(chain: ChainEnum, token_address: str):
     # Fetch required data from various sources
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
+    liquiditySummary = await get_clustering_summary_from_cache(chain, token_address)
+
+    auditSummary = await get_audit_summary_from_cache(chain, token_address)
+
     # Format data into Score format objects
     supply = Score(value=supplySummary.score, description=supplySummary.description)
     transferrability = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
-    liquidity = Score(value=None, description=None)
-    audit = Score(value=None, description=None)
+
+    if liquiditySummary:
+        liquidity = Score(value=liquiditySummary.get('score'), description=liquiditySummary.get('description'))
+    else:
+        liquidity = Score(value=None, description=None)
+
+    if auditSummary:
+        audit = Score(value=float(auditSummary.get('tokenScore')), description=auditSummary.get('tokenSummary')[:512])
+    else:
+        audit = Score(value=None, description=None)
 
     scores = [supply, transferrability, liquidity, audit]
 
