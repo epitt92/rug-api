@@ -191,6 +191,12 @@ async def get_token_metrics(chain: ChainEnum, token_address: str):
 @router.get("/audit/{chain}/{token_address}", include_in_schema=True)
 async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
+
+    _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
+
+    if _chain != 'ethereum':
+        return {'status': 400, 'detail': f'The chain {chain} is not supported for the audit report at the moment.'}
+    
     _token_address = token_address.lower()
 
     # TODO: Add support for multiple chains to this analysis
@@ -257,6 +263,11 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
 async def get_token_clustering(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
 
+    _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
+
+    if _chain != 'ethereum':
+        return {'status': 400, 'detail': f'The chain {chain} is not supported for the liquidity report at the moment.'}
+
     URL = os.environ.get('ML_API_URL') + f'/v1/clustering/{chain.value}/{token_address.lower()}'
 
     try:
@@ -282,6 +293,11 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
 @router.get("/holderchart/{chain}/{token_address}", include_in_schema=True)
 async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: int = 5):
     validate_token_address(token_address)
+
+    _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
+
+    if _chain != 'ethereum':
+        return {'status': 400, 'detail': f'The chain {chain} is not supported for this endpoint at the moment.'}
 
     cluster_summary = await get_clustering_summary_from_cache(chain, token_address)
 
@@ -325,8 +341,13 @@ async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: in
     return ClusterResponse(clusters=clusters)
 
 
-async def get_clustering_summary_from_cache(chain, token_address):
+async def get_clustering_summary_from_cache(chain: ChainEnum, token_address: str):
     validate_token_address(token_address)
+
+    _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
+
+    if _chain != 'ethereum':
+        return None
 
     URL = os.environ.get('ML_API_URL') + f'/v1/clustering/cache/{chain.value}/{token_address.lower()}'
 
@@ -347,6 +368,11 @@ async def get_clustering_summary_from_cache(chain, token_address):
 
 async def get_audit_summary_from_cache(chain, token_address):
     validate_token_address(token_address)
+
+    _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
+
+    if _chain != 'ethereum':
+        return None
 
     URL = os.environ.get('ML_API_URL') + f'/v1/audit/cache/{chain.value}/{token_address.lower()}'
 
