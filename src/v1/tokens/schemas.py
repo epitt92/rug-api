@@ -43,7 +43,6 @@ class AISummary(BaseModel):
 
 class Holder(BaseModel):
     address: str
-    numTokens: float
     percentage: float
 
     @root_validator(pre=True)
@@ -65,7 +64,7 @@ class Cluster(BaseModel):
     members: List[Holder]
     percentage: float = None
     numMembers: int = None
-    containsDeployer: bool = False
+    label: Optional[str] = None
 
     @root_validator(pre=True)
     def pre_process(cls, values):
@@ -76,6 +75,10 @@ class Cluster(BaseModel):
                 values['percentage'] += holder['percentage']
             elif isinstance(holder, Holder):
                 values['percentage'] += holder.percentage
+
+        if not values.get('label'):
+            values['label'] = 'holder'
+            
         return values
 
 class ClusterResponse(BaseModel):
