@@ -195,7 +195,7 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str):
     _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
 
     if _chain != 'ethereum':
-        return {'status': 500, 'detail': f'The chain {chain} is not supported for this endpoint at the moment.'}
+        return {'status': 400, 'detail': f'The chain {chain} is not supported for the audit report at the moment.'}
     
     _token_address = token_address.lower()
 
@@ -266,7 +266,7 @@ async def get_token_clustering(chain: ChainEnum, token_address: str):
     _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
 
     if _chain != 'ethereum':
-        return {'status': 500, 'detail': f'The chain {chain} is not supported for this endpoint at the moment.'}
+        return {'status': 400, 'detail': f'The chain {chain} is not supported for the liquidity report at the moment.'}
 
     URL = os.environ.get('ML_API_URL') + f'/v1/clustering/{chain.value}/{token_address.lower()}'
 
@@ -297,7 +297,7 @@ async def get_holder_chart(chain: ChainEnum, token_address: str, numClusters: in
     _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
 
     if _chain != 'ethereum':
-        return {'status': 500, 'detail': f'The chain {chain} is not supported for this endpoint at the moment.'}
+        return {'status': 400, 'detail': f'The chain {chain} is not supported for this endpoint at the moment.'}
 
     cluster_summary = await get_clustering_summary_from_cache(chain, token_address)
 
