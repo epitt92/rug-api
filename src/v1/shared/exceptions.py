@@ -14,9 +14,9 @@ class UnsupportedChainException(ValueError):
     Raised when an endpoint is called for a chain which is unsupported by that endpoint.
     For example, if an audit endpoint is called for a chain which does not have source code support.
     """
-    def __init__(self, chain: str, message: str = "An exception occurred when an endpoint was called for an unsupported chain."):
-        logging.error(f'{message}: {chain}')
-        super().__init__(message)
+    def __init__(self, chain: str, message: str = "An exception occurred when an endpoint was called for an unsupported chain: {}."):
+        logging.error(message.format(chain))
+        super().__init__(message.format(chain))
 
 
 class InvalidTokenAddressException(ValueError):
@@ -34,9 +34,9 @@ class GoPlusDataException(Exception):
     Raised when an API call to the GoPlus API fails.
     For example, if the endpoint has rate limited this application.
     """
-    def __init__(self, chain, token_address, message="An exception occurred while fetching data from GoPlus."):
+    def __init__(self, chain, token_address, message="An exception occurred while fetching data from GoPlus for {} on chain {}."):
         logging.error(f'An exception occurred while fetching data from GoPlus for token {token_address} on chain {chain}.')
-        super().__init__(message)
+        super().__init__(message.format(token_address, chain))
 
 
 class BlockExplorerDataException(Exception):
@@ -44,9 +44,9 @@ class BlockExplorerDataException(Exception):
     Raised when an API call to the block explorer API fails.
     For example, if the endpoint has rate limited this application.
     """
-    def __init__(self, chain, token_address, message="An exception occurred while fetching data from the block explorer."):
+    def __init__(self, chain, token_address, message="An exception occurred while fetching data from the block explorer for {} on chain {}."):
         logging.error(f'An exception occurred while fetching data from the block explorer for token {token_address} on chain {chain}.')
-        super().__init__(message)
+        super().__init__(message.format(token_address, chain))
 
 
 class DatabaseLoadFailureException(Exception):
