@@ -12,6 +12,7 @@ from src.v1.shared.exceptions import (
                                     UnsupportedChainException, OutputValidationError, 
                                     BlockExplorerDataException, InvalidTokenAddressException
                                     )
+from src.v1.chart.exceptions import CoinGeckoChartException
 
 dotenv.load_dotenv()
 
@@ -80,6 +81,13 @@ async def output_validation_error_exception_handler(request, exc: OutputValidati
 
 @app.exception_handler(GoPlusDataException)
 async def go_plus_data_exception_handler(request, exc: GoPlusDataException):
+    return JSONResponse(
+        status_code=500,  # Internal Server Error
+        content={"detail": str(exc)},
+    )
+
+@app.exception_handler(CoinGeckoChartException)
+async def go_plus_data_exception_handler(request, exc: CoinGeckoChartException):
     return JSONResponse(
         status_code=500,  # Internal Server Error
         content={"detail": str(exc)},
