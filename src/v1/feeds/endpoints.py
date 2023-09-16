@@ -470,7 +470,6 @@ async def get_token_events(number_of_events: int = 50):
     return pdf.to_dict('records')
 
 # TODO: Add more robust exception handling to this endpoint
-@router.get('/tokendetails/{chain}/{tokenAddress}')
 async def get_token_details(chain: ChainEnum, tokenAddress: str):
     tokenAddress = tokenAddress.lower()
     validate_token_address(tokenAddress)
