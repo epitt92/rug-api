@@ -8,17 +8,15 @@ from botocore.exceptions import ClientError
 from pydantic import ValidationError
 
 from src.v1.shared.dependencies import get_primary_key, get_chain
-from src.v1.shared.models import ChainEnum
 from src.v1.shared.schemas import ScoreResponse, Score
 from src.v1.shared.DAO import DAO
+from src.v1.shared.models import ChainEnum, validate_token_address
+from src.v1.shared.exceptions import RugAPIException, DatabaseLoadFailureException, DatabaseInsertFailureException, GoPlusDataException, UnsupportedChainException, OutputValidationError, BlockExplorerDataException
 
 from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
 from src.v1.tokens.dependencies import get_go_plus_summary, get_block_explorer_data, get_go_plus_data
 from src.v1.tokens.schemas import Holder, Cluster, ClusterResponse, AIComment, AISummary, TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary
-from src.v1.tokens.models import validate_token_address
-
-from src.v1.tokens.exceptions import RugAPIException, DatabaseLoadFailureException, DatabaseInsertFailureException, GoPlusDataException, UnsupportedChainException, OutputValidationError, BlockExplorerDataException
 
 from src.v1.sourcecode.endpoints import get_source_code
 

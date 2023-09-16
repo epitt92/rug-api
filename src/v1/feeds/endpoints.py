@@ -9,7 +9,7 @@ from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.DAO import DAO
 from src.v1.tokens.endpoints import get_token_metrics, get_score_info
-from src.v1.shared.exceptions import validate_token_address
+from src.v1.shared.models import validate_token_address
 from src.v1.shared.dependencies import get_token_contract_details, get_chain
 
 dotenv.load_dotenv()
