@@ -7,7 +7,7 @@ def process_market_data(market_data):
     N = len(market_data)
 
     if N == 0:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch any market data. The length of the array returned was 0.")
+        raise Exception(f"Failed to fetch any market data. The length of the array returned was 0.")
 
     output = []
     timestampArray = []
