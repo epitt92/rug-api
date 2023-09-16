@@ -24,7 +24,9 @@ class InvalidTokenAddressException(ValueError):
     Raised when an endpoint is called for a token address which is invalid.
     For example, if an endpoint is called for a token address which does not have correct length.
     """
-    pass
+    def __init__(self, message: str = "An exception occurred while validating the provided token address."):
+        logging.error(f'{message}')
+        super().__init__(message)
 
 
 class GoPlusDataException(Exception):

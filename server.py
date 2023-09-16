@@ -6,11 +6,11 @@ import dotenv
 
 from router import v1_router
 
-from src.v1.tokens.exceptions import (
+from src.v1.shared.exceptions import (
                                     RugAPIException, DatabaseLoadFailureException, 
                                     DatabaseInsertFailureException, GoPlusDataException, 
                                     UnsupportedChainException, OutputValidationError, 
-                                    BlockExplorerDataException
+                                    BlockExplorerDataException, InvalidTokenAddressException
                                     )
 
 dotenv.load_dotenv()
@@ -52,6 +52,13 @@ async def database_load_failure_exception_handler(request, exc: DatabaseLoadFail
 
 @app.exception_handler(DatabaseInsertFailureException)
 async def database_insert_failure_exception_handler(request, exc: DatabaseInsertFailureException):
+    return JSONResponse(
+        status_code=500,  # Internal Server Error
+        content={"detail": str(exc)},
+    )
+
+@app.exception_handler(InvalidTokenAddressException)
+async def invalid_token_address_exception_handler(request, exc: InvalidTokenAddressException):
     return JSONResponse(
         status_code=500,  # Internal Server Error
         content={"detail": str(exc)},
