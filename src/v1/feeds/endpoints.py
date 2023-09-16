@@ -1,14 +1,15 @@
-from fastapi import APIRouter
-import random, json, boto3, os, dotenv, pandas as pd, logging, time, ast
+from fastapi import APIRouter, Depends
+from fastapi.responses import JSONResponse
+import json, boto3, os, dotenv, pandas as pd, logging, time, ast
 from botocore.exceptions import ClientError
 from decimal import Decimal
 
 from src.v1.feeds.constants import TOP_EVENTS_STALENESS_THRESHOLD, TOP_EVENTS_LIMIT, MOST_VIEWED_TOKENS_STALENESS_THRESHOLD, MOST_VIEWED_TOKENS_LIMIT
-from src.v1.feeds.schemas import FeedResponse, Token
 from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter
+
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.DAO import DAO
-from src.v1.tokens.endpoints import get_token_metrics, get_score_info
+from src.v1.tokens.endpoints import get_score_info
 from src.v1.shared.models import validate_token_address
 from src.v1.shared.dependencies import get_token_contract_details, get_chain
 
@@ -25,25 +26,24 @@ write_client = TimestreamEventAdapter()
 
 router = APIRouter()
 
-# DynamoDB Access Object
 FEEDS_DAO = DAO("feeds")
 
 @router.post("/eventclick")
 async def post_event_click(eventHash: str, userId: str):
     data = {'eventHash': eventHash, 'userId': userId}
     write_client.post(table_name='eventlogs', message=data)
-    return {"message": f"Event view for {eventHash} recorded."}
+    return JSONResponse(status_code=200, content={"detail": f"Event view for {eventHash} from user {userId} recorded."})
 
 
 @router.post("/tokenview")
-async def post_token_view(chain: ChainEnum, tokenAddress: str, userId: str):
-    validate_token_address(tokenAddress)
+async def post_token_view(chain: ChainEnum, userId: str, token_address: str = Depends(validate_token_address)):
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
-    data = {'chain': _chain, 'token_address': tokenAddress.lower(), 'userId': userId}
+    data = {'chain': _chain, 'tokenAddress': token_address, 'userId': userId}
     write_client.post(table_name='reviewlogs', message=data)
-    return {"message": f"Token view for token {tokenAddress} on chain {chain} recorded."}
+    return JSONResponse(status_code=200, content={"detail": f"Token view for token {token_address} on chain {chain} from user {userId} recorded."})
 
 
+# TODO: Add more robust exception handling to this endpoint
 @router.get("/mostviewed")
 async def get_most_viewed_tokens(limit: int = 50, numMinutes: int = 60):
     # Add a DAO check for both supply and transferrability summary
@@ -136,7 +136,7 @@ async def get_most_viewed_tokens(limit: int = 50, numMinutes: int = 60):
             
     return output if output else []
 
-
+# TODO: Add more robust exception handling to this endpoint
 async def get_most_viewed_token_result(limit: int = 10, numMinutes: int = 30):
     # Fetch (chain, tokenAddress) pairs for most viewed tokens
     if limit > 100:
@@ -236,7 +236,7 @@ async def get_most_viewed_token_result(limit: int = 10, numMinutes: int = 30):
 
     return output
 
-
+# TODO: Add more robust exception handling to this endpoint
 @router.get("/topevents")
 async def get_top_events(limit: int = 50, numMinutes: int = 60):
     # Add a DAO check for both supply and transferrability summary
@@ -308,7 +308,7 @@ async def get_top_events(limit: int = 50, numMinutes: int = 60):
             
     return output if output else []
 
-
+# TODO: Add more robust exception handling to this endpoint
 async def get_most_viewed_events_result(limit: int = 10, numMinutes: int = 30):
     # Fetch (chain, tokenAddress) pairs for most viewed tokens
     if limit > 100:
@@ -436,7 +436,7 @@ async def get_most_viewed_events_result(limit: int = 10, numMinutes: int = 30):
         logging.error(f'An unknown exception was thrown during the DataFrame processing step: {e}')
         return []
 
-
+# TODO: Add more robust exception handling to this endpoint
 @router.get("/tokenevents", include_in_schema=True)
 async def get_token_events(number_of_events: int = 50):
     if number_of_events > 100:
@@ -469,7 +469,7 @@ async def get_token_events(number_of_events: int = 50):
     # Return the data as a list of dictionaries
     return pdf.to_dict('records')
 
-
+# TODO: Add more robust exception handling to this endpoint
 @router.get('/tokendetails/{chain}/{tokenAddress}')
 async def get_token_details(chain: ChainEnum, tokenAddress: str):
     tokenAddress = tokenAddress.lower()
