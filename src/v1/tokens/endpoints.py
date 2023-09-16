@@ -16,7 +16,7 @@ from src.v1.shared.exceptions import RugAPIException, DatabaseLoadFailureExcepti
 from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
 from src.v1.tokens.dependencies import get_go_plus_summary, get_block_explorer_data, get_go_plus_data
-from src.v1.tokens.schemas import Holder, Cluster, ClusterResponse, AIComment, AISummary, TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary
+from src.v1.tokens.schemas import SourceCodeResponse, Holder, Cluster, ClusterResponse, AIComment, AISummary, TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary
 
 from src.v1.sourcecode.endpoints import get_source_code
 
@@ -592,7 +592,12 @@ async def get_score_info(chain: ChainEnum, token_address: str = Depends(validate
 async def get_token_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):    
     tokenSummary = await get_token_metrics(chain, token_address)
     score = await get_score_info(chain, token_address)
-    holderChart = await get_holder_chart(chain, token_address)
+
+    try:
+        holderChart = await get_holder_chart(chain, token_address)
+    except UnsupportedChainException:
+        logging.warning(f"Exception: The `get_holder_chart` function is not supported for chain {chain}.")
+        holderChart = None
 
     try:
         output = TokenInfoResponse(tokenSummary=tokenSummary, score=score, holderChart=holderChart)
@@ -611,7 +616,10 @@ async def get_token_detailed_review(chain: ChainEnum, token_address: str = Depen
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
     # Get and cache the source code for the token
-    sourceCode = await get_source_code(chain, token_address)
+    try:
+        sourceCode = await get_source_code(chain, token_address)
+    except UnsupportedChainException:
+        sourceCode = SourceCodeResponse()
 
     # Get the token summary for the token
     token_info = await get_token_info(chain, token_address)
