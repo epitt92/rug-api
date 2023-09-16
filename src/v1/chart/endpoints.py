@@ -62,6 +62,15 @@ async def get_chart_data(chain: ChainEnum, frequency: FrequencyEnum, token_addre
         logging.error(f"Exception: The frequency {frequency} provided is not supported. {e}")
         raise CoinGeckoChartException(chain=chain, token_address=token_address, frequency=frequency)
 
+    if chain == ChainEnum.ethereum:
+        network = 'eth'
+    elif chain == ChainEnum.arbitrum:
+        network = 'arbitrum'
+    elif chain == ChainEnum.base:
+        network = 'base'
+    else:
+        raise UnsupportedChainException(chain=chain)
+
     # Call CoinGecko API with pool address and correct frequency
     try:
         url = f"https://api.geckoterminal.com/api/v2/networks/{network}/pools/{pool_address}/ohlcv/{frequency_value}"
@@ -74,7 +83,7 @@ async def get_chart_data(chain: ChainEnum, frequency: FrequencyEnum, token_addre
         response = requests.get(url, params=params)
         response.raise_for_status()
     except Exception as e:
-        logging.error(f"Exception: Whilst calling the CoinGecko API for URL {url}: {e}")
+        logging.error(f"Exception: Whilst calling the CoinGecko API: {e}")
         raise CoinGeckoChartException(token_address=token_address, chain=chain, frequency=frequency)
 
     if response.status_code == 200:
