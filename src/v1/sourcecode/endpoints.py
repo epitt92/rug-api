@@ -1,20 +1,34 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import requests, json, time, dotenv, logging, os
 from botocore.exceptions import ClientError
 
 from src.v1.shared.DAO import DAO
 from src.v1.shared.dependencies import get_primary_key
+from src.v1.shared.models import validate_token_address
 from src.v1.sourcecode.schemas import SourceCodeResponse, SourceCodeFile
 
 from src.v1.shared.models import ChainEnum
+from src.v1.shared.exceptions import DatabaseLoadFailureException, DatabaseInsertFailureException, UnsupportedChainException
 
 router = APIRouter()
 
 dotenv.load_dotenv()
 
+######################################################
+#                                                    #
+#                Database Adapters                   #
+#                                                    #
+######################################################
+
 SOURCE_CODE_DAO = DAO('sourcecode')
 
-async def fetch_raw_code(chain: ChainEnum, token_address: str) -> str:
+######################################################
+#                                                    #
+#                     Endpoints                      #
+#                                                    #
+######################################################
+
+async def fetch_raw_code(chain: ChainEnum, token_address: str = Depends(validate_token_address)) -> str:
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
 
     prefix = os.environ.get(f'{_chain.upper()}_BLOCK_EXPLORER_URL')
@@ -55,8 +69,7 @@ async def parse_raw_code(source: str) -> dict:
         return source
 
 
-@router.get("/{chain}/{token_address}/map", include_in_schema=True)
-async def get_source_code_map(chain: ChainEnum, token_address: str):
+async def get_source_code_map(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     logging.info(f'Fetching source code map for {token_address} on chain {chain}, via map...')
     source = await parse_raw_code(await fetch_raw_code(chain, token_address))
     logging.info(f'Raw souce code: {source}')
@@ -79,13 +92,17 @@ async def get_source_code_map(chain: ChainEnum, token_address: str):
 
 
 @router.get("/{chain}/{token_address}", response_model=SourceCodeResponse)
-async def get_source_code(chain: ChainEnum, token_address: str):
-    _token_address = token_address.lower()
-
+async def get_source_code(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     # Check if the token source code has already been cached
-    pk = get_primary_key(_token_address, chain.value)
+    pk = get_primary_key(token_address, chain.value)
 
-    logging.info(f'Fetching source code for {token_address} on chain {chain} from the database...')
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
+
+    if _chain != 'ethereum':
+        logging.error(f'Exception: The chain {chain} is not supported by the `get_source_code` endpoint.')
+        raise UnsupportedChainException(chain=chain)
+
+    logging.debug(f'Fetching source code for {token_address} on chain {chain} from the database...')
 
     # Attempt to fetch transfers from DAO object
     _source_code_map = SOURCE_CODE_DAO.find_most_recent_by_pk(pk)
@@ -93,7 +110,7 @@ async def get_source_code(chain: ChainEnum, token_address: str):
     # If source code is found, return it
     if not _source_code_map:
         logging.info(f'No source code found for {token_address} on chain {chain}. Fetching from API...')
-        _source_code_map = await get_source_code_map(chain.value, _token_address)
+        _source_code_map = await get_source_code_map(chain.value, token_address)
 
         # Write source code map to DAO file
         if _source_code_map is not None:
