@@ -1,30 +1,9 @@
-from enum import Enum
+from src.v1.tokens.exceptions import InvalidTokenAddressException
 
-class TokenMetadataEnum(Enum):
-    name = "name"
-    symbol = "symbol"
-    tokenAddress = "tokenAddress"
-    decimals = "decimals"
-    score = "score"
-    deployedAgo = "deployedAgo"
-    logoUrl = "logoUrl"
-    chain = "chain"
-    twitter = "twitter"
-    telegram = "telegram"
-    discord = "discord"
-    webUrl = "webUrl"
-    buyLink = "buyLink"
-    lockedLiquidity = "lockedLiquidity"
-    burnedLiquidity = "burnedLiquidity"
-    buyTax = "buyTax"
-    sellTax = "sellTax"
-    liquidityUsd = "liquidityUsd"
-    liquiditySingleSided = "liquiditySingleSided"
-    volume24h = "volume24h"
-    circulatingSupply = "circulatingSupply"
-    totalSupply = "totalSupply"
-    totalSupplyPercentage = "totalSupplyPercentage"
-    contractDeployer = "contractDeployer"
-    lastUpdatedTimestamp = "lastUpdatedTimestamp"
-    txCount = "txCount"
-    holders = "holders"
+def validate_token_address(token_address: str):
+    if len(token_address) != 42:
+        raise InvalidTokenAddressException()
+    if not token_address.startswith('0x'):
+        raise InvalidTokenAddressException()
+    
+    return token_address.lower()
