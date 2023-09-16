@@ -33,7 +33,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, 
 async def general_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500, # Internal Server Error
-        content={"message": "An unexpected and uncaught exception was raised during an API call."}
+        content={"detail": "An unexpected and uncaught exception was raised during an API call."}
     )
 
 @app.exception_handler(RugAPIException)
@@ -106,7 +106,7 @@ async def favicon():
 async def root():
     return JSONResponse(
         status_code=200,
-        content={"message": "rug-api"}
+        content={"detail": "rug-api"}
     )
 
 app.include_router(v1_router)
