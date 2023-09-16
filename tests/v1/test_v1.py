@@ -7,4 +7,4 @@ client = TestClient(server.app)
 def test_read_root():
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "rug-api"}
+    assert response.json() == {"detail": "rug-api"}
