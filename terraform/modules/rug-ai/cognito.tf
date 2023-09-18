@@ -1,10 +1,14 @@
 resource "aws_cognito_user_pool" "user_pool" {
-  name = "user-pool"
+  name = "${var.stage}-${var.workspace}-user-pool"
 
   username_attributes = ["email"]
   auto_verified_attributes = ["email"]
   password_policy {
-    minimum_length = 6
+    minimum_length = 10
+    require_lowercase = false
+    require_numbers = false
+    require_symbols = false
+    require_uppercase = false
   }
 
   verification_message_template {
@@ -28,7 +32,7 @@ resource "aws_cognito_user_pool" "user_pool" {
 }
 
 resource "aws_cognito_user_pool_client" "client" {
-  name = "cognito-client"
+  name = "${var.stage}-${var.workspace}-cognito-client"
 
   user_pool_id = aws_cognito_user_pool.user_pool.id
   generate_secret = false
