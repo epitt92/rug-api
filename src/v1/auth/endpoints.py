@@ -15,7 +15,7 @@ router = APIRouter()
 # Initialize Cognito client
 cognito = boto3.client('cognito-idp', region_name="eu-west-2")
 
-@router.post("/create/")
+@router.post("/email/create/")
 async def create_user(user: CreateEmailAccount):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
@@ -54,7 +54,7 @@ async def create_user(user: CreateEmailAccount):
         })
 
 
-@router.post("/verify/")
+@router.post("/email/verify/")
 async def verify_user(user: VerifyEmailAccount):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
@@ -80,7 +80,7 @@ async def verify_user(user: VerifyEmailAccount):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/verify/resend")
+@router.post("/email/verify/resend")
 async def resend_verification_code(user: EmailAccountBase):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
@@ -103,7 +103,7 @@ async def resend_verification_code(user: EmailAccountBase):
         raise HTTPException(status_code=400, detail="Attempt limit exceeded, please try again later.")
 
 
-@router.post("/signin/", response_model=UserAccessTokens)
+@router.post("/email/signin/", response_model=UserAccessTokens)
 async def sign_in(user: SignInEmailAccount):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
@@ -137,7 +137,7 @@ async def sign_in(user: SignInEmailAccount):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/password/request")
+@router.post("/email/password/request")
 async def request_reset_password(user: EmailAccountBase):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
@@ -159,7 +159,7 @@ async def request_reset_password(user: EmailAccountBase):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/password/reset")
+@router.post("/email/password/reset")
 async def reset_password(user: ResetPassword):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
