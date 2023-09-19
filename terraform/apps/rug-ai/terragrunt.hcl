@@ -7,7 +7,7 @@ locals {
   source      = get_env("TG_ENV", "dev")
   workspace   = get_env("TG_WORKSPACE", "default")
   env_config  = read_terragrunt_config(find_in_parent_folders("config/${local.source}.hcl"))
-  rug_ecr_image = get_env("TG_RUG_ECR_IMAGE", "701199753814.dkr.ecr.eu-west-2.amazonaws.com/dev-default-rug-app:latest")
+  rug_ecr_image = get_env("TG_RUG_ECR_IMAGE", "701199753814.dkr.ecr.eu-west-2.amazonaws.com/dev-default-rug-ai:d6d7de4b142e44d90dd0e9637654776f73848635")
 
 }
 
