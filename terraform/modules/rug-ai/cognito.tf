@@ -1,5 +1,9 @@
-resource "aws_ses_email_identity" "example" {
-  email = "email@example.com"
+resource "aws_ses_domain_identity" "domain" {
+  domain = "rug.ai"
+}
+
+resource "aws_ses_domain_dkim" "domain_dkim" {
+  domain = "${aws_ses_domain_identity.domain.domain}"
 }
 
 resource "aws_cognito_user_pool" "user_pool" {
