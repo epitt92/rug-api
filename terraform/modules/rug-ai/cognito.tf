@@ -33,9 +33,9 @@ resource "aws_cognito_user_pool" "user_pool" {
 #     email_sending_account = "DEVELOPER"
 #     source_arn            = "{{SES_EMAIL_ARN}}"
 #   }
-  # lambda_config {
-  #   custom_message = aws_lambda_function.cognito_custom_message_lambda.arn
-  # }
+  lambda_config {
+    custom_message = aws_lambda_function.cognito_custom_message_lambda.arn
+  }
 
   schema {
     attribute_data_type      = "String"
