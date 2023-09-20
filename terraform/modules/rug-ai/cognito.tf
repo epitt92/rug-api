@@ -55,7 +55,47 @@ resource "aws_cognito_user_pool_client" "client" {
 
 }
 
-# resource "aws_cognito_user_pool_domain" "cognito-domain" {
-#   domain       = "gabrielaraujo"
-#   user_pool_id = "${aws_cognito_user_pool.user_pool.id}"
-# }
+/// cognito user pool without email verification
+///
+resource "aws_cognito_user_pool" "user_pool_no_email_verification" {
+  name = "${var.stage}-${var.workspace}-user-pool-no-email-verification"
+
+  username_attributes      = ["email"]
+  auto_verified_attributes = ["email"]  # This line will auto-verify email after signup
+
+  password_policy {
+    minimum_length    = 10
+    require_lowercase = false
+    require_numbers   = false
+    require_symbols   = false
+    require_uppercase = false
+  }
+
+  schema {
+    attribute_data_type      = "String"
+    developer_only_attribute = false
+    mutable                  = true
+    name                     = "email"
+    required                 = true
+
+    string_attribute_constraints {
+      min_length = 1
+      max_length = 256
+    }
+  }
+
+}
+
+resource "aws_cognito_user_pool_client" "client-no-email-verification" {
+  name = "${var.stage}-${var.workspace}-cognito-client"
+
+  user_pool_id                  = aws_cognito_user_pool.user_pool_no_email_verification.id
+  generate_secret               = false
+  refresh_token_validity        = 90
+  prevent_user_existence_errors = "ENABLED"
+  explicit_auth_flows = [
+    "ALLOW_REFRESH_TOKEN_AUTH",
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_ADMIN_USER_PASSWORD_AUTH"
+  ]
+}
