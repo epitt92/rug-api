@@ -6,6 +6,10 @@ resource "aws_ses_domain_dkim" "domain_dkim" {
   domain = "${aws_ses_domain_identity.domain.domain}"
 }
 
+resource "aws_ses_email_identity" "example" {
+  email = "no-reply@rug.ai"
+}
+
 resource "aws_cognito_user_pool" "user_pool" {
   name = "${var.stage}-${var.workspace}-user-pool"
 
