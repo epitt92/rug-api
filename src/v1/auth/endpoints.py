@@ -4,9 +4,11 @@ from fastapi import Depends, HTTPException, APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, EmailStr
 
-from src.v1.auth.schemas import (EmailAccountBase, CreateEmailAccount, 
-SignInEmailAccount, VerifyEmailAccount,
-UserAccessTokens, ResetPassword)
+from src.v1.auth.schemas import (
+        EmailAccountBase, CreateEmailAccount, 
+        SignInEmailAccount, VerifyEmailAccount,
+        UserAccessTokens, ResetPassword, 
+        CreateWeb3Account, SignInWeb3Account)
 
 from src.v1.referral.endpoints import post_referral_code_use
 
@@ -35,10 +37,10 @@ async def create_user(user: CreateEmailAccount):
                 }
             ]
         )
-#         {
-#   "detail": "An error occurred (UsernameExistsException) when calling the SignUp operation: An account with the given email already exists."
-#           }
-# TODO: Add handling for this exception
+        #         {
+        #   "detail": "An error occurred (UsernameExistsException) when calling the SignUp operation: An account with the given email already exists."
+        #           }
+        # TODO: Add handling for this exception
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
     
@@ -187,3 +189,13 @@ async def reset_password(user: ResetPassword):
     except cognito.exceptions.InvalidParameterException as e:
         # TODO: Add exception handling here
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/web3/signup/")
+async def sign_up_web3(user: CreateWeb3Account):
+    pass
+
+
+@router.post("/web3/signin", response_model=UserAccessTokens)
+async def sign_in_web3(user: SignInWeb3Account):
+    pass
