@@ -6,10 +6,6 @@ resource "aws_ses_domain_dkim" "domain_dkim" {
   domain = "${aws_ses_domain_identity.domain.domain}"
 }
 
-resource "aws_ses_email_identity" "example" {
-  email = "no-reply@rug.ai"
-}
-
 resource "aws_cognito_user_pool" "user_pool" {
   name = "${var.stage}-${var.workspace}-user-pool"
 
@@ -33,6 +29,13 @@ resource "aws_cognito_user_pool" "user_pool" {
 #     email_sending_account = "DEVELOPER"
 #     source_arn            = "{{SES_EMAIL_ARN}}"
 #   }
+
+  email_configuration {
+    email_sending_account = "DEVELOPER"
+    from_email_address    = "no-reply@${aws_ses_domain_identity.domain.domain}"
+    source_arn            = aws_ses_domain_identity.domain.arn
+  }
+  
   lambda_config {
     custom_message = aws_lambda_function.cognito_custom_message_lambda.arn
   }
