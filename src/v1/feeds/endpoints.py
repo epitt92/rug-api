@@ -508,9 +508,11 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
 
 # TODO: Add caching to this endpoint to reduce the number of calls to Timestream
 @router.get("/tokenevents", include_in_schema=True)
-async def get_token_events(number_of_events: int = 50):
+async def get_token_events(number_of_events: int = 50, chain: ChainEnum = None):
     if number_of_events > 50:
         number_of_events = 50
+
+    where_clause = f"WHERE blockchain = '{chain.value}' AND eventHash IS NOT NULL" if chain else "WHERE eventHash IS NOT NULL"
 
     query = f'''
         SELECT te.*
@@ -518,13 +520,14 @@ async def get_token_events(number_of_events: int = 50):
         JOIN (
             SELECT eventHash, MAX(timestamp) AS max_timestamp
             FROM "rug_feed_db"."tokenevents"
+            {where_clause}
             GROUP BY eventHash
             ORDER BY max_timestamp DESC
             LIMIT {number_of_events}
         ) AS subquery
         ON te.eventHash = subquery.eventHash AND te.timestamp = subquery.max_timestamp
         '''
-
+    
     try:
         response = read_client.query(QueryString=query)
     except ClientError as e:
