@@ -1,8 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 
-import dotenv
+import dotenv, logging
 
 from router import v1_router
 
@@ -10,9 +11,11 @@ from src.v1.shared.exceptions import (
                                     RugAPIException, DatabaseLoadFailureException, 
                                     DatabaseInsertFailureException, GoPlusDataException, 
                                     UnsupportedChainException, OutputValidationError, 
-                                    BlockExplorerDataException, InvalidTokenAddressException
+                                    BlockExplorerDataException, InvalidTokenAddressException,
+                                    RPCProviderException
                                     )
 from src.v1.chart.exceptions import CoinGeckoChartException
+from src.v1.feeds.exceptions import TimestreamWriteException, TimestreamReadException
 
 dotenv.load_dotenv()
 
@@ -37,6 +40,20 @@ async def general_exception_handler(request: Request, exc: Exception):
         content={"detail": "An unexpected and uncaught exception was raised during an API call."}
     )
 
+@app.exception_handler(RequestValidationError)
+async def invalid_event_hash_exception_handler(request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=400,  # Internal Server Error
+        content={"detail": str(exc)},
+    )
+
+@app.exception_handler(RPCProviderException)
+async def rpc_provider_exception_handler(request, exc: RPCProviderException):
+    return JSONResponse(
+        status_code=500,  # Internal Server Error
+        content={"detail": str(exc)},
+    )
+
 @app.exception_handler(RugAPIException)
 async def rug_api_exception_handler(request, exc: RugAPIException):
     return JSONResponse(
@@ -53,6 +70,20 @@ async def database_load_failure_exception_handler(request, exc: DatabaseLoadFail
 
 @app.exception_handler(DatabaseInsertFailureException)
 async def database_insert_failure_exception_handler(request, exc: DatabaseInsertFailureException):
+    return JSONResponse(
+        status_code=500,  # Internal Server Error
+        content={"detail": str(exc)},
+    )
+
+@app.exception_handler(TimestreamWriteException)
+async def timestream_write_exception_handler(request, exc: TimestreamWriteException):
+    return JSONResponse(
+        status_code=500,  # Internal Server Error
+        content={"detail": str(exc)},
+    )
+
+@app.exception_handler(TimestreamReadException)
+async def timestream_read_exception_handler(request, exc: TimestreamReadException):
     return JSONResponse(
         status_code=500,  # Internal Server Error
         content={"detail": str(exc)},
@@ -99,6 +130,7 @@ async def block_explorer_data_exception_handler(request, exc: BlockExplorerDataE
         status_code=500,  # Internal Server Error
         content={"detail": str(exc)},
     )
+
 
 ######################################################
 #                                                    #
