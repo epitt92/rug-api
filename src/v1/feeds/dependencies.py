@@ -1,4 +1,8 @@
 import time, boto3, logging
+from botocore.exceptions import BotoCoreError, ClientError
+from decimal import Decimal
+
+from src.v1.feeds.exceptions import TimestreamWriteException
 
 def process_row(row):
     if row['Data'][6].get('ScalarValue') is None:
@@ -16,6 +20,17 @@ def process_row(row):
         'value': value
     }
 
+def convert_floats_to_decimals(data):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            data[key] = convert_floats_to_decimals(value)
+        return data
+    elif isinstance(data, list):
+        return [convert_floats_to_decimals(item) for item in data]
+    elif isinstance(data, float):
+        return Decimal(str(data))
+    else:
+        return data
 
 class TimestreamEventAdapter():
     def __init__(self, database: str = "rug_api_db") -> None:
@@ -47,7 +62,7 @@ class TimestreamEventAdapter():
         if table_name == 'eventlogs':
             return {
                 'Dimensions': [
-                    {'Name': 'eventHash', 'Value': data.get('eventHash')},
+                    {'Name': 'event_hash', 'Value': data.get('event_hash')},
                 ]
             }
         elif table_name == 'reviewlogs':
@@ -73,12 +88,18 @@ class TimestreamEventAdapter():
         dimensions = self.generate_dimensions(table_name, data)
         
         records = []
-        records.append(self.generate_record(dimensions, 'userId', data.get('userId')))           
+        records.append(self.generate_record(dimensions, 'user_id', data.get('user_id')))           
         return records
 
     def post(self, table_name: str, message: dict):
-        records = self.generate_records(table_name, message)
+        try:
+            records = self.generate_records(table_name, message)
+        except Exception as e:
+            message = f"Exception: An error occurred whilst generating records: {e}"
+            logging.error(message)
+            raise TimestreamWriteException(message=message)
 
+        logging.info(f"Records: {records}")
         try:
             response = self.client.write_records(
                 DatabaseName=self.database,
@@ -86,8 +107,37 @@ class TimestreamEventAdapter():
                 Records=records
             )
             _ = response["ResponseMetadata"]["HTTPStatusCode"]
-        except self.client.exceptions.RejectedRecordsException as err:
-            for _record in err.response["RejectedRecords"]:
-                logging.error("Rejected Index " + str(_record["RecordIndex"]) + ": " + _record["Reason"])
+        except ClientError as e:
+            # Handle specific Boto3 client errors
+            if e.response['Error']['Code'] == 'ThrottlingException':
+                message = f"Exception: Error code {e.response['Error']['Code']}. Request was throttled. Consider retrying the request with exponential backoff."
+                logging.error(message)
+                raise TimestreamWriteException(message=message)
+            elif e.response['Error']['Code'] == 'ValidationException':
+                message = f"Exception: Error code {e.response['Error']['Code']}. A Validation Error: {e}"
+                logging.error(message)
+                raise TimestreamWriteException(message=message)
+            elif e.response['Error']['Code'] == 'ResourceNotFoundException':
+                message = f"Exception: Error code {e.response['Error']['Code']}. The database or table does not exist."
+                logging.error(message)
+                raise TimestreamWriteException(message=message)
+            elif e.response['Error']['Code'] == 'RejectedRecordsException':
+                message = f"Exception: Error code {e.response['Error']['Code']}. Rejected records: {e}"
+                rejected_records = e.response['Error']['RejectedRecords']
+                for record in rejected_records:
+                    logging.error(f"Record {record['RecordIndex']} was rejected due to: {record['Reason']}")
+                raise TimestreamWriteException(message=message)
+            else:
+                # Rethrow the error if it is not one that we expected
+                message = f"Exception: Error code {e.response['Error']['Code']}. An unexpected error: {e}"
+                logging.error(message)
+                raise TimestreamWriteException(message=message)
+        except BotoCoreError as e:
+            # Handle errors inherent to the core boto3 (like network issues)
+            message = f"Exception: BotoCore Error: {e}"
+            logging.error(message)
+            raise TimestreamWriteException(message=message)
         except Exception as e:
-                logging.error(f"An unknown error occurred: {e}")
+            message = f"Exception: An unknown error occurred: {e}"
+            logging.error(message)
+            raise TimestreamWriteException(message=message)

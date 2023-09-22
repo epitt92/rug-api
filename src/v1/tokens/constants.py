@@ -159,6 +159,6 @@ HONEYPOT_SAME_CREATOR = {
 #                                                        #
 ##########################################################
 
-TOKEN_METRICS_STALENESS_THRESHOLD = 60 * 5 # 5 minutes
+TOKEN_METRICS_STALENESS_THRESHOLD = 60 * 30 # 30 minutes
 SUPPLY_REPORT_STALENESS_THRESHOLD = 60 * 60 * 1 # 1 hour
 TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD = 60 * 60 * 1 # 1 hour
