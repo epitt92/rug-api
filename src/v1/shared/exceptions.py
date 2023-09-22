@@ -9,6 +9,15 @@ class RugAPIException(Exception):
         super().__init__(message)
 
 
+class RPCProviderException(Exception):
+    """
+    Raised when an endpoint on a RPC provider is called whose response fails.
+    """
+    def __init__(self, message: str = "An exception occurred while calling an external RPC provider endpoint."):
+        logging.error(f'{message}')
+        super().__init__(message)
+
+
 class UnsupportedChainException(ValueError):
     """
     Raised when an endpoint is called for a chain which is unsupported by that endpoint.

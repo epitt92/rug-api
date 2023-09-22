@@ -6,6 +6,7 @@ import json, dotenv, os
 from src.v1.shared.constants import *
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.schemas import Chain
+from src.v1.shared.exceptions import RPCProviderException, UnsupportedChainException
 
 dotenv.load_dotenv()
 
@@ -40,7 +41,7 @@ def get_rpc_provider(chain: ChainEnum):
     elif _chain == 'base':
         return BASE_RPC
     else:
-        raise ValueError(f"Invalid Chain on call to `get_chain`: {_chain}")
+        raise UnsupportedChainException(f"Invalid Chain on call to `get_chain`: {_chain}")
 
 
 def get_primary_key(token_address: str, chain: Union[str, ChainEnum]) -> str:
@@ -58,7 +59,7 @@ async def get_token_contract_details(chain: ChainEnum, token_address: str) -> di
         contract = RPC.eth.contract(_token_address, abi=ERC20_ABI)
     except Exception as e:
         logging.warning(f'An exception occurred whilst trying to create an ERC20 object for token {token_address} on chain {chain}: {e}')
-        raise e
+        raise RPCProviderException()
     
     try:
         token_name = str(contract.functions.name().call())

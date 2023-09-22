@@ -206,7 +206,8 @@ async def get_token_metrics(chain: ChainEnum, token_address: str = Depends(valid
             'timestamp': lastUpdatedTimestamp,
             'summary': {
                 **market_data,
-                **explorer_data
+                **explorer_data,
+                **{'lastUpdatedTimestamp': lastUpdatedTimestamp}
             }
         }
 
