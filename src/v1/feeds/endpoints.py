@@ -4,7 +4,7 @@ import json, boto3, os, dotenv, pandas as pd, logging, time, ast
 from botocore.exceptions import ClientError
 from decimal import Decimal
 
-from src.v1.feeds.constants import TOP_EVENTS_STALENESS_THRESHOLD, TOP_EVENTS_LIMIT, MOST_VIEWED_TOKENS_STALENESS_THRESHOLD, MOST_VIEWED_TOKENS_LIMIT
+from src.v1.feeds.constants import TOP_EVENTS_STALENESS_THRESHOLD, TOP_EVENTS_LIMIT, MOST_VIEWED_TOKENS_STALENESS_THRESHOLD, MOST_VIEWED_TOKENS_LIMIT, MOST_VIEWED_TOKENS_NUM_MINUTES, TOP_EVENTS_NUM_MINUTES
 from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter, convert_floats_to_decimals
 from src.v1.feeds.models import EventClick, TokenView
 from src.v1.feeds.exceptions import TimestreamReadException, TimestreamWriteException
@@ -133,7 +133,7 @@ async def get_most_viewed_tokens(limit: int = 50):
     output = None
     if not found:
         logging.info(f"No cached value found for most viewed tokens. Calculating from scratch...")
-        output = await get_most_viewed_token_result(50, 60)
+        output = await get_most_viewed_token_result(limit=50, num_minutes=MOST_VIEWED_TOKENS_NUM_MINUTES)
 
         logging.info(f"Length of calculated most viewed tokens: {len(output)}")
 
@@ -309,7 +309,7 @@ async def get_top_events(limit: int = 50):
 
     if not found:
         logging.info(f'No cached value found for top events. Calculating from scratch...')
-        output = await get_most_viewed_events_result(50, 60)
+        output = await get_most_viewed_events_result(limit=50, numMinutes=TOP_EVENTS_NUM_MINUTES)
 
         logging.info(f'Length of calculated top events: {len(output)}')
         if not output:
