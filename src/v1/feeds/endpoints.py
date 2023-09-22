@@ -381,7 +381,7 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
     def process_row(row):
         try:
             return {
-                'eventHash': row['Data'][0]['ScalarValue'],
+                'event_hash': row['Data'][0]['ScalarValue'],
                 'count': int(row['Data'][1]['ScalarValue'])
             }
         except Exception as e:
@@ -389,8 +389,10 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
             logging.error(f"row: {row}")
             return
 
+    # Highly robust, very optimised filtering for invalid rows
     result = [process_row(row)for row in response["Rows"]]
-    result = [row.get('eventHash') for row in result if row]
+    result = [row.get('event_hash') for row in result if row]
+    result = [item for item in result if item]
 
     logging.info(f'Success! Processed result length: {len(result)}')
 
@@ -401,8 +403,10 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
     query = f'''
         SELECT te.*
         FROM "rug_feed_db"."tokenevents" AS te
-        WHERE te.event_hash IN ({','.join([f"'{item}'" for item in result])})
+        WHERE te.eventHash IN ({','.join([f"'{item}'" for item in result])})
     '''
+
+    logging.info(f"Event hashes in result list: {result}")
     
     try:
         response = read_client.query(QueryString=query)
@@ -502,11 +506,11 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
         logging.error(f'An unknown exception was thrown during the DataFrame processing step: {e}')
         return []
 
-# TODO: Add more robust exception handling to this endpoint
+# TODO: Add caching to this endpoint to reduce the number of calls to Timestream
 @router.get("/tokenevents", include_in_schema=True)
 async def get_token_events(number_of_events: int = 50):
-    if number_of_events > 100:
-        number_of_events = 100
+    if number_of_events > 50:
+        number_of_events = 50
 
     query = f'''
         SELECT te.*
@@ -521,7 +525,33 @@ async def get_token_events(number_of_events: int = 50):
         ON te.eventHash = subquery.eventHash AND te.timestamp = subquery.max_timestamp
         '''
 
-    response = read_client.query(QueryString=query)
+    try:
+        response = read_client.query(QueryString=query)
+    except ClientError as e:
+        if e.response['Error']['Code'] == 'ThrottlingException':
+            message = f"Request was throttled. Consider retrying with exponential backoff."
+            logging.error(message)
+            raise TimestreamReadException(message=message)
+        elif e.response['Error']['Code'] == 'ValidationException':
+            message = f"A validation error occurred during call to read from Timestream: {e}"
+            logging.error(message)
+            raise TimestreamReadException(message=message)
+        elif e.response['Error']['Code'] == 'ResourceNotFoundException':
+            message = f"Resource not found during call to read from Timestream: {e}"
+            logging.error(message)
+            raise TimestreamReadException(message=message)
+        elif e.response['Error']['Code'] == 'AccessDeniedException':
+            message = f"Access denied during call to read from Timestream: {e}"
+            logging.error(message)
+            raise TimestreamReadException(message=message)
+        else:
+            message = f"An unknown exception occurred during call to read from Timestream: {e}"
+            logging.error(message)
+            raise TimestreamReadException(message=message)
+    except Exception as e:
+        message = f"An unknown exception occurred during call to read from Timestream: {e}"
+        logging.error(message)
+        raise TimestreamReadException(message=message)
 
     processed_rows = [process_row(row) for row in response["Rows"]]
 
