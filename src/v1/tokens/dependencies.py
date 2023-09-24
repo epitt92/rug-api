@@ -311,6 +311,9 @@ def calculate_score(items: list) -> int:
             n += 1
             max_severity = max(max_severity, severity)
     
+    if n == 0:
+        return 100
+    
     # Calculate score
     penalty_param = penalty_param ** p
     
