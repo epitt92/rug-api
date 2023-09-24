@@ -2,32 +2,6 @@ import random
 
 from src.v1.tokens.schemas import Holder, Cluster, ClusterResponse, AIComment
 
-##########################################################
-#                                                        #
-#               Holder Chart Constants                   #
-#                                                        #
-##########################################################
-
-L, R = 10, 4000
-
-HOLDER_1 = Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.122)
-
-CLUSTER_1 = Cluster(members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.122)])
-
-CLUSTER_2 = Cluster(members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.043), 
-                             Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.0023)])
-
-CLUSTER_3 = Cluster(members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.018)])
-
-CLUSTER_4 = Cluster(containsDeployer=True,
-                    members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.034), 
-                             Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.0023),
-                             Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.0023)])
-
-CLUSTER_5 = Cluster(members=[Holder(address='0x3f2D4708F75DE6Fb60B687fEd326697634774dEb', numTokens=random.randrange(L, R), percentage=0.002)])
-
-CLUSTER_RESPONSE = ClusterResponse(clusters=[CLUSTER_1, CLUSTER_2, CLUSTER_3, CLUSTER_4, CLUSTER_5])
-
 BURN_TAG = "Null Address"
 ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
 
@@ -59,11 +33,11 @@ HIDDEN_OWNER_MAPPING = {
 
 OPEN_SOURCE_MAPPING = {
     True: {'title': 'Open Source',
-            'description': "The contract is open source, meaning its code is publicly available, allowing for [rug.ai](https://rug.ai) algorithms to analyze the contract for vulnerabilities.",
+            'description': "The contract is open source, meaning its code is publicly available, allowing for our algorithms to analyze the contract for vulnerabilities.",
             'severity': 0},
     False: {'title': "Not Open Source",
-           'description': "The contract is not open source, meaning its code is not publicly available. This means that [rug.ai](https://rug.ai) is unable to audit the token smart contract and detect vulnerabilities, please proceed with caution when interacting with this token.",
-           'severity': 1}
+           'description': "The contract is not open source, meaning its code is not publicly available. This means that our algorithms are unable to audit the token smart contract and detect vulnerabilities, please proceed with caution when interacting with this token.",
+           'severity': 2}
 }
 
 PROXY_MAPPING = {
@@ -78,17 +52,17 @@ PROXY_MAPPING = {
 OWNER_CHANGE_BALANCE_MAPPING = {
     True: {'title': 'Owner Can Change Balance',
            'description': "The owner of this token can modify the balance of holders of this token, potentially stealing funds from traders.",
-           'severity': 3},
+           'severity': 10},
     False: {'title': "Owner Cannot Change Balance",
            'description': "This token does not enable an owner from modifying the balance of holders, which is sometimes used as a tactic by other tokens to steal funds from traders.",
             'severity': 0}
 }
 
 SELF_DESTRUCT_MAPPING = {
-    True: {'title': 'Self Destruct',
+    True: {'title': 'Contract Has Self Destruct OP Code',
            'description': "The contract has a self-destruct OP code, giving the owner the ability to permanently destroy the contract. This action renders any associated tokens useless and results in a total loss for token holders.",
-           'severity': 3},
-    False: {'title': "No Self Destruct",
+           'severity': 50},
+    False: {'title': "No Self Destruct OP Code",
            'description': "The contract does not have a self-destruct OP code, ensuring that the contract cannot be permanently destroyed by the owner.",
             'severity': 0}
 }
@@ -100,10 +74,10 @@ SELF_DESTRUCT_MAPPING = {
 ##########################################################
 
 HONEYPOT_MAPPING = {
-    True: {'title': 'Honeypot',
+    True: {'title': 'Honeypot Contract',
             'description': "This token is a honeypot, meaning that the token traps users' funds. Avoid trading this token, doing so may mean losing your entire investment.",
-           'severity': 3},
-    False: {'title': "Not Honeypot",
+           'severity': 100},
+    False: {'title': "Not Honeypot Contract",
            'description': "The token is not a honeypot, indicating that it does not employ deceptive tactics to trap users' funds.",
             'severity': 0}
 }

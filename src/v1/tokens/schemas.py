@@ -103,22 +103,17 @@ class ClusterResponse(BaseModel):
 #                                                    #
 ######################################################
 
-class SeverityEnum(int, Enum):
-    neutral = 0
-    low = 1
-    medium = 2
-    high = 3
-
 class ContractItem(BaseModel):
     title: str = None
     description: str = None
-    severity: SeverityEnum = None
+    severity: int = None
 
 class ContractResponse(BaseModel):
     items : List[ContractItem]
     numIssues: int = None
     score: confloat(ge=0.0, le=100.0) = None
     description: str = None
+    summaryDescription: str = None
 
     @root_validator(pre=True)
     def pre_process(cls, values):
