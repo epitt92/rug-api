@@ -1,10 +1,12 @@
 import requests, math, logging, os, dotenv
 from fastapi import HTTPException
+from goplus.token import Token
 
 from src.v1.tokens.schemas import ContractResponse, ContractItem
 from src.v1.tokens.constants import BURN_TAG, ZERO_ADDRESS, ANTI_WHALE_MAPPING, HIDDEN_OWNER_MAPPING, OPEN_SOURCE_MAPPING, HONEYPOT_MAPPING, PROXY_MAPPING, TRADING_COOLDOWN_MAPPING, CANNOT_SELL_ALL_MAPPING, OWNER_CHANGE_BALANCE_MAPPING, SELF_DESTRUCT_MAPPING, BLACKLIST_MAPPING, WHITELIST_MAPPING, HONEYPOT_SAME_CREATOR
 from src.v1.shared.constants import CHAIN_ID_MAPPING
 from src.v1.shared.models import ChainEnum
+from src.v1.shared.dependencies import load_access_token
 
 dotenv.load_dotenv()
 
@@ -24,19 +26,22 @@ simple_mapping = {
 }
 
 def get_go_plus_data(chain: ChainEnum, token_address: str):
+    access_token = load_access_token()
+
+    logging.info(f'Access token loaded! Getting Go Plus data for {token_address} on chain {chain}.')
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
     _token_address = token_address.lower()
 
-    url = f'https://api.gopluslabs.io/api/v1/token_security/{CHAIN_ID_MAPPING[chain.value]}'
+    try:
+        response = Token(access_token=access_token).token_security(chain_id=str(CHAIN_ID_MAPPING[_chain]), addresses=[_token_address])
+        data = response.result
+    except Exception as e:
+        logging.error(f"Exception: Whilst calling Token object from GoPlus: {e}")
+        raise e
+    
+    logging.info(f"Success! GoPlus Data Loaded...")
 
-    params = {
-        'contract_addresses': token_address
-    }
-
-    request_response = requests.get(url, params=params)
-    request_response.raise_for_status()
-
-    data = request_response.json()['result']
-    return data[_token_address]
+    return data[_token_address].to_dict()
 
 def get_go_plus_summary(chain: ChainEnum, token_address: str):
     data = get_go_plus_data(chain, token_address)

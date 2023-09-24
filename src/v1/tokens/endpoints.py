@@ -94,6 +94,7 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
         try:
             data = get_go_plus_data(chain, _token_address)
         except Exception as e:
+            logging.error(f"Exception: Raised in call to `get_go_plus_data`: {e}")
             raise GoPlusDataException(chain, _token_address)
         
         # Process this data and produce a supply and a transferrability summary
