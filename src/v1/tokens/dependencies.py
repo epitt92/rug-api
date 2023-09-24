@@ -29,6 +29,7 @@ def get_go_plus_data(chain: ChainEnum, token_address: str):
     access_token = load_access_token()
 
     logging.info(f'Access token loaded! Getting Go Plus data for {token_address} on chain {chain}.')
+    
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
     _token_address = token_address.lower()
 
