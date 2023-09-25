@@ -97,7 +97,7 @@ class CreateWeb3Account(BaseModel):
     def referral_code_is_valid(cls, v):
         # TODO: Must check if the referral code is valid
         return v
-    
+
 
 class SignInWeb3Account(BaseModel):
     signed_message: SignedMessage

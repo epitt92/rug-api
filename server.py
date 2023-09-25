@@ -13,6 +13,7 @@ from src.v1.shared.exceptions import (
                                     BlockExplorerDataException, InvalidTokenAddressException
                                     )
 from src.v1.chart.exceptions import CoinGeckoChartException
+from src.v1.auth.exceptions import CognitoException
 
 dotenv.load_dotenv()
 
@@ -35,6 +36,13 @@ async def general_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500, # Internal Server Error
         content={"detail": "An unexpected and uncaught exception was raised during an API call."}
+    )
+
+@app.exception_handler(CognitoException)
+async def cognito_exception_handler(request, exc: CognitoException):
+    return JSONResponse(
+        status_code=500,  # Internal Server Error
+        content={"detail": str(exc)},
     )
 
 @app.exception_handler(RugAPIException)
