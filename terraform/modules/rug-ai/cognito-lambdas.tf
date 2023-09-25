@@ -39,3 +39,11 @@ resource "aws_lambda_function" "cognito_custom_message_lambda" {
   source_code_hash = data.archive_file.lambda_zip.output_base64sha256
   runtime          = "python3.8"
 }
+
+# Lambda function permission to invoke Cognito
+resource "aws_lambda_permission" "cognito_custom_message_lambda_permission" {
+  statement_id  = "AllowExecutionFromCognito"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.cognito_custom_message_lambda.function_name
+  principal     = "cognito-idp.amazonaws.com"
+}

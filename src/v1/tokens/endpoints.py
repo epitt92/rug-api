@@ -206,7 +206,8 @@ async def get_token_metrics(chain: ChainEnum, token_address: str = Depends(valid
             'timestamp': lastUpdatedTimestamp,
             'summary': {
                 **market_data,
-                **explorer_data
+                **explorer_data,
+                **{'lastUpdatedTimestamp': lastUpdatedTimestamp}
             }
         }
 
@@ -276,7 +277,7 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends
     # Check if the token is queued for analysis by another user, and return the corresponding message
     if status:
         return JSONResponse(
-            status_code=200,  # Success
+            status_code=202,  # Success
             content={"detail": response.get("data").get("detail")},
         )
 
@@ -371,7 +372,7 @@ async def get_token_clustering(chain: ChainEnum, token_address: str = Depends(va
     if status == 102:
         # The token is queued for analysis by another user, returning this
         return JSONResponse(
-            status_code=200,  # Success
+            status_code=202,  # Success
             content={"detail": response.get("data").get("detail")},
         )
 
