@@ -118,9 +118,9 @@ async def verify_user(user: VerifyEmailAccount):
         )
 
         # TODO: Add a users database insertion at this point
-    except cognito.exceptions.CodeMismatchException:
+    except cognito.exceptions.CodeMismatchException as e:
         raise HTTPException(status_code=400, detail="Invalid confirmation code.")
-    except cognito.exceptions.ExpiredCodeException:
+    except cognito.exceptions.ExpiredCodeException as:
         raise HTTPException(status_code=400, detail="The confirmation code has expired.")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -141,14 +141,14 @@ async def resend_verification_code(user: EmailAccountBase):
             ClientId=CLIENT_ID,
             Username=user.username
         )
-    except cognito.exceptions.UserNotFoundException:
+    except cognito.exceptions.UserNotFoundException as e:
         # TODO: Add exception handling here
-        raise CognitoUserDoesNotExist(user.username, f"Exception: UserNotFoundException: {e}")
-    except cognito.exceptions.LimitExceededException:
+        raise CognitoUserDoesNotExist(user.username, f"Exception: UserNotFoundException for user {user.username}")
+    except cognito.exceptions.LimitExceededException as e:
         # TODO: Add exception handling here
-        raise CognitoException(f"Exception: LimitExceededException: {e}")
+        raise CognitoException(f"Exception: LimitExceededException for user {user.username}")
     except Exception as e:
-        raise CognitoException(f"Exception: Unknown Cognito Exception: {e}")
+        raise CognitoException(f"Exception: Unknown Cognito Exception for user {user.username}")
 
     return JSONResponse(status_code=200, content={"message": "Confirmation code resent successfully."})
 
@@ -176,9 +176,9 @@ async def sign_in(user: SignInEmailAccount):
             "idToken": response.get('AuthenticationResult').get('IdToken'),
             "refreshToken": response.get('AuthenticationResult').get('RefreshToken'),
         }
-    except cognito.exceptions.NotAuthorizedException:
+    except cognito.exceptions.NotAuthorizedException as e:
         # Raise a custom exception here for invalid authentication
-        raise CognitoIncorrectCredentials(user.username, user.password, f"Exception: NotAuthorizedException: {e}")
+        raise CognitoIncorrectCredentials(user.username, user.password, f"Exception: NotAuthorizedException for user {user.username}")
     except ClientError as e:
         error_code = e.response['Error']['Code']
 
@@ -231,17 +231,19 @@ async def reset_password(user: ResetPassword):
         )
         # The user's password is now reset
         return JSONResponse(status_code=200, content={"detail": "Password reset successfully."})
-    except cognito.exceptions.CodeMismatchException:
+    except cognito.exceptions.CodeMismatchException as e:
         # TODO: Add exception handling here
         raise HTTPException(status_code=400, detail="Invalid verification code.")
-    except cognito.exceptions.ExpiredCodeException:
+    except cognito.exceptions.ExpiredCodeException as e:
         # TODO: Add exception handling here
         raise HTTPException(status_code=400, detail="The verification code has expired.")
-    except cognito.exceptions.UserNotFoundException:
+    except cognito.exceptions.UserNotFoundException as e:
         # TODO: Add exception handling here
         raise HTTPException(status_code=400, detail="User not found.")
     except cognito.exceptions.InvalidParameterException as e:
         # TODO: Add exception handling here
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
