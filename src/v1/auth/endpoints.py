@@ -120,7 +120,7 @@ async def verify_user(user: VerifyEmailAccount):
         # TODO: Add a users database insertion at this point
     except cognito.exceptions.CodeMismatchException as e:
         raise HTTPException(status_code=400, detail="Invalid confirmation code.")
-    except cognito.exceptions.ExpiredCodeException as:
+    except cognito.exceptions.ExpiredCodeException as e:
         raise HTTPException(status_code=400, detail="The confirmation code has expired.")
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
