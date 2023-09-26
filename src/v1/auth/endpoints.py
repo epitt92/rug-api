@@ -25,7 +25,7 @@ async def rollback_user_creation(username: str):
     USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
 
     if not USER_POOL_ID:
-        raise ValueError()
+        raise CognitoException("Exception: COGNITO_USER_POOL_ID not set in environment variables.")
     
     # Rollback: Delete the user from Cognito if an error occurred after sign_up
     try:
@@ -45,7 +45,7 @@ async def create_user(user: CreateEmailAccount):
 
     if not CLIENT_ID:
         # TODO: Add custom exception for this
-        raise ValueError()
+        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
     
     logging.info(f"Client ID: {CLIENT_ID}")
 
@@ -108,7 +108,7 @@ async def verify_user(user: VerifyEmailAccount):
 
     if not CLIENT_ID:
         # TODO: Add custom exception for this
-        raise ValueError()
+        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
 
     try:
         _ = cognito.confirm_sign_up(
@@ -158,7 +158,7 @@ async def sign_in(user: SignInEmailAccount):
 
     if not CLIENT_ID:
         # TODO: Add custom exception for this
-        raise ValueError()
+        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
 
     try:
         response = cognito.initiate_auth(
@@ -197,7 +197,7 @@ async def request_reset_password(user: EmailAccountBase):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        raise ValueError()
+        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
     
     try:
         # The verification code will be sent to the user's registered email or phone number
@@ -220,7 +220,7 @@ async def reset_password(user: ResetPassword):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        raise ValueError()
+        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
     
     try:
         _ = cognito.confirm_forgot_password(
