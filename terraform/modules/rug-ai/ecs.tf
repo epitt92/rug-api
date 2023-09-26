@@ -84,7 +84,7 @@ module "rug_app_service" {
       value = aws_cognito_user_pool.user_pool.id
     },
     {
-      name = "COGNITO_USER_POOL_CLIENT_ID"
+      name = "COGNITO_APP_CLIENT_ID"
       value = aws_cognito_user_pool_client.client.id
     }
   ]
