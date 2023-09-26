@@ -146,6 +146,14 @@ module "rug_app_service" {
           # data.aws_ssm_parameter.rug_timestream_db_arn_parameter_store.value
           "*"
         ]
+      },
+      {
+        //cognito actions
+        Action = ["cognito-idp:AdminDeleteUser", "cognito-idp:AdminConfirmSignUp", "cognito-idp:AdminCreateUser", "cognito-idp:ConfirmSignUp", "cognito-idp:ResendConfirmationCode", "cognito-idp:ForgotPassword", "cognito-idp:ConfirmForgotPassword", "cognito-idp:SignUp", "cognito-idp:InitiateAuth"]
+        Effect = "Allow"
+        Resource = [
+          aws_cognito_user_pool.user_pool.arn
+        ]
       }
     ]
   }
