@@ -22,6 +22,7 @@ resource "aws_ssm_parameter" "rug_media_bucket_arn" {
 
 # }
 resource "aws_s3_bucket_ownership_controls" "example" {
+  count = var.stage == "stage" ? 1 : 0
   bucket = aws_s3_bucket.rug_media_bucket[0].id
   rule {
     object_ownership = "BucketOwnerPreferred"
@@ -40,8 +41,8 @@ resource "aws_s3_bucket_public_access_block" "example" {
 
 resource "aws_s3_bucket_acl" "example" {
   depends_on = [
-    aws_s3_bucket_ownership_controls[0].example,
-    aws_s3_bucket_public_access_block[0].example,
+    aws_s3_bucket_ownership_controls.example[0],
+    aws_s3_bucket_public_access_block.example[0],
   ]
 
   bucket = aws_s3_bucket.rug_media_bucket[0].id
