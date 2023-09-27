@@ -75,18 +75,18 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
         transferrability_summary_is_not_stale = (time.time() - int(_transferrability_summary.get('timestamp'))) < TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD
 
         if supply_summary_is_not_stale and transferrability_summary_is_not_stale:
-            logging.debug(f"A non-stale report was found, checking whether all data is present.")
+            logging.warning(f"A non-stale report was found, checking whether all data is present.")
 
             supply_summary = _supply_summary.get('summary')
             transferrability_summary = _transferrability_summary.get('summary')
 
             if supply_summary and transferrability_summary:
-                logging.debug(f"Requested data is present in the database, setting `found = True` and continuing.")
+                logging.warning(f"Requested data is present in the database, setting `found = True` and continuing.")
                 found = True
             else:
                 logging.warning(f'A non-stale report was found but one of the summary values was null. Re-calculating and re-caching...')
         else:
-            logging.debug(f'A previous report was found but it did not pass the staleness check.')
+            logging.warning(f'A previous report was found but it did not pass the staleness check.')
 
     if not found:
         logging.debug(f'Previous non-stale report was not found, fetching data from GoPlus API...')
@@ -94,11 +94,21 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
         try:
             data = get_go_plus_data(chain, _token_address)
         except Exception as e:
+            logging.error(f"Exception: Raised in call to `get_go_plus_data`: {e}")
             raise GoPlusDataException(chain, _token_address)
         
         # Process this data and produce a supply and a transferrability summary
-        supply_summary = get_supply_summary(data)
-        transferrability_summary = get_transferrability_summary(data)
+        try:
+            supply_summary = get_supply_summary(data)
+        except Exception as e:
+            logging.error(f"Exception: An exception occurred whilst processing the supply summary for {token_address} on chain {chain}.")
+            raise GoPlusDataException(chain, _token_address)
+        
+        try:
+            transferrability_summary = get_transferrability_summary(data)
+        except Exception as e:
+            logging.error(f"Exception: An exception occurred whilst processing the transferrability summary for {token_address} on chain {chain}.")
+            raise GoPlusDataException(chain, _token_address)
 
         # Cache this data to the `supplyreports` table
         try:
@@ -122,7 +132,7 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
 
     # Format the data and return it
     try:
-        supply_summary = ContractResponse(items=supply_summary.get("items"), score=supply_summary.get("score"), description=supply_summary.get("summary"))
+        supply_summary = ContractResponse(items=supply_summary.get("items"), score=supply_summary.get("score"), description=None, summaryDescription=supply_summary.get("summary"))
     except ValidationError as e:
         logging.error(f"Exception: A ValidationError was raised for `supply_summary`: {e.json()}")
         raise OutputValidationError()
@@ -131,7 +141,7 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
         raise OutputValidationError()
     
     try:
-        transferrability_summary = ContractResponse(items=transferrability_summary.get("items"), score=transferrability_summary.get("score"), description=transferrability_summary.get("summary"))
+        transferrability_summary = ContractResponse(items=transferrability_summary.get("items"), score=transferrability_summary.get("score"), description=None, summaryDescription=transferrability_summary.get("summary"))
     except ValidationError as e:
         logging.error(f"Exception: A ValidationError was raised for `transferrability_summary`: {e.json()}")
         raise OutputValidationError()
@@ -515,8 +525,8 @@ async def get_score_info(chain: ChainEnum, token_address: str = Depends(validate
         supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
         # Format data into Score format objects
-        supply = Score(value=supplySummary.score, description=supplySummary.description)
-        transferrability = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.description)
+        supply = Score(value=supplySummary.score, description=supplySummary.summaryDescription)
+        transferrability = Score(value=transferrabilitySummary.score, description=transferrabilitySummary.summaryDescription)
     except ValidationError as e:
         logging.error(f"Exception: ValidationError was raised on call to format supply/transferrability into Score responses for {token_address} on chain {chain}: {e}")
         supply, transferrability = Score(), Score()

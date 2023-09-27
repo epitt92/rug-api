@@ -82,3 +82,19 @@ class OutputValidationError(Exception):
     def __init__(self, message="An exception occured while attempting to create a Pydantic response."):
         logging.error(message)
         super().__init__(message)
+
+class GoPlusAccessKeyLoadError(Exception):
+    """
+    Raised when an error occurs whilst loading the GoPlus access key.
+    """
+    def __init__(self, message="An exception occured whilst loading the GoPlus access key from the file."):
+        logging.error(message)
+        super().__init__(message)
+
+class GoPlusAccessKeyRefreshError(Exception):
+    """
+    Raised when an error occurs whilst refreshing the GoPlus access key.
+    """
+    def __init__(self, message="An exception occured whilst refreshing the GoPlus access key."):
+        logging.error(message)
+        super().__init__(message)

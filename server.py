@@ -7,6 +7,8 @@ import dotenv, logging
 
 from router import v1_router
 
+from src.v1.shared.dependencies import load_access_token
+
 from src.v1.shared.exceptions import (
                                     RugAPIException, DatabaseLoadFailureException, 
                                     DatabaseInsertFailureException, GoPlusDataException, 
@@ -19,8 +21,13 @@ from src.v1.feeds.exceptions import TimestreamWriteException, TimestreamReadExce
 
 dotenv.load_dotenv()
 
+# Load GoPlus access token file on startup
+logging.info(f"Loading GoPlus access token file on startup...")
+load_access_token()
+logging.info(f"GoPlus access token file loaded successfully.")
+
 TITLE = "rug.ai API"
-VERSION = "2.2"
+VERSION = "2.3"
 
 app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, version=VERSION, favicon='https://rug.ai/favicon.ico')
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
