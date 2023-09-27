@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>You've Been Invited!</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #ffffff;
+                font-family: "Bai Jamjuree", sans-serif;
+            }
+
+            table {
+                margin: 0 auto;
+            }
+        </style>
+    </head>
+    <body>
+        <table cellpadding="0" cellspacing="0" border="0" width="600">
+            <tr>
+                <td align="center">
+                    <table
+                        cellpadding="0"
+                        cellspacing="0"
+                        border="0"
+                        width="600"
+                        style="background-color: #e8e8e8"
+                    >
+                        <tr>
+                            <td
+                                align="center"
+                                bgcolor="#ddd"
+                                height="60"
+                                style="background-image: url('logo.png')"
+                            ></td>
+                        </tr>
+                        <tr>
+                            <td align="center" height="240">
+                                <img src="logo.png" alt="Logo" width="100" />
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center" style="">
+                                <h2
+                                    style="
+                                        color: #181a22;
+                                        font-size: 35px;
+                                        line-height: 48px;
+                                        margin: 0px auto 25px;
+                                    "
+                                >
+                                    Hey
+                                    <span style="font-weight: 600"
+                                        >{{ username }}!</span
+                                    >
+                                </h2>
+                                <p
+                                    style="
+                                        font-size: 24px;
+                                        color: #181a22;
+                                        margin: 0px 95px 35px;
+                                    "
+                                >
+                                    You’ve received a referral invite from
+                                    <span style="font-weight: 600"
+                                        >{{ referrer }}.</span
+                                    >
+                                </p>
+                                <hr
+                                    style="
+                                        border: 1px solid #646464;
+                                        margin: 0 195px 42px;
+                                        margin-left: 195px;
+                                        margin-right: 195px;
+                                    "
+                                />
+                                <p
+                                    style="
+                                        font-size: 20px;
+                                        margin: 0px 50px 72px;
+                                    "
+                                >
+                                    Please use the link below to sign up to our
+                                    platform.
+                                    <br />
+                                    <br />
+                                    <a
+                                        href="{{ url }}"
+                                        style="color: #9861ff; font-weight: 500"
+                                        target="_blank"
+                                        >{{ url }}</a
+                                    >
+                                    <br />
+                                    <br />
+                                    Kind regards,
+                                    <br />
+                                    The
+                                    <a
+                                        href="https://rug.ai"
+                                        style="color: #9861ff"
+                                        >Rug.ai</a
+                                    >
+                                    Team
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center" style="padding-bottom: 57px">
+                                <a href="https://rug.ai" target="_blank">
+                                    <img
+                                        src="https://rug.ai/images/logo.png"
+                                        alt="Rug.ai"
+                                        width="200"
+                                    />
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center" bgcolor="#ccc" height="60">
+                                <table
+                                    cellpadding="0"
+                                    cellspacing="0"
+                                    border="0"
+                                    width="100%"
+                                    style="padding: 0px 26px"
+                                >
+                                    <tr>
+                                        <td width="50%" align="left">
+                                            <img
+                                                src="logo.png"
+                                                alt="Logo"
+                                                width="100"
+                                                height="100"
+                                            />
+                                        </td>
+                                        <td width="50%" align="right">
+                                            <a href="#">
+                                                <img
+                                                    src="twitter.png"
+                                                    alt="twitter"
+                                                />
+                                            </a>
+                                            <a href="#">
+                                                <img
+                                                    src="telegram.png"
+                                                    alt="telegram"
+                                                />
+                                            </a>
+                                            <a href="#">
+                                                <img
+                                                    src="docs.png"
+                                                    alt="docs"
+                                                />
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>
