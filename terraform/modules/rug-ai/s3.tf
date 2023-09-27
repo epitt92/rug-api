@@ -4,13 +4,13 @@ resource "aws_s3_bucket" "build_artifacts" {
 }
 
 resource "aws_s3_bucket" "rug_media_bucket" {
-  count = var.stage == "dev" ? 1 : 0
+  count = var.stage == "stage" ? 1 : 0
   bucket    = "rug-${var.stage}-${var.account_id}-media"
   tags      = jsondecode(var.tags)
 }
 
 resource "aws_ssm_parameter" "rug_media_bucket_arn" {
-  count = var.stage == "dev" ? 1 : 0
+  count = var.stage == "stage" ? 1 : 0
   name = "/s3/bucket/rug_media_bucket_arn"
   type = "String"
   value = aws_s3_bucket.rug_media_bucket[0].arn
@@ -22,7 +22,7 @@ resource "aws_ssm_parameter" "rug_media_bucket_arn" {
 
 # }
 resource "aws_s3_bucket_ownership_controls" "example" {
-  count = var.stage == "dev" ? 1 : 0
+  count = var.stage == "stage" ? 1 : 0
   bucket = aws_s3_bucket.rug_media_bucket[0].id
   rule {
     object_ownership = "BucketOwnerPreferred"
@@ -30,7 +30,7 @@ resource "aws_s3_bucket_ownership_controls" "example" {
 }
 
 resource "aws_s3_bucket_public_access_block" "example" {
-  count = var.stage == "dev" ? 1 : 0
+  count = var.stage == "stage" ? 1 : 0
   bucket = aws_s3_bucket.rug_media_bucket[0].id
 
   block_public_acls       = false
@@ -50,7 +50,7 @@ resource "aws_s3_bucket_acl" "example" {
 }
 
 resource "aws_s3_bucket_cors_configuration" "rug_media_bucket_cors_configuration" {
-  count = var.stage == "dev" ? 1 : 0
+  count = var.stage == "stage" ? 1 : 0
   bucket = aws_s3_bucket.rug_media_bucket[0].id
   cors_rule {
     allowed_headers = ["*"]
@@ -67,7 +67,7 @@ resource "aws_s3_bucket_cors_configuration" "rug_media_bucket_cors_configuration
 }
 
 resource "aws_s3_bucket_policy" "allow_access_to_s3" {
-  count = var.stage == "dev" ? 1 : 0
+  count = var.stage == "stage" ? 1 : 0
   bucket = aws_s3_bucket.rug_media_bucket[0].id
   policy = data.aws_iam_policy_document.allow_access_to_s3.json
 }
