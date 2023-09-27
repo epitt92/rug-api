@@ -25,11 +25,11 @@ resource "aws_cognito_user_pool" "user_pool" {
     email_message        = "Your confirmation code is {####}"
   }
 
-  # email_configuration {
-  #   email_sending_account = "DEVELOPER"
-  #   from_email_address    = "no-reply@${aws_ses_domain_identity.domain.domain}"
-  #   source_arn            = aws_ses_domain_identity.domain.arn
-  # }
+  email_configuration {
+    email_sending_account = "DEVELOPER"
+    from_email_address    = "no-reply@${aws_ses_domain_identity.domain.domain}"
+    source_arn            = aws_ses_domain_identity.domain.arn
+  }
   
   lambda_config {
     custom_message = aws_lambda_function.cognito_custom_message_lambda.arn
