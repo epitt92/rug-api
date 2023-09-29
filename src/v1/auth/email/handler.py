@@ -1,6 +1,4 @@
-import json, boto3, jinja2
-
-# ses = boto3.client('ses')
+import jinja2
 
 #########################################
 #                                       #
@@ -16,38 +14,50 @@ def render_template(template, **kwargs):
 
 #########################################
 #                                       #
-#        Lambda Event Handler           #
+#        Lambda Event Handlers          #
 #                                       #
 #########################################
 
-def lambda_handler(event, context):
-    if event['triggerSource'] == 'CustomMessage_SignUp':
-        # recipient = event['request']['userAttributes']['email']
-        username = event['username']
-        verification_code = event['request']['codeParameter']
+def custom_message_sign_up(event):
+    username = event['username']
+    verification_code = event['request']['codeParameter']
 
-        subject = "Your One-Time Passcode"
-        body = render_template('otp.html', username=username, code=verification_code, url="https://rug.ai")
+    subject = "Your One-Time Passcode"
+    body = render_template('otp.html', username=username, code=verification_code, url="https://rug.ai")
 
-        # _ = ses.send_email(
-        #     Source="no-reply@rug.ai",
-        #     Destination={
-        #         'ToAddresses': [
-        #             recipient,
-        #         ]
-        #     },
-        #     Message={
-        #         'Subject': {
-        #             'Data': subject
-        #         },
-        #         'Body': {
-        #             'Html': {
-        #                 'Data': body
-        #             }
-        #         }
-        #     })
-
-        event['response']['emailSubject'] = subject
-        event['response']['emailMessage'] = body
+    event['response']['emailSubject'] = subject
+    event['response']['emailMessage'] = body
 
     return event
+
+
+def custom_message_resend_code(event):
+    return event
+
+
+def custom_message_forgot_password(event):
+    return event
+
+
+def post_authentication(event):
+    return event
+
+
+def post_password_change(event):
+
+    return event
+
+
+def lambda_handler(event, context):
+    if event['triggerSource'] == 'CustomMessage_SignUp':
+        return custom_message_sign_up(event)
+    elif event['triggerSource'] == 'CustomMessage_ResendCode':
+        return custom_message_resend_code(event)
+    elif event['triggerSource'] == 'CustomMessage_ForgotPassword':
+        return custom_message_forgot_password(event)
+    elif event['triggerSource'] == 'PostAuthentication_Authentication':
+        return post_authentication(event)
+    elif event['triggerSource'] == 'PostPasswordChange_PasswordChange':
+        return post_password_change(event)
+    else:
+        return event
