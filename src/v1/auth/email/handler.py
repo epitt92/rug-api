@@ -19,11 +19,10 @@ def render_template(template, **kwargs):
 #########################################
 
 def custom_message_sign_up(event):
-    username = event['username']
     verification_code = event['request']['codeParameter']
 
     subject = "Your One-Time Passcode"
-    body = render_template('otp.html', username=username, code=verification_code, url="https://rug.ai")
+    body = render_template('otp.html', code=verification_code, url="https://rug.ai")
 
     event['response']['emailSubject'] = subject
     event['response']['emailMessage'] = body
