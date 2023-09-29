@@ -1,7 +1,8 @@
 import os
 import boto3, logging
-from fastapi import Depends, HTTPException, APIRouter
+from fastapi import Depends, HTTPException, APIRouter, Response
 from fastapi.responses import JSONResponse
+from fastapi_jwt_auth import AuthJWT
 from pydantic import BaseModel, EmailStr
 from botocore.exceptions import ClientError
 
@@ -20,8 +21,89 @@ router = APIRouter()
 # Initialize Cognito client
 cognito = boto3.client('cognito-idp', region_name="eu-west-2")
 
+##############################################
+#                                            #
+#             Authorize JWT                  #
+#                                            #
+##############################################
+
+class Settings:
+    JWT_SECRET = ""
+    JWT_ALGORITHM = "RS256"
+
+@AuthJWT.load_config
+def get_config():
+    return Settings()
+
+##############################################
+#                                            #
+#          JWT Token Validation              #
+#                                            #
+##############################################
+
+@router.get("/email/validate/")
+def validate_access_token(access_token: str) -> bool:
+    try:
+        response = cognito.get_user(AccessToken=access_token)
+        return access_token if response.get("Username") else False
+    except cognito.exceptions.NotAuthorizedException as e:
+        logging.error(f"Exception: NotAuthorizedException: {e}")
+        return False
+    except Exception as e:
+        logging.error(f"Exception: Unknown Cognito Exception: {e}")
+        return False
+    
+
+@router.get("/email/username/")
+def get_username_from_access_token(access_token: str) -> str:
+    try:
+        response = cognito.get_user(AccessToken=access_token)
+        logging.info(f"Response: {response}")
+        user_attributes = response.get("UserAttributes")
+
+        if user_attributes:
+            for attribute in user_attributes:
+                if attribute.get("Name") == "email":
+                    return {"username": attribute.get("Value")}
+        logging.error(f"Exception: No email attribute found in response: {response}")
+        return {}
+    except cognito.exceptions.NotAuthorizedException as e:
+        logging.error(f"Exception: NotAuthorizedException: {e}")
+        return {}
+    except Exception as e:
+        logging.error(f"Exception: Unknown Cognito Exception: {e}")
+        return {}
+
+
+@router.get("/email/refresh/")
+def refresh_access_token(refresh_token: str) -> Response:
+    CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
+
+    if not CLIENT_ID:
+        # TODO: Add custom exception for this
+        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
+    
+    try:
+        response = cognito.initiate_auth(
+            ClientId=CLIENT_ID,
+            AuthFlow='REFRESH_TOKEN_AUTH',
+            AuthParameters={
+                'REFRESH_TOKEN': refresh_token
+            }
+        )
+
+        if response.get('AuthenticationResult'):
+            access_token = response.get('AuthenticationResult').get('AccessToken')
+            return JSONResponse(status_code=200, content={"accessToken": access_token})
+        else:
+            return None
+    except ClientError as e:
+        logging.warning(f"Exception: ClientError whilst attempting to refresh access token: {e}")
+        return None
+
+
 @router.delete("/email/delete/")
-async def rollback_user_creation(username: str):
+async def rollback_user_creation(access_token: str = Depends(validate_access_token)) -> Response:
     USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
 
     if not USER_POOL_ID:
@@ -29,6 +111,11 @@ async def rollback_user_creation(username: str):
     
     # Rollback: Delete the user from Cognito if an error occurred after sign_up
     try:
+        username = get_username_from_access_token(access_token).get("username")
+
+        if not username:
+            raise CognitoException("Exception: No username found in access token.")
+
         cognito.admin_delete_user(
             UserPoolId=USER_POOL_ID,  # Replace with your User Pool ID
             Username=username
@@ -38,6 +125,12 @@ async def rollback_user_creation(username: str):
         raise CognitoException(f"Exception: ClientError whilst attempting to rollback user creation: {e}")
 
     return JSONResponse(status_code=200, content={"detail": f"User {username} successfully rolled back and deleted from Cognito."})
+
+##############################################
+#                                            #
+#                Endpoints                   #
+#                                            #
+##############################################
 
 @router.post("/email/create/")
 async def create_user(user: CreateEmailAccount):
@@ -127,6 +220,7 @@ async def verify_user(user: VerifyEmailAccount):
 
     return JSONResponse(status_code=200, content={"detail": "User account successfully verified!"})
 
+
 @router.post("/email/verify/resend")
 async def resend_verification_code(user: EmailAccountBase):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
@@ -152,8 +246,9 @@ async def resend_verification_code(user: EmailAccountBase):
 
     return JSONResponse(status_code=200, content={"message": "Confirmation code resent successfully."})
 
+
 @router.post("/email/signin/", response_model=UserAccessTokens)
-async def sign_in(user: SignInEmailAccount):
+async def sign_in(user: SignInEmailAccount, Authorize: AuthJWT = Depends()) -> Response:
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
@@ -173,9 +268,18 @@ async def sign_in(user: SignInEmailAccount):
         # Return the JWT tokens
         tokens = {
             "accessToken": response.get('AuthenticationResult').get('AccessToken'),
-            "idToken": response.get('AuthenticationResult').get('IdToken'),
             "refreshToken": response.get('AuthenticationResult').get('RefreshToken'),
         }
+
+        # Set the tokens as cookies in the response
+        # httponly=True prevents the cookie from being accessed by JavaScript, which prevents cross-site scripting attacks
+        # secure=True ensures that the cookie is only sent over HTTPS
+
+        # response.set_cookie(key="accessToken", value=tokens.get('accessToken'), httponly=True, secure=True)
+        # response.set_cookie(key="refreshToken", value=tokens.get('refreshToken'), httponly=True, secure=True)
+
+        # Authorize.set_access_cookies(tokens.get('accessToken'))
+        # Authorize.set_refresh_cookies(tokens.get('refreshToken'))
     except cognito.exceptions.NotAuthorizedException as e:
         # Raise a custom exception here for invalid authentication
         raise CognitoIncorrectCredentials(user.username, user.password, f"Exception: NotAuthorizedException for user {user.username}")
@@ -191,6 +295,7 @@ async def sign_in(user: SignInEmailAccount):
         raise CognitoException(f"Exception: Unknown Cognito Exception: {e}")
 
     return UserAccessTokens(**tokens)
+
 
 @router.post("/email/password/request")
 async def request_reset_password(user: EmailAccountBase):

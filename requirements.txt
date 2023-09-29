@@ -19,3 +19,4 @@ coverage==7.2.7
 pandas
 web3==6.0.0
 pydantic[email]
+fastapi-jwt-auth

@@ -108,4 +108,3 @@ class SignInWeb3Account(BaseModel):
 class UserAccessTokens(BaseModel):
     accessToken: str
     refreshToken: str
-    idToken: str
