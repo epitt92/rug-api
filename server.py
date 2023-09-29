@@ -24,7 +24,6 @@ TITLE = "rug.ai API"
 VERSION = "2.2"
 
 app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, version=VERSION, favicon='https://rug.ai/favicon.ico')
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 ######################################################
 #                                                    #
@@ -157,4 +156,7 @@ async def root():
         content={"detail": "rug-api"}
     )
 
+
+
 app.include_router(v1_router)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])

@@ -1,0 +1,44 @@
+{% extends "base.html" %} {% block body %}
+
+<tr>
+    <td align="center" height="240" style="padding: 61px 0 72px">
+        <img
+            src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Title+Graphics/OTP.png"
+            alt="OTP"
+            width="450"
+        />
+    </td>
+</tr>
+<tr>
+    <td align="center" style="">
+        <h2
+            style="
+                color: #181a22;
+                font-size: 35px;
+                line-height: 48px;
+                margin: 0px auto 25px;
+            "
+        >
+            Welcome
+            <span style="font-weight: 600">RugEnjoyer!</span>
+        </h2>
+        <p style="font-size: 20px; color: #181a22; margin: 0px 95px 52px">
+            Please see below your one time passcode. Please input this upon
+            signing in, or click the link below.
+        </p>
+        <p style="font-size: 60px; font-weight: 600; letter-spacing: 5px">
+            {{ code }}
+        </p>
+        <p style="font-size: 30px; margin: 0px 50px 45px">
+            <a
+                href="{{ url }}"
+                style="color: #9861ff; font-weight: 500"
+                target="_blank"
+            >
+                {{ url }}
+            </a>
+        </p>
+    </td>
+</tr>
+
+{% endblock %}

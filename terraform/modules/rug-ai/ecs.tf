@@ -84,7 +84,7 @@ module "rug_app_service" {
       value = aws_cognito_user_pool.user_pool.id
     },
     {
-      name = "COGNITO_USER_POOL_CLIENT_ID"
+      name = "COGNITO_APP_CLIENT_ID"
       value = aws_cognito_user_pool_client.client.id
     }
   ]
@@ -145,6 +145,14 @@ module "rug_app_service" {
         Resource = [
           # data.aws_ssm_parameter.rug_timestream_db_arn_parameter_store.value
           "*"
+        ]
+      },
+      {
+        //cognito actions
+        Action = ["cognito-idp:AdminDeleteUser", "cognito-idp:AdminConfirmSignUp", "cognito-idp:AdminCreateUser", "cognito-idp:ConfirmSignUp", "cognito-idp:ResendConfirmationCode", "cognito-idp:ForgotPassword", "cognito-idp:ConfirmForgotPassword", "cognito-idp:SignUp", "cognito-idp:InitiateAuth"]
+        Effect = "Allow"
+        Resource = [
+          aws_cognito_user_pool.user_pool.arn
         ]
       }
     ]
