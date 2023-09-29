@@ -1,4 +1,7 @@
 import json
+import boto3
+
+ses = boto3.client('ses')
 
 def lambda_handler(event, context):
     if event['triggerSource'] == 'CustomMessage_SignUp':
