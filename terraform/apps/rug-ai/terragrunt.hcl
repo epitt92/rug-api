@@ -23,5 +23,6 @@ inputs = {
   workspace              = local.workspace
   rug_ecr_image          = local.rug_ecr_image
   autoscaling_enabled    = local.env_config.locals.autoscaling_enabled
+  s3_bucket_artifacts    = local.env_config.locals.s3_bucket_artifacts 
 
 }

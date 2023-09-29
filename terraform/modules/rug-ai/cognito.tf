@@ -32,7 +32,7 @@ resource "aws_cognito_user_pool" "user_pool" {
   }
   
   lambda_config {
-    custom_message = aws_lambda_function.cognito_custom_message_lambda.arn
+    custom_message = module.custom_message_lambda.function_arn
   }
 
   schema {
