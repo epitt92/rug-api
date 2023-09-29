@@ -22,6 +22,7 @@
             /* Normalize */
             * {
                 margin: 0;
+                box-sizing: border-box;
             }
         </style>
     </head>
@@ -48,9 +49,7 @@
                             ></td>
                         </tr>
 
-                        {% block body %}{% endblock %}
-
-                        {% block regards %}
+                        {% block body %}{% endblock %} {% block regards %}
                         <tr>
                             <td align="center">
                                 <p
