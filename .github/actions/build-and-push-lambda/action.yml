@@ -60,15 +60,12 @@ runs:
       run: |
         mkdir package
         python3 -m pip install --upgrade pip
-        if [ -f requirements.txt ]; then pip install --target ./package -r requirements.txt; fi
+        if [ -f requirements.txt ]; then pip install --target ./ -r requirements.txt; fi
 
     - name: zip dist
       working-directory: ${{inputs.code-path}}
       shell: bash
       run: |
-        cd package
-        zip -r ../${{ inputs.app }}.zip .
-        cd ..
         zip ${{ inputs.app }}.zip -r ./
 
     - name: Upload to S3
