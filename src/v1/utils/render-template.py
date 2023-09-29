@@ -8,4 +8,4 @@ def render_template(template, **kwargs):
     return templ.render(kwargs)
 
 if __name__ == '__main__':
-    print(render_template('referral-invite.html', data={'username': 'John', 'referrer': 'Jane', 'url': 'https://rug.ai'}))
+    print(render_template('referral-invite.html', username='John', referrer='Jane', url='https://rug.ai'))

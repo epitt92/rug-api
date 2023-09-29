@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>You've Been Invited!</title>
+        <link
+            href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@400;500;600&display=swap"
+            rel="stylesheet"
+        />
+        <style>
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                background-color: #ffffff;
+                font-family: "Bai Jamjuree", sans-serif;
+            }
+
+            table {
+                margin: 0 auto;
+            }
+        </style>
+    </head>
+    <body>
+        <table cellpadding="0" cellspacing="0" border="0" width="600">
+            <tr>
+                <td align="center">
+                    <table
+                        cellpadding="0"
+                        cellspacing="0"
+                        border="0"
+                        width="600"
+                        style="background-color: #e8e8e8"
+                    >
+                        <tr>
+                            <td
+                                align="center"
+                                bgcolor="#ddd"
+                                height="60"
+                                style="
+                                    background-image: url('https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Header+and+Footer/Header+600px.png');
+                                    background-size: cover;
+                                "
+                            ></td>
+                        </tr>
+
+                        {% block body %}{% endblock %}
+
+                        <tr>
+                            <td align="center" style="padding-bottom: 57px">
+                                <a href="https://rug.ai" target="_blank">
+                                    <img
+                                        src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/Rug_Logo.png"
+                                        alt="Rug.ai"
+                                        width="200"
+                                    />
+                                </a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td align="center" bgcolor="#ccc" height="60">
+                                <table
+                                    cellpadding="0"
+                                    cellspacing="0"
+                                    border="0"
+                                    width="100%"
+                                    style="padding: 0px 26px"
+                                >
+                                    <tr>
+                                        <td width="50%" align="left">
+                                            <a
+                                                href=""
+                                                style="text-decoration: none"
+                                            >
+                                                <img
+                                                    src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Footer+Icons/Bby_Diffusion.png"
+                                                    alt="Diffusion"
+                                                    style="
+                                                        height: 27px;
+                                                        text-decoration: none;
+                                                    "
+                                                />
+                                            </a>
+                                        </td>
+                                        <td width="50%" align="right">
+                                            <a
+                                                href=""
+                                                style="
+                                                    margin-right: 35px;
+                                                    text-decoration: none;
+                                                "
+                                            >
+                                                <img
+                                                    src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Footer+Icons/Twitter.png"
+                                                    alt="twitter"
+                                                    style="height: 16px"
+                                                />
+                                            </a>
+                                            <a
+                                                href=""
+                                                style="
+                                                    margin-right: 35px;
+                                                    text-decoration: none;
+                                                "
+                                            >
+                                                <img
+                                                    src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Footer+Icons/Telegram.png"
+                                                    alt="telegram"
+                                                    style="height: 16px"
+                                                />
+                                            </a>
+                                            <a
+                                                href=""
+                                                style="
+                                                    margin-right: 35px;
+                                                    text-decoration: none;
+                                                "
+                                            >
+                                                <img
+                                                    src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Footer+Icons/Docs.png"
+                                                    alt="docs"
+                                                    style="height: 16px"
+                                                />
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>
