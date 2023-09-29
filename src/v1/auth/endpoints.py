@@ -27,9 +27,11 @@ cognito = boto3.client('cognito-idp', region_name="eu-west-2")
 #                                            #
 ##############################################
 
-class Settings:
+class Settings(BaseModel):
     JWT_SECRET = ""
     JWT_ALGORITHM = "RS256"
+
+    authjwt_token_location: set = {"cookies"}
 
 @AuthJWT.load_config
 def get_config():
@@ -278,8 +280,8 @@ async def sign_in(user: SignInEmailAccount, Authorize: AuthJWT = Depends()) -> R
         # response.set_cookie(key="accessToken", value=tokens.get('accessToken'), httponly=True, secure=True)
         # response.set_cookie(key="refreshToken", value=tokens.get('refreshToken'), httponly=True, secure=True)
 
-        # Authorize.set_access_cookies(tokens.get('accessToken'))
-        # Authorize.set_refresh_cookies(tokens.get('refreshToken'))
+        Authorize.set_access_cookies(tokens.get('accessToken'))
+        Authorize.set_refresh_cookies(tokens.get('refreshToken'))
     except cognito.exceptions.NotAuthorizedException as e:
         # Raise a custom exception here for invalid authentication
         raise CognitoIncorrectCredentials(user.username, user.password, f"Exception: NotAuthorizedException for user {user.username}")
@@ -297,21 +299,43 @@ async def sign_in(user: SignInEmailAccount, Authorize: AuthJWT = Depends()) -> R
     return UserAccessTokens(**tokens)
 
 
+@router.post("/email/refresh")
+async def refresh(Authorize: AuthJWT = Depends()):
+    Authorize.jwt_refresh_token_required()
+
+    current_user = Authorize.get_jwt_subject()
+    new_access_token = Authorize.create_access_token(subject=current_user)
+
+    Authorize.set_access_cookies(new_access_token)
+    return {"access_token": new_access_token}
+
+
+@router.delete("/email/signout")
+async def sign_out(Authorize: AuthJWT = Depends()):
+    Authorize.jwt_required()
+    Authorize.unset_jwt_cookies()
+    return JSONResponse(status_code=200, content={"detail": "User successfully signed out."})
+
+
 @router.post("/email/password/request")
-async def request_reset_password(user: EmailAccountBase):
+async def request_reset_password(Authorize: AuthJWT = Depends()):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
         raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
     
     try:
+        username = get_username_from_access_token(Authorize.get_raw_jwt().get("accessToken")).get("username")
+
         # The verification code will be sent to the user's registered email or phone number
         _ = cognito.forgot_password(
             ClientId=CLIENT_ID,
-            Username=user.username
+            Username=username
         )
     except cognito.exceptions.UserNotFoundException as e:
-        raise CognitoUserDoesNotExist(user, f"Exception: UserNotFoundException: {e}")
+        if not username:
+            raise CognitoException("Exception: No username found in access token.")
+        raise CognitoUserDoesNotExist(username, f"Exception: UserNotFoundException: {e}")
     except cognito.exceptions.InvalidParameterException as e:
         raise CognitoException(f"Exception: InvalidParameterException: {e}")
     except Exception as e:
