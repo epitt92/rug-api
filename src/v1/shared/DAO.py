@@ -2,7 +2,7 @@
 Data Access Object (DAO) class to store and retrieve data from a file.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -139,3 +139,31 @@ class DAO:
         """
         item[self.partition_key_name] = partition_key_value
         self.table.put_item(Item=item)
+
+
+class DatabaseQueueObject:
+    """Object to interact with DynamoDB and SQS."""
+    def __init__(self, table_name: str, queue_url: str, region_name: str = 'eu-west-2'):
+        self.DAO = DAO(table_name=table_name, region_name=region_name)
+        self.sqs = boto3.client('sqs')
+        self.queue_url = queue_url
+
+    def get_item(self, pk: str, message_data: dict) -> Optional[dict]:
+        """Try to find most recent in DynamoDB, otherwise send a message to SQS.
+
+        Args:
+            pk (str): Partition key
+            message_data (dict): Message to send to SQS
+
+        Returns:
+            Optional[dict]: Item from DynamoDB or None
+        """
+        item = self.DAO.find_most_recent_by_pk(pk=pk)
+
+        if item is None:
+            self.sqs.send_message(
+                QueueUrl=self.queue_url,
+                MessageBody=str(message_data)
+            )
+
+        return item
