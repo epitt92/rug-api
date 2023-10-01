@@ -30,20 +30,16 @@ def custom_message_sign_up(event):
     return event
 
 
-def custom_message_resend_code(event):
-    return event
-
-
 def custom_message_forgot_password(event):
-    return event
+    recipient = event['request']['userAttributes']['email']
+    reset_code = event['request']['codeParameter']
 
+    # TODO: Must incorporate the reset code into the link
+    subject = "You've Requested to Reset Your Password"
+    body = render_template('reset-password.html', title=subject + f": {reset_code}", username=recipient, reset_link="https://rug.ai")
 
-def post_authentication(event):
-    return event
-
-
-def post_password_change(event):
-
+    event['response']['emailSubject'] = subject
+    event['response']['emailMessage'] = body
     return event
 
 
@@ -51,12 +47,12 @@ def lambda_handler(event, context):
     if event['triggerSource'] == 'CustomMessage_SignUp':
         return custom_message_sign_up(event)
     elif event['triggerSource'] == 'CustomMessage_ResendCode':
-        return custom_message_resend_code(event)
+        return custom_message_sign_up(event)
     elif event['triggerSource'] == 'CustomMessage_ForgotPassword':
         return custom_message_forgot_password(event)
-    elif event['triggerSource'] == 'PostAuthentication_Authentication':
-        return post_authentication(event)
-    elif event['triggerSource'] == 'PostPasswordChange_PasswordChange':
-        return post_password_change(event)
+    # elif event['triggerSource'] == 'PostAuthentication_Authentication':
+    #     return post_authentication(event)
+    # elif event['triggerSource'] == 'PostPasswordChange_PasswordChange':
+    #     return post_password_change(event)
     else:
         return event
