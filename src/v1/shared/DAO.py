@@ -1,7 +1,7 @@
 """
 Data Access Object (DAO) class to store and retrieve data from a file.
 """
-
+import json
 from typing import Any, Dict, List, Optional
 
 import boto3
@@ -151,19 +151,30 @@ class DatabaseQueueObject:
     def get_item(self, pk: str, message_data: dict) -> Optional[dict]:
         """Try to find most recent in DynamoDB, otherwise send a message to SQS.
 
+        To make this function work, we consider the following:
+        - DynamoDB has a partition key that can be used to find the most recent item
+        - The structure of the SQS message is a JSON object, therefore the input must be a serializable dict
+        - We first verify if we can find the PK in DynamoDB, if not, we send a message to SQS
+        - The message to SQS has the purpose of creating a new item in DynamoDB
+        - While the message in SQS is not processed (by Lambda) new messages will be sent to SQS
+        - Once the message is processed, the item will be created in DynamoDB
+        - The additional messages in SQS will be ignored, since the item already exists in DynamoDB (however, we still
+            call the Lambda function, which is not ideal) #TODO: Fix this
+
         Args:
             pk (str): Partition key
             message_data (dict): Message to send to SQS
 
         Returns:
-            Optional[dict]: Item from DynamoDB or None
+            Optional[dict]: If the item is found in DynamoDB, return the item, otherwise create a message
+                in SQS and return None
         """
-        item = self.DAO.find_most_recent_by_pk(pk=pk)
+        item = self.DAO.find_most_recent_by_pk(partition_key_value=pk)
 
         if item is None:
             self.sqs.send_message(
                 QueueUrl=self.queue_url,
-                MessageBody=str(message_data)
+                MessageBody=json.dumps(message_data)
             )
 
         return item

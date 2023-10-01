@@ -4,9 +4,12 @@ from goplus.token import Token
 
 from src.v1.tokens.schemas import ContractResponse, ContractItem
 from src.v1.tokens.constants import BURN_TAG, ZERO_ADDRESS, ANTI_WHALE_MAPPING, HIDDEN_OWNER_MAPPING, OPEN_SOURCE_MAPPING, HONEYPOT_MAPPING, PROXY_MAPPING, TRADING_COOLDOWN_MAPPING, CANNOT_SELL_ALL_MAPPING, OWNER_CHANGE_BALANCE_MAPPING, SELF_DESTRUCT_MAPPING, BLACKLIST_MAPPING, WHITELIST_MAPPING, HONEYPOT_SAME_CREATOR
+
 from src.v1.shared.constants import CHAIN_ID_MAPPING
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.dependencies import load_access_token
+
+from src.v1.clustering.constants import ETHEREUM_BLOCK_EXPLORER_URL
 
 dotenv.load_dotenv()
 
@@ -29,7 +32,7 @@ def get_go_plus_data(chain: ChainEnum, token_address: str):
     access_token = load_access_token()
 
     logging.info(f'Access token loaded! Getting Go Plus data for {token_address} on chain {chain}.')
-    
+
     _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
     _token_address = token_address.lower()
 
@@ -39,7 +42,7 @@ def get_go_plus_data(chain: ChainEnum, token_address: str):
     except Exception as e:
         logging.error(f"Exception: Whilst calling Token object from GoPlus: {e}")
         raise e
-    
+
     logging.info(f"Success! GoPlus Data Loaded...")
 
     return data[_token_address].to_dict()
@@ -125,7 +128,7 @@ def get_block_explorer_data(chain: ChainEnum, token_address: str):
     try:
         prefix = os.environ.get(f'{_chain.upper()}_BLOCK_EXPLORER_URL')
         api_key = os.environ.get(f'{_chain.upper()}_BLOCK_EXPLORER_API_KEY')
-        
+
         params = {
                 'module': 'token',
                 'action': 'tokeninfo',
@@ -137,7 +140,7 @@ def get_block_explorer_data(chain: ChainEnum, token_address: str):
         result.raise_for_status()
 
         try:
-            data = result.json()['result'][0]   
+            data = result.json()['result'][0]
 
             output = {}
             output['name'] = data['tokenName']
@@ -223,7 +226,7 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
             items.append({'title': simple_mapping[key][response]['title'],
                             'description': simple_mapping[key][response]['description'],
                             'severity': simple_mapping[key][response]['severity']})
-            
+
     # Add buy tax field
     if go_plus_response.get('buy_tax'):
         buy_tax = float(go_plus_response.get('buy_tax'))
@@ -310,21 +313,21 @@ def calculate_score(items: list) -> int:
     penalty_param = 0
     n = 0
     max_severity = 0
-    
+
     for severity in severities:
         if severity > 0:
             penalty_param += severity + k
             n += 1
             max_severity = max(max_severity, severity)
-    
+
     if n == 0:
         return 100
-    
+
     # Calculate score
     penalty_param = penalty_param ** p
-    
+
     score = 100 * (1 - 1 / (1 + math.exp(-(penalty_param - (h * n)))))
-    
+
     if max_severity > 3:
         return int(score)
     else:
@@ -342,19 +345,19 @@ def create_brief_summary(items: list) -> str:
         (str): Brief summary of the contract.
     """
     max_severity, max_severity_item = 0, None
-    
+
     for item in items:
         if (item.get("severity")) and (item.get("severity") > max_severity):
             max_severity = item.get("severity")
             max_severity_item = item
-        
+
     if max_severity < 2:
         return "No Critical Issues", max_severity
     else:
         return max_severity_item.get("title"), max_severity
 
 
-def percentage_to_severity(percentage) -> int:    
+def percentage_to_severity(percentage) -> int:
     if percentage == 0:
         return 0
     elif 0.01 < percentage < 0.04:
@@ -365,3 +368,64 @@ def percentage_to_severity(percentage) -> int:
         return math.ceil(3 + (percentage - 0.10) * ((100 - 3) / (1 - 0.10)))
     else:
         raise ValueError("Exception: Percentage should be between 0 and 100% (inclusive).")
+
+
+def call_fetch_token_holders(chain: str, token_address: str) -> dict:
+    api_key = os.getenv('ETHEREUM_BLOCK_EXPLORER_API_KEY')
+
+    # TODO: Add support for other chains to this query
+
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
+
+    if _chain == 'ethereum':
+        payload = {
+            'module': 'token',
+            'action': 'tokenholderlist',
+            'contractaddress': token_address,
+            'offset': 10000,
+            'apikey': api_key
+        }
+
+        output, found, page = [], False, 1
+
+        while not found:
+            payload['page'] = page
+
+            data = requests.get(ETHEREUM_BLOCK_EXPLORER_URL, params=payload)
+
+            # Verify if result is valid
+            # TODO: The API should return other than 200 for failed calls...
+            # We then, use their message OK
+            if data.json()["message"] not in ["OK", "No token holder found"]:
+                raise Exception(f'Error while trying to get ETHERSCAN info about '
+                                f'holders for token {token_address} on chain {chain}.')
+
+            result = data.json().get('result')
+
+            if len(result) == 0:
+                found = True
+
+            output += result
+            page += 1
+
+        return {'status': '1', 'message': 'OK', 'result': output}
+    else:
+        logging.warning(
+            f'Chain {_chain} is not supported. Only Ethereum is supported at this time, returning an empty dictionary.')
+        return {}
+
+
+def call_total_supply(token_address: str) -> float:
+    api_key = os.getenv('ETHERSCAN_API_KEY')
+
+    total_supply_params = {
+        'module': 'stats',
+        'action': 'tokensupply',
+        'contractaddress': token_address,
+        'apikey': api_key
+    }
+
+    total_supply = requests.get(ETHEREUM_BLOCK_EXPLORER_URL, params=total_supply_params)
+    total_supply.raise_for_status()
+    total_supply = total_supply.json().get("result")
+    return float(total_supply)
