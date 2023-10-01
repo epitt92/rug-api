@@ -1,15 +1,20 @@
 import os
-import boto3, logging
-from fastapi import Depends, HTTPException, APIRouter, Response
+import boto3
+import logging
+import requests
+from functools import lru_cache
+from fastapi import Depends, HTTPException, APIRouter, Response, security
 from fastapi.responses import JSONResponse
 from fastapi_jwt_auth import AuthJWT
 from pydantic import BaseModel, EmailStr
 from botocore.exceptions import ClientError
+from authlib.jose import JsonWebToken, JsonWebKey, KeySet, JWTClaims, errors
+from cachetools import cached, TTLCache
 
 from src.v1.auth.schemas import (
-        EmailAccountBase, CreateEmailAccount, 
+        EmailAccountBase, CreateEmailAccount,
         SignInEmailAccount, VerifyEmailAccount,
-        UserAccessTokens, ResetPassword, 
+        UserAccessTokens, ResetPassword,
         CreateWeb3Account, SignInWeb3Account)
 
 from src.v1.referral.endpoints import post_referral_code_use
@@ -17,6 +22,8 @@ from src.v1.referral.endpoints import post_referral_code_use
 from src.v1.auth.exceptions import CognitoException, CognitoUserAlreadyExists, CognitoIncorrectCredentials, CognitoLambdaException, CognitoUserDoesNotExist
 
 router = APIRouter()
+
+token_scheme = security.HTTPBearer()
 
 # Initialize Cognito client
 cognito = boto3.client('cognito-idp', region_name="eu-west-2")
@@ -28,14 +35,62 @@ cognito = boto3.client('cognito-idp', region_name="eu-west-2")
 ##############################################
 
 class Settings(BaseModel):
-    JWT_SECRET = ""
+    JWT_SECRET = "secret"
     JWT_ALGORITHM = "RS256"
 
-    authjwt_token_location: set = {"cookies"}
+    cognito_user_pool_id: str = os.environ.get('COGNITO_USER_POOL_ID')
 
-@AuthJWT.load_config
-def get_config():
+@lru_cache()
+def get_settings() -> Settings:
+    """
+    Load settings (once per app lifetime)
+    """
     return Settings()
+
+def get_jwks_url(settings: Settings = Depends(get_settings)) -> str:
+    """
+    Build JWKS url
+    """
+    pool_id = settings.cognito_user_pool_id
+    region = pool_id.split("_")[0]
+    return f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/jwks.json"
+
+@cached(TTLCache(maxsize=1, ttl=3600))
+def get_jwks(url: str = Depends(get_jwks_url)) -> KeySet:
+    """
+    Get cached or new JWKS. Cognito does not seem to rotate keys, however to be safe we
+    are lazy-loading new credentials every hour.
+    """
+    with requests.get(url) as response:
+        response.raise_for_status()
+        return JsonWebKey.import_key_set(response.json())
+
+def decode_token(
+    token: security.HTTPAuthorizationCredentials = Depends(token_scheme),
+    jwks: KeySet = Depends(get_jwks),
+) -> JWTClaims:
+    """
+    Validate & decode JWT.
+    """
+    try:
+        claims = JsonWebToken(["RS256"]).decode(
+            s=token.credentials,
+            key=jwks,
+            #  claim_options={
+                # Example of validating audience to match expected value
+                # "aud": {"essential": True, "values": [APP_CLIENT_ID]}
+            #  }
+        )
+
+        if "client_id" in claims:
+            # Insert Cognito's `client_id` into `aud` claim if `aud` claim is unset
+            claims.setdefault("aud", claims["client_id"])
+
+        claims.validate()
+    except errors.JoseError:
+        raise HTTPException(status_code=403, detail="Bad auth token")
+
+    return claims
 
 ##############################################
 #                                            #
@@ -54,7 +109,7 @@ def validate_access_token(access_token: str) -> bool:
     except Exception as e:
         logging.error(f"Exception: Unknown Cognito Exception: {e}")
         return False
-    
+
 
 @router.get("/email/username/")
 def get_username_from_access_token(access_token: str) -> str:
@@ -84,7 +139,7 @@ def refresh_access_token(refresh_token: str) -> Response:
     if not CLIENT_ID:
         # TODO: Add custom exception for this
         raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
-    
+
     try:
         response = cognito.initiate_auth(
             ClientId=CLIENT_ID,
@@ -110,7 +165,7 @@ async def rollback_user_creation(access_token: str = Depends(validate_access_tok
 
     if not USER_POOL_ID:
         raise CognitoException("Exception: COGNITO_USER_POOL_ID not set in environment variables.")
-    
+
     # Rollback: Delete the user from Cognito if an error occurred after sign_up
     try:
         username = get_username_from_access_token(access_token).get("username")
@@ -141,7 +196,7 @@ async def create_user(user: CreateEmailAccount):
     if not CLIENT_ID:
         # TODO: Add custom exception for this
         raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
-    
+
     logging.info(f"Client ID: {CLIENT_ID}")
 
     try:
@@ -250,7 +305,7 @@ async def resend_verification_code(user: EmailAccountBase):
 
 
 @router.post("/email/signin/", response_model=UserAccessTokens)
-async def sign_in(user: SignInEmailAccount, Authorize: AuthJWT = Depends()) -> Response:
+async def sign_in(user: SignInEmailAccount) -> Response:
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
@@ -273,6 +328,7 @@ async def sign_in(user: SignInEmailAccount, Authorize: AuthJWT = Depends()) -> R
             "refreshToken": response.get('AuthenticationResult').get('RefreshToken'),
         }
 
+
         # Set the tokens as cookies in the response
         # httponly=True prevents the cookie from being accessed by JavaScript, which prevents cross-site scripting attacks
         # secure=True ensures that the cookie is only sent over HTTPS
@@ -280,8 +336,9 @@ async def sign_in(user: SignInEmailAccount, Authorize: AuthJWT = Depends()) -> R
         # response.set_cookie(key="accessToken", value=tokens.get('accessToken'), httponly=True, secure=True)
         # response.set_cookie(key="refreshToken", value=tokens.get('refreshToken'), httponly=True, secure=True)
 
-        Authorize.set_access_cookies(tokens.get('accessToken'))
-        Authorize.set_refresh_cookies(tokens.get('refreshToken'))
+        #  Authorize.set_access_cookies(tokens.get('accessToken'))
+        #  Authorize.set_refresh_cookies(tokens.get('refreshToken'))
+
     except cognito.exceptions.NotAuthorizedException as e:
         # Raise a custom exception here for invalid authentication
         raise CognitoIncorrectCredentials(user.username, user.password, f"Exception: NotAuthorizedException for user {user.username}")
@@ -323,7 +380,7 @@ async def request_reset_password(Authorize: AuthJWT = Depends()):
 
     if not CLIENT_ID:
         raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
-    
+
     try:
         username = get_username_from_access_token(Authorize.get_raw_jwt().get("accessToken")).get("username")
 
@@ -350,7 +407,7 @@ async def reset_password(user: ResetPassword):
 
     if not CLIENT_ID:
         raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
-    
+
     try:
         _ = cognito.confirm_forgot_password(
             ClientId=CLIENT_ID,
