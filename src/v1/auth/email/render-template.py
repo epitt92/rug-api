@@ -14,3 +14,4 @@ if __name__ == '__main__':
     print(render_template('join-waitlist.html', title="Thanks for Joining the Waitlist!"))
     print(render_template('welcome.html', title="Welcome to Rug.ai", url="https://Rug.ai/signup?ref=123456"))
     print(render_template('airdrop.html', title="Your Weekly Airdrop", username="RugEnjoyer", points="24", total_points="284", rank="3,313", rank_out_of="50k", rank_delta="14", rank_direction="down", invites="36", points_distributed="248", total_users="157"))
+    print(render_template('password-reset-successfully.html', title="You've Successfully Reset Your Password", username="RugEnjoyer", signin_link="https://rug.ai/signin"))
