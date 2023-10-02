@@ -44,8 +44,12 @@ TOKEN_METRICS_DAO = DAO(table_name="tokenmetrics")
 CLUSTER_REPORT_DAO = DAO(table_name="clusterreports")
 HOLDERS_DAO = DAO(table_name='holders')
 
-SOURCE_CODE_QUEUE = DatabaseQueueObject(table_name='sourcecode', queue_url=os.environ.get('SOURCE_CODE_QUEUE_URL'))
-CLUSTERING_QUEUE = DatabaseQueueObject(table_name='clusterout', queue_url=os.environ.get('CLUSTERING_QUEUE_URL'))
+TOKEN_ANALYSIS_QUEUE = DatabaseQueueObject(
+    table_name='tokenanalysis',
+    queue_url=os.environ.get('TOKEN_ANALYSIS_QUEUE'), )
+CLUSTERING_QUEUE = DatabaseQueueObject(
+    table_name='clusterout',
+    queue_url=os.environ.get('CLUSTERING_QUEUE_URL'), )
 
 ######################################################
 #                                                    #
@@ -276,15 +280,12 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends
     if _chain != 'ethereum':
         raise UnsupportedChainException(chain=_chain)
 
-    if not os.environ.get('ML_API_URL'):
-        logging.error(f"The environment variable `ML_API_URL` is not configured.")
-        raise Exception()
-
-    URL = os.environ.get('ML_API_URL') + f'/v1/audit/{_chain}/{token_address}'
+    # PK for lookup in DB and message for, if there is no data in the DB, make the queue request
+    pk = get_primary_key(token_address=token_address, chain=chain)
+    message = {"token_address": token_address, "chain": chain.value}
 
     try:
-        response = requests.get(URL)
-        response.raise_for_status()
+        response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, message_data=message)
     except Exception as e:
         logging.error(f"Exception: Whilst calling the rug.ai ML API for `audit` for {token_address} on chain {chain}.")
         raise RugAPIException()
@@ -659,11 +660,13 @@ async def get_audit_summary_from_cache(chain, token_address: str = Depends(valid
     if _chain != 'ethereum':
         return None
 
-    URL = os.environ.get('ML_API_URL') + f'/v1/audit/cache/{chain.value}/{token_address.lower()}'
+    # TODO: This has the same logic as get_token_audit_summary
+    # PK for lookup in DB and message for, if there is no data in the DB, make the queue request
+    pk = get_primary_key(token_address=token_address, chain=chain)
+    message = {"token_address": token_address, "chain": chain.value}
 
     try:
-        response = requests.get(URL)
-        response.raise_for_status()
+        response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, message_data=message)
     except Exception as e:
         logging.error(f'An exception occurred whilst trying to fetch clustering data from cache for token {token_address} on chain {chain}: {e}')
         return None
