@@ -375,14 +375,14 @@ async def sign_out(Authorize: AuthJWT = Depends()):
 
 
 @router.post("/email/password/request")
-async def request_reset_password(Authorize: AuthJWT = Depends()):
+async def request_reset_password(username: EmailStr):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
         raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
 
     try:
-        username = get_username_from_access_token(Authorize.get_raw_jwt().get("accessToken")).get("username")
+        # username = get_username_from_access_token(Authorize.get_raw_jwt().get("accessToken")).get("username")
 
         # The verification code will be sent to the user's registered email or phone number
         _ = cognito.forgot_password(
@@ -390,8 +390,8 @@ async def request_reset_password(Authorize: AuthJWT = Depends()):
             Username=username
         )
     except cognito.exceptions.UserNotFoundException as e:
-        if not username:
-            raise CognitoException("Exception: No username found in access token.")
+        # if not username:
+        #     raise CognitoException("Exception: No username found in access token.")
         raise CognitoUserDoesNotExist(username, f"Exception: UserNotFoundException: {e}")
     except cognito.exceptions.InvalidParameterException as e:
         raise CognitoException(f"Exception: InvalidParameterException: {e}")
