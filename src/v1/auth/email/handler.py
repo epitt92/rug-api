@@ -47,7 +47,7 @@ def custom_message_forgot_password(event):
 
 
 def send_custom_message_confirm_password_reset(event):
-    recipient = event['request']['userAttributes']['email']
+    recipient = event['userName']
 
     subject = "You've Successfully Reset Your Password"
     body = render_template('password-reset-successfully.html', title=subject, username=recipient, signin_link="https://rug.ai/signin")
