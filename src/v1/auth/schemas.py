@@ -77,7 +77,7 @@ class CreateWeb3Account(BaseModel):
     signed_message: SignedMessage
 
     referral_code: str
-
+ 
     # Generated dynamically at instantiation
     username: Optional[str]
     password: Optional[str]

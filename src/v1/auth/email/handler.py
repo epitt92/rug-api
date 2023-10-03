@@ -1,7 +1,7 @@
 import jinja2
 import boto3
 
-ses = boto3.client('ses')
+ses = boto3.client('ses', region_name="eu-west-2")
 
 #########################################
 #                                       #
@@ -67,7 +67,7 @@ def send_custom_message_confirm_password_reset(event):
                 'Data': email_subject
             },
             'Body': {
-                'Text': {
+                'Html': {
                     'Data': email_body
                 }
             }
