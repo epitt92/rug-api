@@ -110,7 +110,6 @@ def validate_access_token(access_token: str) -> bool:
         logging.error(f"Exception: Unknown Cognito Exception: {e}")
         return False
 
-
 @router.get("/email/username/")
 def get_username_from_access_token(access_token: str) -> str:
     try:
@@ -157,6 +156,28 @@ def refresh_access_token(refresh_token: str) -> Response:
     except ClientError as e:
         logging.warning(f"Exception: ClientError whilst attempting to refresh access token: {e}")
         return None
+    
+
+@router.get("/email/exists/") 
+async def check_username_exists(user: EmailStr):
+    USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
+
+    if not USER_POOL_ID:
+        raise CognitoException("Exception: COGNITO_USER_POOL_ID not set in environment variables.")
+
+    try:
+        response = cognito.admin_get_user(
+            UserPoolId=USER_POOL_ID,
+            Username=user
+        )
+        if response and 'Username' in response:
+            return JSONResponse(status_code=200, content={"exists": True, "detail": "Username already exists."})
+        else:
+            return JSONResponse(status_code=200, content={"exists": False, "detail": "Username is available."})
+    except cognito.exceptions.UserNotFoundException:
+        return JSONResponse(status_code=200, content={"exists": False, "detail": "Username is available."})
+    except Exception as e:
+        raise CognitoException(str(e))
 
 
 @router.delete("/email/delete/")
