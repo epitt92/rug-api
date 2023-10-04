@@ -78,6 +78,14 @@ module "rug_app_service" {
     {
       name  = "ML_API_URL"
       value = data.aws_ssm_parameter.rug_ml_api_endpoint_parameter_store.value
+    },
+    {
+      name = "COGNITO_USER_POOL_ID"
+      value = aws_cognito_user_pool.user_pool.id
+    },
+    {
+      name = "COGNITO_APP_CLIENT_ID"
+      value = aws_cognito_user_pool_client.client.id
     }
   ]
   alb_certifcate_arn = aws_acm_certificate.cert.arn
@@ -147,6 +155,14 @@ module "rug_app_service" {
         Resource = [
           # data.aws_ssm_parameter.rug_timestream_db_arn_parameter_store.value
           "*"
+        ]
+      },
+      {
+        //cognito actions
+        Action = ["cognito-idp:AdminDeleteUser", "cognito-idp:AdminConfirmSignUp", "cognito-idp:AdminCreateUser", "cognito-idp:ConfirmSignUp", "cognito-idp:ResendConfirmationCode", "cognito-idp:ForgotPassword", "cognito-idp:ConfirmForgotPassword", "cognito-idp:SignUp", "cognito-idp:InitiateAuth"]
+        Effect = "Allow"
+        Resource = [
+          aws_cognito_user_pool.user_pool.arn
         ]
       }
     ]

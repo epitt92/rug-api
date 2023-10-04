@@ -25,3 +25,7 @@ variable "rug_ecr_image" {
 variable "autoscaling_enabled" {
   description = "The autoscaling enabled"
 }
+
+variable "s3_bucket_artifacts" {
+  description = "The s3 bucket artifacts"
+}

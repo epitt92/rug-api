@@ -1,0 +1,217 @@
+{% extends "base.html" %} {% block body %}
+
+<tr>
+    <td align="center" style="padding: 66px 0 83px">
+        <img
+            src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Title+Graphics/Airdrop.png"
+            alt="Airdrop"
+            width="510"
+        />
+    </td>
+</tr>
+<tr>
+    <td
+        align="left"
+        style="color: #181a22; padding: 0 67px 77px; font-size: 24px"
+    >
+        <h2 style="font-size: 35px; font-weight: 400">
+            Hey!
+            <span style="font-weight: 600">{{ username }}</span>
+        </h2>
+        <br />
+        <br />
+        <div
+            style="
+                background-image: url('{% if points_direction == 'up' %}https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Background+Images/Airdrop_Gain_BG.png{% else %}https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Background+Images/Airdrop_No_Gain_BG.png{% endif %}');
+                background-size: contain;
+                background-repeat: no-repeat;
+                width: 460px;
+                height: 402px;
+                padding: 55px 35px;
+                position: relative;
+            "
+        >
+            <div
+                style="
+                    font-size: 73px;
+                    color: #9861ff;
+                    font-weight: 600;
+                    line-height: 60px;
+                "
+            >
+                {{total_points}}
+            </div>
+            <div style="font-size: 24px">
+                <span style="font-weight: 500">Total Points</span>
+                <img
+                    src="{% if points_direction == 'up' %}
+                    https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/Increase_Arrow.png
+                    {% elif points_direction == 'down' %}
+                    https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/Decrease_Arrow.png
+                    {% else %}
+                    https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/No_Change_Arrow.png
+                    {% endif %}"
+                    alt="Points"
+                    width="11"
+                    style="vertical-align: middle"
+                />
+                <span
+                    style="color: {% if points_direction == 'up' %} #52b44a {% elif points_direction == 'down' %} #ff222a {% else %} #969696 {% endif %}; font-weight: 600"
+                    >{{ points }}</span
+                >
+            </div>
+
+            <div style="font-size: 24px; margin-top: 65px">
+                <img
+                    src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/Rank_Icon.png"
+                    alt="Rank"
+                    width="32"
+                    style="margin-right: 13px"
+                />
+                <span style="font-weight: 600; font-size: 46px; color: #9861ff"
+                    >{{rank}}
+                </span>
+
+                <span
+                    style="
+                        font-weight: 400;
+                        font-size: 21px;
+                        color: #6d6d6d;
+                        position: relative;
+                        left: -12px;
+                    "
+                    >/{{rank_out_of}}</span
+                >
+            </div>
+            <div style="margin-left: 50px; line-height: 5px">
+                <span style="color: #626262; font-weight: 500; font-size: 20px"
+                    >Ranking</span
+                >
+                <img
+                    src="{% if rank_direction == 'up' %}
+                    https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/Increase_Arrow.png
+                    {% else %}
+                    https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/Decrease_Arrow.png
+                    {% endif %}"
+                    alt="delta"
+                    width="8"
+                    style="vertical-align: middle"
+                />
+                <span
+                    style="font-size: 17px; font-weight: 600; color: {% if rank_direction == 'up' %} #52b44a {% else %} #ff222a {% endif %}"
+                    >{{rank_delta}}</span
+                >
+            </div>
+
+            <div style="font-size: 24px; margin-top: 40px; line-height: 38px">
+                <img
+                    src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/Invite_Icon.png"
+                    alt="Invites"
+                    width="32"
+                    style="margin-right: 13px"
+                />
+                <span style="font-weight: 600; font-size: 46px; color: #9861ff"
+                    >{{invites}}
+                </span>
+            </div>
+            <div style="margin-left: 50px; line-height: 5px">
+                <span style="color: #626262; font-weight: 500; font-size: 20px"
+                    >Invites Accepted</span
+                >
+            </div>
+
+            <div>
+                <img
+                    src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/Rug_Logo.png"
+                    alt="Invites"
+                    width="70"
+                    style="position: absolute; bottom: 25px; right: 24px"
+                />
+            </div>
+        </div>
+
+        <p
+            style="
+                margin: 52px auto;
+                font-size: 30px;
+                font-weight: 700;
+                text-align: center;
+            "
+        >
+            This week by numbers
+        </p>
+
+        <div
+            style="
+                background-image: url(&quot;https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Background+Images/Weekly_Summary_BG.png&quot;);
+                background-size: contain;
+                background-repeat: no-repeat;
+                width: 460px;
+                height: 402px;
+                padding: 55px 35px;
+                position: relative;
+                margin-top: 18px;
+            "
+        >
+            <div
+                style="
+                    font-size: 73px;
+                    color: #9861ff;
+                    font-weight: 600;
+                    line-height: 60px;
+                "
+            >
+                {{points_distributed}}
+            </div>
+            <div style="font-size: 24px">
+                <span style="font-weight: 500">Points Distributed</span>
+            </div>
+
+            <div style="font-size: 24px; margin-top: 65px; line-height: 38px">
+                <img
+                    src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/Invite_Icon.png"
+                    alt="Invites"
+                    width="32"
+                    style="margin-right: 13px"
+                />
+                <span style="font-weight: 600; font-size: 46px; color: #9861ff"
+                    >{{invites}}
+                </span>
+            </div>
+
+            <div style="margin-left: 50px; line-height: 5px">
+                <span style="color: #626262; font-weight: 500; font-size: 20px"
+                    >Invites Accepted</span
+                >
+            </div>
+
+            <div style="font-size: 24px; margin-top: 40px; line-height: 38px">
+                <img
+                    src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/User_Icon.png"
+                    alt="Users"
+                    width="26"
+                    style="margin-right: 13px"
+                />
+                <span style="font-weight: 600; font-size: 46px; color: #9861ff"
+                    >{{total_users}}
+                </span>
+            </div>
+            <div style="margin-left: 50px; line-height: 5px">
+                <span style="color: #626262; font-weight: 500; font-size: 20px"
+                    >Total Users</span
+                >
+            </div>
+
+            <div>
+                <img
+                    src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Image+Elements/Rug_Logo.png"
+                    alt="Invites"
+                    width="70"
+                    style="position: absolute; bottom: 25px; right: 24px"
+                />
+            </div>
+        </div>
+    </td>
+</tr>
+
+{% endblock %} {% block regards %} {% endblock %}
