@@ -74,6 +74,16 @@ jobs:
           role-to-assume: ${{ env.AWS_ROLE }}
           IMAGE_VARIABLE: ${{env.ENV}}_RUG_AI_IMAGE
 
+      - name: push lambda artifact
+        uses: ./.github/actions/build-and-push-lambda
+        with: 
+          app: cognito-custom-emails
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          aws-region: eu-west-2                   
+          role-to-assume: ${{ env.AWS_ROLE }}
+          code-path: ./src/v1/auth/email
+          bucket: rug-stage-454343598698-build-artifacts
+          key: rug-ml/cognito/lambda
 
   CD: 
     name: 'CD'
