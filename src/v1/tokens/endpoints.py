@@ -46,10 +46,10 @@ HOLDERS_DAO = DAO(table_name='holders')
 
 TOKEN_ANALYSIS_QUEUE = DatabaseQueueObject(
     table_name='tokenanalysis',
-    queue_url=os.environ.get('TOKEN_ANALYSIS_QUEUE'), )
+    queue_url=os.environ.get('TOKEN_ANALYSIS_QUEUE'))
 CLUSTERING_QUEUE = DatabaseQueueObject(
     table_name='clusterout',
-    queue_url=os.environ.get('CLUSTERING_QUEUE_URL'), )
+    queue_url=os.environ.get('CLUSTERING_QUEUE'))
 
 ######################################################
 #                                                    #
