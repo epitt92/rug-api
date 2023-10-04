@@ -176,7 +176,8 @@ class DatabaseQueueObject:
                 self.sqs.send_message(
                     QueueUrl=self.queue_url,
                     MessageBody=json.dumps(message_data),
-                    MessageGroupId=MessageGroupId
+                    MessageGroupId=MessageGroupId,
+                    MessageDeduplicationId=MessageGroupId
                 )
             except Exception as e:
                 logging.error(f'Exception: An error occurred whilst sending a message to SQS: {e}')
