@@ -290,68 +290,44 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends
         logging.error(f"Exception: Whilst calling the rug.ai ML API for `audit` for {token_address} on chain {chain}.")
         raise RugAPIException()
 
-    response = response.json()
+    if response is None:
+        return None
 
-    # TODO: Refactor this once response model for rug.ai ML API is fixed
-    try:
-        status = response.get("data").get("status")
-    except:
-        status = None
+    description = response.get("summaryText")
 
-    # Check if the token is queued for analysis by another user, and return the corresponding message
-    if status:
-        return JSONResponse(
-            status_code=202,  # Success
-            content={"detail": response.get("data").get("detail")},
-        )
+    overallScore = float(response.get("tokenScore"))
+    files = response.get("files")
+    numIssues = sum([len(item.get("result")) for item in files])
 
-    # Otherwise, attempt to parse the response
-    data = response.get("data")
+    logging.debug(f'Audit report for {token_address} on chain {chain.value} fetched successfully. Score: {overallScore}, numIssues: {numIssues}.')
 
-    if data:
-        description = data.get("tokenSummary")
+    comments = []
+    for smart_contract in files:
+        for issue in smart_contract.get("result"):
+            lines = issue.get("lines")
 
-        if not data.get('tokenScore') and not data.get('filesResult'):
-            detail = "Failed to fetch AI data for {_token_address} on chain {chain.value}: Response did not have tokenScore or filesResult entries."
-            raise HTTPException(status_code=500, detail=detail)
+            if lines:
+                lines = [int(item) for item in lines]
 
-        overallScore = float(data.get("tokenScore"))
-        files = data.get("filesResult")
-        numIssues = sum([len(item.get("result")) for item in files])
+            try:
+                comment = AIComment(
+                    commentType="Function",
+                    title=issue.get("title"),
+                    description=issue.get("description"),
+                    severity=issue.get("level"),
+                    fileName=smart_contract.get("fileName"),
+                    sourceCode=issue.get("function_code"),
+                    lines=lines
+                )
 
-        logging.debug(f'Audit report for {token_address} on chain {chain.value} fetched successfully. Score: {overallScore}, numIssues: {numIssues}.')
+                comments.append(comment)
+            except ValidationError as e:
+                logging.error(f"Exception: A ValidationError was raised while adding an issue to the list of comments: {e} {issue}")
+                continue
+            except Exception as e:
+                logging.error(f"Exception: An unknown Exception was raised while adding an issue to the list of comments: {e} {issue}")
+                continue
 
-        comments = []
-        for smart_contract in files:
-            for issue in smart_contract.get("result"):
-                lines = issue.get("lines")
-
-                if lines:
-                    lines = [int(item) for item in lines]
-
-                try:
-                    comment = AIComment(
-                        commentType="Function",
-                        title=issue.get("title"),
-                        description=issue.get("description"),
-                        severity=issue.get("level"),
-                        fileName=smart_contract.get("fileName"),
-                        sourceCode=issue.get("function_code"),
-                        lines=lines
-                    )
-
-                    comments.append(comment)
-                except ValidationError as e:
-                    logging.error(f"Exception: A ValidationError was raised while adding an issue to the list of comments: {e} {issue}")
-                    continue
-                except Exception as e:
-                    logging.error(f"Exception: An unknown Exception was raised while adding an issue to the list of comments: {e} {issue}")
-                    continue
-    else:
-        return JSONResponse(
-            status_code=500,  # Internal Server Error
-            content={"detail": "The call to the rug.ai ML API succeeded, but the response was empty."},
-        )
 
     try:
         output = AISummary(description=description, numIssues=numIssues, overallScore=overallScore, comments=comments)
