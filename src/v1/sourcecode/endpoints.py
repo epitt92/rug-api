@@ -71,6 +71,9 @@ async def fetch_raw_code(chain: ChainEnum, token_address: str = Depends(validate
 
 
 async def parse_raw_code(source: str) -> dict:
+    if not source:
+        return None
+    
     if source.startswith('{'):
         # Clean up the source by removing the extra curly braces and newline characters
         clean_source = source.replace('{{', '{').replace('}}', '}').replace('\r', '').replace('\n', '')
@@ -97,6 +100,9 @@ async def get_source_code_map(chain: ChainEnum, token_address: str = Depends(val
         logging.error(f"Exception: During nested call to fetch and parse source code for {token_address} on chain {chain}: {e}")
         raise Exception(f"Exception: During nested call to fetch and parse source code for {token_address} on chain {chain}: {e}")
 
+    if not source:
+        return None
+    
     if isinstance(source, str):
         if len(source) == 0:
             logging.debug(f"No source code was found. Returning an empty response.")
