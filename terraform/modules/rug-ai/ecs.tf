@@ -16,6 +16,14 @@ data "aws_ssm_parameter" "rug_ml_api_endpoint_parameter_store" {
   name = "/rug/ml/api/endpoint"
 }
 
+data "aws_ssm_parameter" "rug_ml_audit_queue_arn_parameter_store" {
+  name = "/rug/ml/audit/queue/arn"
+}
+
+data "aws_ssm_parameter" "rug_ml_cluster_queue_arn_parameter_store" {
+  name = "/rug/ml/cluster/queue/arn"
+}
+
 data "aws_ssm_parameter" "rug_timestream_db_arn_parameter_store" {
   provider = aws.eu-west-1
   name     = "/rug_feed/timestream_db_arn"
@@ -86,6 +94,14 @@ module "rug_app_service" {
     {
       name = "COGNITO_APP_CLIENT_ID"
       value = aws_cognito_user_pool_client.client.id
+    },
+    {
+      name = "CLUSTERING_QUEUE"
+      value = data.aws_ssm_parameter.rug_ml_cluster_queue_arn_parameter_store.value
+    },
+    {
+      name = "TOKEN_ANALYSIS_QUEUE"
+      value = data.aws_ssm_parameter.rug_ml_audit_queue_arn_parameter_store.value
     }
   ]
   alb_certifcate_arn = aws_acm_certificate.cert.arn
