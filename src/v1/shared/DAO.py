@@ -1,7 +1,7 @@
 """
 Data Access Object (DAO) class to store and retrieve data from a file.
 """
-import json
+import json, logging
 from typing import Any, Dict, List, Optional
 
 import boto3
@@ -169,13 +169,20 @@ class DatabaseQueueObject:
             Optional[dict]: If the item is found in DynamoDB, return the item, otherwise create a message
                 in SQS and return None
         """
+        logging.info(f'Fetching item with PK {pk} from DynamoDB...')
         item = self.DAO.find_most_recent_by_pk(partition_key_value=pk)
 
         if item is None:
+            logging.info(f'Item with PK {pk} not found in DynamoDB, sending message to SQS...')
+            logging.info(f'Message data: {message_data}')
+            logging.info(f'Queue URL: {self.queue_url}')
+
             self.sqs.send_message(
                 QueueUrl=self.queue_url,
                 MessageBody=json.dumps(message_data),
                 MessageGroupId='1'
             )
+
+            logging.info(f'Message sent to SQS.')
 
         return item
