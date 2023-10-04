@@ -350,9 +350,9 @@ async def get_token_clustering(chain: ChainEnum, token_address: str = Depends(va
     # Get the pk for DB lookup, and the message data for the queue (if there is no data in the DB)
     pk = get_primary_key(token_address, chain)
     message_data = {"token_address": token_address, "chain": chain.value}
+
     # TODO: There is repeated logic inside lambda that allows to fetch_holders, get_cluster_response
     # TODO: We have duplicated code also in the src.v1.clustering, maybe create a package
-    fetch_holders(token_address=token_address, chain=chain)
     response = CLUSTERING_QUEUE.get_item(pk=pk, MessageGroupId=f"cluster_{pk}", message_data=message_data)
 
     if response is None:
