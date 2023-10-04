@@ -1,12 +1,11 @@
 """
 Data Access Object (DAO) class to store and retrieve data from a file.
 """
-import json
+import json, logging, boto3
 from typing import Any, Dict, List, Optional
-
-import boto3
 from boto3.dynamodb.conditions import Key
 
+from src.v1.shared.exceptions import SQSException
 
 class DAO:
     """
@@ -173,10 +172,14 @@ class DatabaseQueueObject:
         item = self.DAO.find_most_recent_by_pk(partition_key_value=pk)
 
         if item is None:
-            self.sqs.send_message(
-                QueueUrl=self.queue_url,
-                MessageBody=json.dumps(message_data),
-                MessageGroupId=MessageGroupId
-            )
+            try:
+                self.sqs.send_message(
+                    QueueUrl=self.queue_url,
+                    MessageBody=json.dumps(message_data),
+                    MessageGroupId=MessageGroupId
+                )
+            except Exception as e:
+                logging.error(f'Exception: An error occurred whilst sending a message to SQS: {e}')
+                raise SQSException()
 
         return item

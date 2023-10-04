@@ -46,10 +46,10 @@ HOLDERS_DAO = DAO(table_name='holders')
 
 TOKEN_ANALYSIS_QUEUE = DatabaseQueueObject(
     table_name='tokenanalysis',
-    queue_url=os.environ.get('TOKEN_ANALYSIS_QUEUE'), )
+    queue_url=os.environ.get('TOKEN_ANALYSIS_QUEUE'))
 CLUSTERING_QUEUE = DatabaseQueueObject(
     table_name='clusterout',
-    queue_url=os.environ.get('CLUSTERING_QUEUE_URL'), )
+    queue_url=os.environ.get('CLUSTERING_QUEUE'))
 
 ######################################################
 #                                                    #
@@ -287,7 +287,7 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends
     try:
         response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, MessageGroupId=f"audit_{pk}", message_data=message)
     except Exception as e:
-        logging.error(f"Exception: Whilst calling the rug.ai ML API for `audit` for {token_address} on chain {chain}.")
+        logging.error(f"Exception: Whilst calling the queue object for `audit` for {token_address} on chain {chain}.")
         raise RugAPIException()
 
     if response is None:

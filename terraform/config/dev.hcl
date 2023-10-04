@@ -15,6 +15,7 @@ locals {
     Stage     = "${local.stage}"    
     Cloud     = "aws"           
   }
+  s3_bucket_artifacts                               = "${local.project_name}-${local.stage}-${local.account_id}-build-artifacts"
   
 
 }

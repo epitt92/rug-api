@@ -40,6 +40,7 @@ resource "aws_s3_bucket_public_access_block" "example" {
 }
 
 resource "aws_s3_bucket_acl" "example" {
+  count = var.stage == "stage" ? 1 : 0
   depends_on = [
     aws_s3_bucket_ownership_controls.example[0],
     aws_s3_bucket_public_access_block.example[0],
@@ -69,10 +70,11 @@ resource "aws_s3_bucket_cors_configuration" "rug_media_bucket_cors_configuration
 resource "aws_s3_bucket_policy" "allow_access_to_s3" {
   count = var.stage == "stage" ? 1 : 0
   bucket = aws_s3_bucket.rug_media_bucket[0].id
-  policy = data.aws_iam_policy_document.allow_access_to_s3.json
+  policy = data.aws_iam_policy_document.allow_access_to_s3[0].json
 }
 
 data "aws_iam_policy_document" "allow_access_to_s3" {
+  count = var.stage == "stage" ? 1 : 0
   statement {
     principals {
       type        = "*"
