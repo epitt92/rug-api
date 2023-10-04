@@ -1,5 +1,6 @@
 import jinja2
 import boto3
+import urllib.parse as urlparse
 
 ses = boto3.client('ses', region_name="eu-west-2")
 
@@ -38,7 +39,7 @@ def custom_message_forgot_password(event):
     reset_code = event['request']['codeParameter']
 
     subject = "You've Requested to Reset Your Password"
-    reset_link = f"https://rug.ai/reset-pwd?username={recipient}&code={reset_code}"
+    reset_link = urlparse.quote_plus(f"https://rug.ai/reset-pwd?username={recipient}&code={reset_code}")
     body = render_template('reset-password.html', title=subject, username=recipient, reset_link=reset_link)
 
     event['response']['emailSubject'] = subject
@@ -47,6 +48,7 @@ def custom_message_forgot_password(event):
 
 
 def send_custom_message_confirm_password_reset(event):
+    # TODO: Fix this, it doesn't work correctly
     recipient = event['userName']
 
     subject = "You've Successfully Reset Your Password"
