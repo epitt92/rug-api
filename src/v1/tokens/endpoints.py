@@ -285,7 +285,7 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends
     message = {"token_address": token_address, "chain": chain.value}
 
     try:
-        response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, message_data=message)
+        response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, MessageGroupId=f"audit_{pk}", message_data=message)
     except Exception as e:
         logging.error(f"Exception: Whilst calling the rug.ai ML API for `audit` for {token_address} on chain {chain}.")
         raise RugAPIException()
@@ -353,7 +353,7 @@ async def get_token_clustering(chain: ChainEnum, token_address: str = Depends(va
     # TODO: There is repeated logic inside lambda that allows to fetch_holders, get_cluster_response
     # TODO: We have duplicated code also in the src.v1.clustering, maybe create a package
     fetch_holders(token_address=token_address, chain=chain)
-    response = CLUSTERING_QUEUE.get_item(pk=pk, message_data=message_data)
+    response = CLUSTERING_QUEUE.get_item(pk=pk, MessageGroupId=f"cluster_{pk}", message_data=message_data)
 
     return response
 
@@ -642,7 +642,7 @@ async def get_audit_summary_from_cache(chain, token_address: str = Depends(valid
     message = {"token_address": token_address, "chain": chain.value}
 
     try:
-        response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, message_data=message)
+        response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, MessageGroupId=f"audit_{pk}", message_data=message)
     except Exception as e:
         logging.error(f'An exception occurred whilst trying to fetch clustering data from cache for token {token_address} on chain {chain}: {e}')
         return None
