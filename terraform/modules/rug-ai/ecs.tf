@@ -16,12 +16,12 @@ data "aws_ssm_parameter" "rug_ml_api_endpoint_parameter_store" {
   name = "/rug/ml/api/endpoint"
 }
 
-data "aws_ssm_parameter" "rug_ml_audit_queue_arn_parameter_store" {
-  name = "/rug/ml/audit/queue/arn"
+data "aws_ssm_parameter" "rug_ml_audit_queue_url_parameter_store" {
+  name = "/rug/ml/audit/queue/url"
 }
 
-data "aws_ssm_parameter" "rug_ml_cluster_queue_arn_parameter_store" {
-  name = "/rug/ml/cluster/queue/arn"
+data "aws_ssm_parameter" "rug_ml_cluster_queue_url_parameter_store" {
+  name = "/rug/ml/cluster/queue/url"
 }
 
 data "aws_ssm_parameter" "rug_timestream_db_arn_parameter_store" {
@@ -97,11 +97,11 @@ module "rug_app_service" {
     },
     {
       name = "CLUSTERING_QUEUE"
-      value = data.aws_ssm_parameter.rug_ml_cluster_queue_arn_parameter_store.value
+      value = data.aws_ssm_parameter.rug_ml_cluster_queue_url_parameter_store.value
     },
     {
       name = "TOKEN_ANALYSIS_QUEUE"
-      value = data.aws_ssm_parameter.rug_ml_audit_queue_arn_parameter_store.value
+      value = data.aws_ssm_parameter.rug_ml_audit_queue_url_parameter_store.value
     }
   ]
   alb_certifcate_arn = aws_acm_certificate.cert.arn
@@ -179,6 +179,14 @@ module "rug_app_service" {
         Effect = "Allow"
         Resource = [
           aws_cognito_user_pool.user_pool.arn
+        ]
+      },
+      {
+        //cognito actions
+        Action = ["sqs:SendMessage"]
+        Effect = "Allow"
+        Resource = [
+          "*"
         ]
       }
     ]
