@@ -14,7 +14,7 @@ from src.v1.shared.exceptions import (
                                     DatabaseInsertFailureException, GoPlusDataException,
                                     UnsupportedChainException, OutputValidationError,
                                     BlockExplorerDataException, InvalidTokenAddressException,
-                                    RPCProviderException
+                                    RPCProviderException, SQSException
                                     )
 from src.v1.chart.exceptions import CoinGeckoChartException
 from src.v1.auth.exceptions import CognitoException
@@ -49,6 +49,13 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 @app.exception_handler(CognitoException)
 async def cognito_exception_handler(request, exc: CognitoException):
+    return JSONResponse(
+        status_code=500,  # Internal Server Error
+        content={"detail": str(exc)},
+    )
+
+@app.exception_handler(SQSException)
+async def sqs_exception_handler(request, exc: SQSException):
     return JSONResponse(
         status_code=500,  # Internal Server Error
         content={"detail": str(exc)},

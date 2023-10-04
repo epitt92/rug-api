@@ -98,3 +98,12 @@ class GoPlusAccessKeyRefreshError(Exception):
     def __init__(self, message="An exception occured whilst refreshing the GoPlus access key."):
         logging.error(message)
         super().__init__(message)
+
+
+class SQSException(Exception):
+    """
+    Raised when an exception occurs whilst interacting with SQS.
+    """
+    def __init__(self, message="An exception occured whilst interacting with SQS."):
+        logging.error(message)
+        super().__init__(message)
