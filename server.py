@@ -17,6 +17,7 @@ from src.v1.shared.exceptions import (
                                     RPCProviderException
                                     )
 from src.v1.chart.exceptions import CoinGeckoChartException
+from src.v1.auth.exceptions import CognitoException
 from src.v1.feeds.exceptions import TimestreamWriteException, TimestreamReadException
 
 dotenv.load_dotenv()
@@ -30,7 +31,6 @@ TITLE = "rug.ai API"
 VERSION = "2.3"
 
 app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, version=VERSION, favicon='https://rug.ai/favicon.ico')
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 ######################################################
 #                                                    #
@@ -45,6 +45,13 @@ async def general_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500, # Internal Server Error
         content={"detail": "An unexpected and uncaught exception was raised during an API call."}
+    )
+
+@app.exception_handler(CognitoException)
+async def cognito_exception_handler(request, exc: CognitoException):
+    return JSONResponse(
+        status_code=500,  # Internal Server Error
+        content={"detail": str(exc)},
     )
 
 @app.exception_handler(RequestValidationError)
@@ -156,4 +163,7 @@ async def root():
         content={"detail": "rug-api"}
     )
 
+
+
 app.include_router(v1_router)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])

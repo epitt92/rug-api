@@ -1,0 +1,43 @@
+{% extends "base.html" %} {% block body %}
+
+<tr>
+    <td align="center" height="240" style="padding: 83px 0 56px">
+        <img
+            src="https://rug-stage-454343598698-media.s3.eu-west-2.amazonaws.com/email-media/Title+Graphics/Welcome.png"
+            alt="Logo"
+            width="350"
+        />
+    </td>
+</tr>
+<tr>
+    <td
+        align="center"
+        style="color: #262626; padding: 0 60px 20px; font-size: 24px"
+    >
+        <h2 style="font-size: 24px; font-weight: 400">Hey!</h2>
+        <br />
+        <br />
+        <p>
+            Congratulations! We’re delighted to welcome you to join the rug.ai
+            Private Beta.
+        </p>
+        <br />
+        <br />
+        <p>
+            Please use the link below to sign up to our platform.
+            <br />
+            <br />
+            <a
+                href="{{ url }}"
+                style="color: #9861ff; font-weight: 500"
+                target="_blank"
+            >
+                {{ url }}
+            </a>
+        </p>
+        <br />
+        <br />
+    </td>
+</tr>
+
+{% endblock %}

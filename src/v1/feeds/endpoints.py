@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Cookie
 from fastapi.responses import JSONResponse
+from fastapi_jwt_auth import AuthJWT
 import json, boto3, os, dotenv, pandas as pd, logging, time, ast
 from botocore.exceptions import ClientError
 from decimal import Decimal
@@ -16,6 +17,8 @@ from src.v1.shared.dependencies import get_token_contract_details, get_chain
 from src.v1.shared.exceptions import DatabaseLoadFailureException, DatabaseInsertFailureException
 
 from src.v1.tokens.endpoints import get_score_info
+
+from src.v1.auth.endpoints import decode_token
 
 dotenv.load_dotenv()
 
@@ -40,7 +43,7 @@ async def post_event_click(eventClick: EventClick):
     except Exception as e:
         logging.error(f'An exception occurred whilst parsing the eventClick: {eventClick}. Exception: {e}')
         return JSONResponse(status_code=400, content={"detail": f"An exception occurred whilst parsing the eventClick: {eventClick}. Exception: {e}"})
-    
+
     data = {'event_hash': eventHash, 'user_id': userId}
 
     write_client.post(table_name='eventlogs', message=data)
@@ -61,15 +64,16 @@ async def post_token_view(tokenView: TokenView):
     except Exception as e:
         logging.error(f'An exception occurred whilst parsing the tokenView: {tokenView}. Exception: {e}')
         return JSONResponse(status_code=400, content={"detail": f"An exception occurred whilst parsing the tokenView: {tokenView}. Exception: {e}"})
-    
+
     write_client.post(table_name='reviewlogs', message=data)
     return JSONResponse(status_code=200, content={"detail": f"Token view for token {token_address} on chain {chain} from user {user_id} recorded."})
 
 
 # TODO: Add more robust exception handling to this endpoint
 # TODO: Remove limit and numMinutes
-@router.get("/mostviewed")
+@router.get("/mostviewed", dependencies=[Depends(decode_token)])
 async def get_most_viewed_tokens(limit: int = 50):
+
     # Add a DAO check for most viewed reel
     try:
         _most_viewed_tokens = FEEDS_DAO.find_most_recent_by_pk("mostviewed")
@@ -79,7 +83,7 @@ async def get_most_viewed_tokens(limit: int = 50):
     except Exception as e:
         logging.error(f"Exception: Unknown exception whilst fetching data from 'feeds' with PK 'mostviewed': {e}")
         raise DatabaseLoadFailureException()
-    
+
     logging.info(f'Fetching most viewed tokens with limit {limit}...')
 
     current_time, found = int(time.time()), False
@@ -113,7 +117,7 @@ async def get_most_viewed_tokens(limit: int = 50):
                             except Exception as e:
                                 logging.error(f'An exception occurred whilst parsing the chain info {item.get("chain")} for item {item}: {e}')
                                 output[idx]['chain'] = None
-                                
+
                         if item.get('score'):
                             try:
                                 if isinstance(item.get('score'), str):
@@ -126,7 +130,7 @@ async def get_most_viewed_tokens(limit: int = 50):
                             except Exception as e:
                                 logging.error(f'An exception occurred whilst parsing the score info {item.get("score")} for item {item}: {e}')
                                 output[idx]['score'] = None
-        
+
                     return output[:limit]
             found = False
 
@@ -140,13 +144,13 @@ async def get_most_viewed_tokens(limit: int = 50):
         if not output:
             logging.error(f"Exception: No output returned from `get_most_viewed_token_result`.")
             raise Exception("No output returned from `get_most_viewed_token_result` query.")
-        
+
         try:
             output = convert_floats_to_decimals(output)
         except Exception as e:
             logging.error(f"Exception: An exception occurred whilst converting floats to decimals: {e}")
             raise e
-        
+
         # Write the output to the DAO if it has sufficient length
         if len(output) > MOST_VIEWED_TOKENS_LIMIT:
             try:
@@ -191,7 +195,7 @@ async def get_most_viewed_token_result(limit: int = 50, num_minutes: int = 30):
         except Exception as e:
             logging.error(f'An exception occurred whilst processing the row: {row}. Exception: {e}')
             return None
-        
+
         validate_token_address(token_address)
 
         return {
@@ -208,7 +212,7 @@ async def get_most_viewed_token_result(limit: int = 50, num_minutes: int = 30):
     if len(result) == 0:
         logging.warning(f"No results returned from query: {query}")
         return []
-    
+
     output = []
     for item in result:
         if item.get('token_address') and item.get('chain'):
@@ -315,9 +319,9 @@ async def get_top_events(limit: int = 50):
         if not output:
             logging.error(f'No output returned from `get_most_viewed_events_result`.')
             return []
-            
+
         output = convert_floats_to_decimals(output)
-        
+
         # Write the output to the DAO if it has sufficient length
         if len(output) > TOP_EVENTS_LIMIT:
             try:
@@ -329,7 +333,7 @@ async def get_top_events(limit: int = 50):
             except Exception as e:
                 logging.warning(f'An unknown exception occurred while writing top events to DAO: {e}')
                 raise DatabaseInsertFailureException()
-            
+
     return output[:limit] if output else []
 
 # TODO: Add more robust exception handling to this endpoint
@@ -375,7 +379,7 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
         message = f"An unknown exception occurred during call to read from Timestream: {e}"
         logging.error(message)
         raise TimestreamReadException(message=message)
-        
+
     logging.info(f'Response fetched successfully! Length of response: {len(response["Rows"])}.')
 
     def process_row(row):
@@ -399,7 +403,7 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
     if len(result) == 0:
         logging.warning(f"No results returned from query: {query}")
         return []
-    
+
     query = f'''
         SELECT te.*
         FROM "rug_feed_db"."tokenevents" AS te
@@ -407,7 +411,7 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
     '''
 
     logging.info(f"Event hashes in result list: {result}")
-    
+
     try:
         response = read_client.query(QueryString=query)
     except ClientError as e:
@@ -455,7 +459,7 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
         except Exception as e:
             logging.error(f'process_row(row) error: {e}')
             return
-        
+
     logging.info(f'Length of response["Rows"]: {len(response["Rows"])}')
 
     processed_rows = [process_row(row) for row in response["Rows"]]
@@ -465,7 +469,7 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
 
     if len(processed_rows) == 0:
         return []
-    
+
     try:
         # Handle the data as a pandas dataframe to pivot the data
         df = pd.DataFrame(processed_rows).drop(['time', 'address', 'blockchain', 'timestamp'], axis=1).drop_duplicates()
@@ -527,7 +531,7 @@ async def get_token_events(number_of_events: int = 50, chain: ChainEnum = None):
         ) AS subquery
         ON te.eventHash = subquery.eventHash AND te.timestamp = subquery.max_timestamp
         '''
-    
+
     try:
         response = read_client.query(QueryString=query)
     except ClientError as e:
@@ -578,5 +582,5 @@ async def get_token_details(chain: ChainEnum, token_address: str):
     except Exception as e:
         logging.warning(f'An exception occurred whilst fetching token details for token {token_address} on chain {chain}: {e}')
         raise e
-    
+
     return token_details
