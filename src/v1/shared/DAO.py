@@ -174,14 +174,15 @@ class DatabaseQueueObject:
 
         if item is None:
             logging.info(f'Item with PK {pk} not found in DynamoDB, sending message to SQS...')
-            logging.info(f'Message data: {message_data}')
-            logging.info(f'Queue URL: {self.queue_url}')
 
-            self.sqs.send_message(
-                QueueUrl=self.queue_url,
-                MessageBody=json.dumps(message_data),
-                MessageGroupId='1'
-            )
+            try:
+                self.sqs.send_message(
+                    QueueUrl=self.queue_url,
+                    MessageBody=json.dumps(message_data),
+                    MessageGroupId='1'
+                )
+            except Exception as e:
+                logging.error(f'Exception: An error occurred whilst sending a message to SQS: {e}')
 
             logging.info(f'Message sent to SQS.')
 
