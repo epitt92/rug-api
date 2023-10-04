@@ -291,7 +291,7 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends
         raise RugAPIException()
 
     if response is None:
-        return JSONResponse(status_code=204, content={"message": f"Token {token_address} on chain {_chain} was queued for audit analysis."})
+        return JSONResponse(status_code=200, content={"detail": f"Token {token_address} on chain {_chain} was queued for audit analysis."})
 
     description = response.get("summaryText")
 
@@ -356,9 +356,13 @@ async def get_token_clustering(chain: ChainEnum, token_address: str = Depends(va
     response = CLUSTERING_QUEUE.get_item(pk=pk, MessageGroupId=f"cluster_{pk}", message_data=message_data)
 
     if response is None:
-        return JSONResponse(status_code=204, content={"message": f"Token {token_address} on chain {_chain} was queued for cluster analysis."})
+        return JSONResponse(status_code=200, content={"detail": f"Token {token_address} on chain {_chain} was queued for cluster analysis."})
     
-    return response
+    if response.get("data"):
+        return {**json.loads(response.get("data")), 'timestamp': response.get("timestamp")}
+    else:
+        logging.error(f"Exception: Token {token_address} on chain {_chain} was returned but had no data.")
+        return JSONResponse(status_code=500, content={"detail": f"Token {token_address} on chain {_chain} was returned but had no data."})
 
 
 @router.get("/holderchart/{chain}/{token_address}", include_in_schema=True)
