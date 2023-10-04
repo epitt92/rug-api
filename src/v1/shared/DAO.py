@@ -147,7 +147,7 @@ class DatabaseQueueObject:
         self.sqs = boto3.client('sqs')
         self.queue_url = queue_url
 
-    def get_item(self, pk: str, message_data: dict) -> Optional[dict]:
+    def get_item(self, pk: str, MessageGroupId: str, message_data: dict) -> Optional[dict]:
         """Try to find most recent in DynamoDB, otherwise send a message to SQS.
 
         To make this function work, we consider the following:
@@ -162,6 +162,7 @@ class DatabaseQueueObject:
 
         Args:
             pk (str): Partition key
+            MessageGroupId (str): MessageGroupId to send to SQS
             message_data (dict): Message to send to SQS
 
         Returns:
@@ -175,7 +176,7 @@ class DatabaseQueueObject:
                 self.sqs.send_message(
                     QueueUrl=self.queue_url,
                     MessageBody=json.dumps(message_data),
-                    MessageGroupId='1'
+                    MessageGroupId=MessageGroupId
                 )
             except Exception as e:
                 logging.error(f'Exception: An error occurred whilst sending a message to SQS: {e}')
