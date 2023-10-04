@@ -1,10 +1,12 @@
 import requests, math, logging, os, dotenv
 from fastapi import HTTPException
+from goplus.token import Token
 
 from src.v1.tokens.schemas import ContractResponse, ContractItem
 from src.v1.tokens.constants import BURN_TAG, ZERO_ADDRESS, ANTI_WHALE_MAPPING, HIDDEN_OWNER_MAPPING, OPEN_SOURCE_MAPPING, HONEYPOT_MAPPING, PROXY_MAPPING, TRADING_COOLDOWN_MAPPING, CANNOT_SELL_ALL_MAPPING, OWNER_CHANGE_BALANCE_MAPPING, SELF_DESTRUCT_MAPPING, BLACKLIST_MAPPING, WHITELIST_MAPPING, HONEYPOT_SAME_CREATOR
 from src.v1.shared.constants import CHAIN_ID_MAPPING
 from src.v1.shared.models import ChainEnum
+from src.v1.shared.dependencies import load_access_token
 
 dotenv.load_dotenv()
 
@@ -24,19 +26,23 @@ simple_mapping = {
 }
 
 def get_go_plus_data(chain: ChainEnum, token_address: str):
+    access_token = load_access_token()
+
+    logging.info(f'Access token loaded! Getting Go Plus data for {token_address} on chain {chain}.')
+    
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
     _token_address = token_address.lower()
 
-    url = f'https://api.gopluslabs.io/api/v1/token_security/{CHAIN_ID_MAPPING[chain.value]}'
+    try:
+        response = Token(access_token=access_token).token_security(chain_id=str(CHAIN_ID_MAPPING[_chain]), addresses=[_token_address])
+        data = response.result
+    except Exception as e:
+        logging.error(f"Exception: Whilst calling Token object from GoPlus: {e}")
+        raise e
+    
+    logging.info(f"Success! GoPlus Data Loaded...")
 
-    params = {
-        'contract_addresses': token_address
-    }
-
-    request_response = requests.get(url, params=params)
-    request_response.raise_for_status()
-
-    data = request_response.json()['result']
-    return data[_token_address]
+    return data[_token_address].to_dict()
 
 def get_go_plus_summary(chain: ChainEnum, token_address: str):
     data = get_go_plus_data(chain, token_address)
@@ -197,30 +203,11 @@ def get_supply_summary(go_plus_response: dict) -> dict:
     else:
         logging.warning(f'No is_mintable field in go plus response: {go_plus_response}')
 
-    additional_summary = ''
-    if go_plus_response.get('selfdestruct'):
-        if bool(go_plus_response.get('selfdestruct')):
-            additional_summary += 'The owner could destroy the contract at any time. '
-    
-    if go_plus_response.get('is_mintable'):
-        if bool(go_plus_response.get('is_mintable')):
-            additional_summary += 'The owner could mint new tokens at any time. '
-
-    if go_plus_response.get('is_proxy'):
-        if bool(go_plus_response.get('is_proxy')):
-            additional_summary += 'The contract is a proxy contract. '
-
-    if go_plus_response.get('is_open_source'):
-        if not bool(go_plus_response.get('is_open_source')):
-            additional_summary += 'The contract is not open source. '
-
-    if go_plus_response.get('hidden_owner'):
-        if bool(go_plus_response.get('hidden_owner')):
-            additional_summary += 'The contract owner is hidden. '
-
     score = calculate_score(items=items)
+    summary, max_severity = create_brief_summary(items=items)
 
-    summary = create_brief_summary(items=items, additional_summary=additional_summary)
+    if max_severity < 2:
+        score = max(score, 1)
 
     return {'items': items, 'score': score, 'summary': summary}
 
@@ -234,34 +221,36 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
         if go_plus_response.get(key):
             response = bool(int(go_plus_response.get(key)))
             items.append({'title': simple_mapping[key][response]['title'],
-                                      'description': simple_mapping[key][response]['description'],
-                                      'severity': simple_mapping[key][response]['severity']})
-
+                            'description': simple_mapping[key][response]['description'],
+                            'severity': simple_mapping[key][response]['severity']})
+            
     # Add buy tax field
     if go_plus_response.get('buy_tax'):
         buy_tax = float(go_plus_response.get('buy_tax'))
+
         if buy_tax > 0.1:
-            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is very high.', 'severity': 3})
+            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.0f}% which is very high.', 'severity': percentage_to_severity(buy_tax)})
         elif buy_tax > 0.05:
-            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is high.', 'severity': 2})
+            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is high.', 'severity': percentage_to_severity(buy_tax)})
         elif buy_tax > 0.01:
-            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is fairly low.', 'severity': 1})
+            items.append({'title': f'{100*buy_tax:.1f}% Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.1f}% which is fairly low.', 'severity': percentage_to_severity(buy_tax)})
         elif buy_tax > 0.001:
-            items.append({'title': 'Low Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.2f}% which is very low.', 'severity': 0})
+            items.append({'title': 'Low Buy Tax', 'description': f'This token has a buy tax of {100*buy_tax:.2f}% which is very low.', 'severity': percentage_to_severity(buy_tax)})
         else:
             items.append({'title': 'No Buy Tax', 'description': 'This token does not have a buy tax.', 'severity': 0})
 
     # Add sell tax field
     if go_plus_response.get('sell_tax'):
         sell_tax = float(go_plus_response.get('sell_tax'))
+
         if sell_tax > 0.1:
-            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is very high.', 'severity': 3})
+            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.0f}% which is very high.', 'severity': percentage_to_severity(sell_tax)})
         elif sell_tax > 0.05:
-            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is high.', 'severity': 2})
+            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is high.', 'severity': percentage_to_severity(sell_tax)})
         elif sell_tax > 0.01:
-            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is fairly low.', 'severity': 1})
+            items.append({'title': f'{100*sell_tax:.1f}% Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.1f}% which is fairly low.', 'severity': percentage_to_severity(sell_tax)})
         elif sell_tax > 0.001:
-            items.append({'title': 'Low Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.2f}% which is very low.', 'severity': 0})
+            items.append({'title': 'Low Sell Tax', 'description': f'This token has a sell tax of {100*sell_tax:.2f}% which is very low.', 'severity': percentage_to_severity(sell_tax)})
         else:
             items.append({'title': 'No Sell Tax', 'description': 'This token does not have a sell tax.', 'severity': 0})
 
@@ -284,38 +273,11 @@ def get_transferrability_summary(go_plus_response: dict) -> dict:
         else:
             items.append({'title': 'Transfers Not Pausable', 'description': 'The contract does not have transfer pausing functionality.', 'severity': 0})
 
-
-    additional_summary = ''
-    if go_plus_response.get('is_honeypot'):
-        if bool(go_plus_response.get('is_honeypot')):
-            additional_summary += ' This token is a honeypot.'
-
-    if go_plus_response.get('trading_cooldown'):
-        if bool(go_plus_response.get('trading_cooldown')):
-            additional_summary += ' This token has a trading cooldown.'
-
-    if go_plus_response.get('cannot_sell_all'):
-        if bool(go_plus_response.get('cannot_sell_all')):
-            additional_summary += ' This token has a sell cooldown.'
-
-    if go_plus_response.get('owner_change_balance'):
-        if bool(go_plus_response.get('owner_change_balance')):
-            additional_summary += ' This token has a balance changing owner.'
-
-    if go_plus_response.get('is_blacklisted'):
-        if bool(go_plus_response.get('is_blacklisted')):
-            additional_summary += ' This token is blacklisted.'
-
-    if go_plus_response.get('is_whitelisted'):
-        if bool(go_plus_response.get('is_whitelisted')):
-            additional_summary += ' This token is whitelisted.'
-
-    if go_plus_response.get('honeypot_with_same_creator'):
-        if bool(go_plus_response.get('honeypot_with_same_creator')):
-            additional_summary += ' This token has the same creator as a known honeypot.'
-
     score = calculate_score(items=items)
-    summary = create_brief_summary(items=items, additional_summary=additional_summary)
+    summary, max_severity = create_brief_summary(items=items)
+
+    if max_severity < 2:
+        score = max(score, 1)
 
     return {'items': items, 'score': score, 'summary': summary}
 
@@ -340,46 +302,66 @@ def calculate_score(items: list) -> int:
     """
     # Constants
     k = 0.25
-    p = 1.2
-    h = 6
+    p = 1.4
+    h = 4.5
 
     severities = [item['severity'] for item in items]
 
     penalty_param = 0
-
+    n = 0
+    max_severity = 0
+    
     for severity in severities:
-        penalty_param += severity + k
-
+        if severity > 0:
+            penalty_param += severity + k
+            n += 1
+            max_severity = max(max_severity, severity)
+    
+    if n == 0:
+        return 100
+    
     # Calculate score
     penalty_param = penalty_param ** p
+    
+    score = 100 * (1 - 1 / (1 + math.exp(-(penalty_param - (h * n)))))
+    
+    if max_severity > 3:
+        return int(score)
+    else:
+        return max(1, int(score))
 
-    score = 100 * (1 - 1 / (1 + math.exp(-(penalty_param - h))))
 
-    return int(score)
-
-
-def create_brief_summary(items: list, additional_summary: str) -> str:
+def create_brief_summary(items: list) -> str:
     """
     Given a list of ContractItem objects, create a brief summary of the contract.
     The summary is a string that contains the intro text.
 
     Args:
         items (list): List of ContractItem objects.
-        additional_summary (str): Additional summary to be added to the end of the intro text.
     Returns:
         (str): Brief summary of the contract.
     """
-    if len(items) == 0:
-        # There is no concerns, give a standardized summary
-        intro_summary = ('No major concerns were found with this token. '
-                         'However, please note that this is not a guarantee of safety. ')
+    max_severity, max_severity_item = 0, None
+    
+    for item in items:
+        if (item.get("severity")) and (item.get("severity") > max_severity):
+            max_severity = item.get("severity")
+            max_severity_item = item
+        
+    if max_severity < 2:
+        return "No Critical Issues", max_severity
     else:
-        # There are concerns, give a standardized summary
-        intro_summary = ('Issues were found with this token. For further details, '
-                         'please see the list of issues below. ')
+        return max_severity_item.get("title"), max_severity
 
-    extension = 'Be aware that: ' if len(additional_summary) > 0 else ''
 
-    full_summary = intro_summary + extension + additional_summary
-
-    return full_summary
+def percentage_to_severity(percentage) -> int:    
+    if percentage == 0:
+        return 0
+    elif 0.01 < percentage < 0.04:
+        return math.ceil(percentage * (2 / 0.05))
+    elif 0.04 <= percentage < 0.10:
+        return math.ceil(2 + (percentage - 0.05) * ((3 - 2) / (0.10 - 0.05)))
+    elif 0.10 <= percentage <= 1:
+        return math.ceil(3 + (percentage - 0.10) * ((100 - 3) / (1 - 0.10)))
+    else:
+        raise ValueError("Exception: Percentage should be between 0 and 100% (inclusive).")

@@ -25,3 +25,11 @@ resource "aws_secretsmanager_secret" "RUG_API_ARBITRUM_RPC_URL" {
 resource "aws_secretsmanager_secret" "RUG_API_BASE_RPC_URL" {
   name = "RUG_API_BASE_RPC_URL"
 }
+
+resource "aws_secretsmanager_secret" "GO_PLUS_APP_KEY" {
+  name = "GO_PLUS_APP_KEY"
+}
+
+resource "aws_secretsmanager_secret" "GO_PLUS_APP_SECRET" {
+  name = "GO_PLUS_APP_SECRET"
+}

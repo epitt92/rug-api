@@ -1,12 +1,13 @@
 import random, logging
 from typing import Union
 from web3 import Web3
-import json, dotenv, os
+import json, dotenv, os, time
+from goplus import auth
 
 from src.v1.shared.constants import *
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.schemas import Chain
-from src.v1.shared.exceptions import RPCProviderException, UnsupportedChainException
+from src.v1.shared.exceptions import RPCProviderException, UnsupportedChainException, GoPlusAccessKeyLoadError, GoPlusAccessKeyRefreshError
 
 dotenv.load_dotenv()
 
@@ -68,3 +69,55 @@ async def get_token_contract_details(chain: ChainEnum, token_address: str) -> di
     except Exception as e:
         logging.warning(f'An exception occurred whilst trying to fetch token details for token {token_address} on chain {chain}: {e}')
         raise e
+
+def fetch_access_token():
+    # Log the start time of the request
+    current_time = int(time.time())
+    
+    try:
+        token_data = auth.Auth(key=os.getenv('GO_PLUS_APP_KEY'), secret=os.getenv('GO_PLUS_APP_SECRET')).get_access_token()
+    except Exception as e:
+        logging.error(f"Exception: An exception occurred whilst attempting to fetch a new access token from GoPlus.")
+        raise GoPlusAccessKeyRefreshError()
+        
+    try:
+        access_token = token_data.result.access_token
+        expires_in = token_data.result.expires_in
+        data = {"access_token": access_token, "expiry": current_time + expires_in - 120}
+    except Exception as e:
+        logging.warning(f"Exception: An exception occurred whilst attempting to parse the access token response from GoPlus.")
+        raise GoPlusAccessKeyRefreshError()
+    
+    try:
+        with open("src/v1/shared/files/access_token.json", "w") as f:
+            json.dump(data, f)
+    except FileNotFoundError:
+        logging.warning(f"Exception: The access token file could not be found whilst trying to save a new access token from GoPlus.")
+        raise GoPlusAccessKeyRefreshError()
+    except Exception as e:
+        logging.warning(f"Exception: An exception occurred whilst attempting to save a new access token from GoPlus.")
+        raise GoPlusAccessKeyRefreshError()
+
+def load_access_token():
+    try:
+        with open("src/v1/shared/files/access_token.json", "r") as f:
+            access_token = json.load(f)
+    except FileNotFoundError:
+        try:
+            fetch_access_token()
+            return load_access_token()
+        except Exception as e:
+            logging.error(f"Exception: An exception occurred whilst attempting to fetch a new access token from GoPlus.")
+            raise GoPlusAccessKeyLoadError()
+        
+    if (access_token.get("expiry") < int(time.time())):
+        try:
+            logging.info(f"Access token expired, fetching a new one...")
+            fetch_access_token()
+            logging.info(f"Access token fetched, loading it...")
+            return load_access_token()
+        except Exception as e:
+            logging.error(f"Exception: An exception occurred whilst attempting to fetch a new access token from GoPlus.")
+            raise GoPlusAccessKeyLoadError()
+    else:
+        return access_token.get("access_token")

@@ -96,7 +96,9 @@ module "rug_app_service" {
     aws_secretsmanager_secret.BNB_BLOCK_EXPLORER_API_KEY.arn,
     aws_secretsmanager_secret.RUG_API_ETHEREUM_RPC_URL.arn,
     aws_secretsmanager_secret.RUG_API_ARBITRUM_RPC_URL.arn,
-    aws_secretsmanager_secret.RUG_API_BASE_RPC_URL.arn
+    aws_secretsmanager_secret.RUG_API_BASE_RPC_URL.arn,
+    aws_secretsmanager_secret.GO_PLUS_APP_KEY.arn,
+    aws_secretsmanager_secret.GO_PLUS_APP_SECRET.arn
   ]
   secrets = [
     {
@@ -126,6 +128,14 @@ module "rug_app_service" {
     {
       name     = "BASE_RPC_URL"
       valueFrom = aws_secretsmanager_secret.RUG_API_BASE_RPC_URL.arn
+    },
+    {
+      name     = "GO_PLUS_APP_KEY"
+      valueFrom = aws_secretsmanager_secret.GO_PLUS_APP_KEY.arn
+    },
+    {
+      name     = "GO_PLUS_APP_SECRET"
+      valueFrom = aws_secretsmanager_secret.GO_PLUS_APP_SECRET.arn
     }
   ]
   custom_policy = {
