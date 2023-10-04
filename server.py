@@ -10,9 +10,9 @@ from router import v1_router
 from src.v1.shared.dependencies import load_access_token
 
 from src.v1.shared.exceptions import (
-                                    RugAPIException, DatabaseLoadFailureException, 
-                                    DatabaseInsertFailureException, GoPlusDataException, 
-                                    UnsupportedChainException, OutputValidationError, 
+                                    RugAPIException, DatabaseLoadFailureException,
+                                    DatabaseInsertFailureException, GoPlusDataException,
+                                    UnsupportedChainException, OutputValidationError,
                                     BlockExplorerDataException, InvalidTokenAddressException,
                                     RPCProviderException
                                     )
