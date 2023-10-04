@@ -174,7 +174,8 @@ class DatabaseQueueObject:
         if item is None:
             self.sqs.send_message(
                 QueueUrl=self.queue_url,
-                MessageBody=json.dumps(message_data)
+                MessageBody=json.dumps(message_data),
+                MessageGroupId='1'
             )
 
         return item
