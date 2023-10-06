@@ -29,3 +29,19 @@ variable "autoscaling_enabled" {
 variable "s3_bucket_artifacts" {
   description = "The s3 bucket artifacts"
 }
+
+variable "redis_subnet_group_name" {
+  description = "The redis subnet group name"
+}
+
+variable "redis_node_type" {
+  description = "The redis node type"
+}
+
+variable "automatic_failover_enabled" {
+  description = "The automatic failover enabled"
+}
+
+variable "num_cache_clusters" {
+  description = "The num cache clusters"
+}
