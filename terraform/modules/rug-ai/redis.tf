@@ -8,5 +8,5 @@ module "redis" {
   automatic_failover_enabled = var.automatic_failover_enabled
   num_cache_clusters         = var.num_cache_clusters
   transit_encryption_enabled = true
-  private                    = true
+  private                    = false
 }
