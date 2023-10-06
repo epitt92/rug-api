@@ -15,13 +15,16 @@ terraform {
 }
 
 inputs = {
-  region                 = local.env_config.locals.aws_region
-  account_id             = local.env_config.locals.account_id
-  stage                  = local.env_config.locals.stage
-  tags                   = local.env_config.locals.tags
-  workspace              = local.workspace
-  rug_ecr_image          = local.rug_ecr_image
-  autoscaling_enabled    = local.env_config.locals.autoscaling_enabled
-  s3_bucket_artifacts    = local.env_config.locals.s3_bucket_artifacts 
-
+  region                      = local.env_config.locals.aws_region
+  account_id                  = local.env_config.locals.account_id
+  stage                       = local.env_config.locals.stage
+  tags                        = local.env_config.locals.tags
+  workspace                   = local.workspace
+  rug_ecr_image               = local.rug_ecr_image
+  autoscaling_enabled         = local.env_config.locals.autoscaling_enabled
+  s3_bucket_artifacts         = local.env_config.locals.s3_bucket_artifacts 
+  redis_subnet_group_name     = local.env_config.locals.redis_subnet_group_name 
+  redis_node_type             = local.env_config.locals.redis_node_type
+  automatic_failover_enabled  = local.env_config.locals.automatic_failover_enabled
+  num_cache_clusters          = local.env_config.locals.num_cache_clusters
 }
