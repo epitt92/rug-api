@@ -10,10 +10,9 @@ from src.v1.shared.models import validate_token_address
 import re
 
 class EventClick(BaseModel):
-    username: Union[EmailStr, str]
-    event_id: str
+    event_hash: str
 
-    @validator('event_id')
+    @validator('event_hash')
     def validate_event_id(cls, v):
         pattern = r'^0x[a-fA-F0-9]{12}$'
         if not re.match(pattern, v):
@@ -24,7 +23,6 @@ class EventClick(BaseModel):
 
 class TokenView(BaseModel):
     chain: ChainEnum
-    user_id: str
     token_address: str
 
     @root_validator(pre=True)

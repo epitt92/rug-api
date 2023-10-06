@@ -11,6 +11,8 @@ from src.v1.sourcecode.schemas import SourceCodeResponse, SourceCodeFile
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.exceptions import DatabaseLoadFailureException, DatabaseInsertFailureException, UnsupportedChainException, BlockExplorerDataException, OutputValidationError
 
+from src.v1.auth.endpoints import decode_token
+
 router = APIRouter()
 
 dotenv.load_dotenv()
@@ -122,7 +124,7 @@ async def get_source_code_map(chain: ChainEnum, token_address: str = Depends(val
         return {key_map.get(key): source.get(key).get('content') for key in source.keys()}
 
 
-@router.get("/{chain}/{token_address}", response_model=SourceCodeResponse)
+@router.get("/{chain}/{token_address}", dependencies=[Depends(decode_token)], response_model=SourceCodeResponse)
 async def get_source_code(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     # Check if the token source code has already been cached
     pk = get_primary_key(token_address, chain.value)
