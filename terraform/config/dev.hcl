@@ -16,6 +16,9 @@ locals {
     Cloud     = "aws"           
   }
   s3_bucket_artifacts                               = "${local.project_name}-${local.stage}-${local.account_id}-build-artifacts"
-  
+  redis_subnet_group_name                           = "rug-api-private-redis-subnet-group"
+  redis_node_type                                   = "cache.t4g.micro"
+  automatic_failover_enabled                        = false
+  num_cache_clusters                                = 1
 
 }
