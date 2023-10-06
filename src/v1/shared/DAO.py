@@ -144,7 +144,7 @@ class DatabaseQueueObject:
     """Object to interact with DynamoDB and SQS."""
     def __init__(self, table_name: str, queue_url: str, region_name: str = 'eu-west-2'):
         self.DAO = DAO(table_name=table_name, region_name=region_name)
-        self.sqs = boto3.client('sqs', region_name=region_name)
+        self.sqs = boto3.client('sqs')
         self.queue_url = queue_url
 
     def get_item(self, pk: str, MessageGroupId: str, message_data: dict) -> Optional[dict]:

@@ -11,8 +11,6 @@ from src.v1.chart.models import FrequencyEnum
 from src.v1.chart.schemas import ChartResponse
 from src.v1.chart.exceptions import CoinGeckoChartException
 
-from src.v1.auth.endpoints import decode_token
-
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter()
@@ -51,7 +49,7 @@ async def get_pool_address(chain: ChainEnum, token_address: str = Depends(valida
         logging.error(f"Exception: `pair_address` was not defined for the GoPlus response from {token_address} on chain {chain}.")
         raise GoPlusDataException(chain=chain, token_address=token_address)
 
-@router.get("/{chain}/{token_address}", dependencies=[Depends(decode_token)], response_model=ChartResponse)
+@router.get("/{chain}/{token_address}", response_model=ChartResponse)
 async def get_chart_data(chain: ChainEnum, frequency: FrequencyEnum, token_address: str = Depends(validate_token_address)):
     # TODO: Eventually want to store pool address as part of the metadata, and do a call to fetch it from there
     pool_address = await get_pool_address(chain, token_address)
@@ -109,3 +107,40 @@ async def get_chart_data(chain: ChainEnum, frequency: FrequencyEnum, token_addre
     except Exception as e:
         logging.error("Exception: {e}")
         raise CoinGeckoChartException(chain=chain, token_address=token_address, frequency=frequency)
+
+
+# @router.get("/{chain}/pool/{pool_address}", response_model=ChartResponse)
+# async def get_chart_data_from_pool(chain: ChainEnum, frequency: FrequencyEnum, pool_address: str = Depends(validate_token_address)):
+#     # Call CoinGecko API with pool address and correct frequency
+#     try:
+#         if chain == ChainEnum.ethereum:
+#             network = 'eth'
+#         elif chain == ChainEnum.arbitrum:
+#             network = 'arbitrum'
+#         elif chain == ChainEnum.base:
+#             network = 'base'
+#         else:
+#             raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for pool {pool_address} on chain {chain}. The chain {chain} is not supported.")
+        
+#         url = f"https://api.geckoterminal.com/api/v2/networks/{network}/pools/{pool_address}/ohlcv/{FREQUENCY_MAPPING[frequency.value]['candleType']}"
+
+#         params = {
+#             "aggregate": FREQUENCY_MAPPING[frequency.value]['candleDuration'],
+#             "limit": FREQUENCY_MAPPING[frequency.value]['limit']
+#         }
+
+#         response = requests.get(url, params=params)
+
+#         if response.status_code == 200:
+#             data = response.json()
+#         else:
+#             raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for pool {pool_address} on chain {chain}. The response status code was {response.status_code}.")
+#     except:
+#         raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for pool {pool_address} on chain {chain}.")
+
+#     market_data = data['data']['attributes'].get('ohlcv_list')
+
+#     if not market_data:
+#         raise HTTPException(status_code=500, detail=f"Failed to get CoinGecko data for pool {pool_address} on chain {chain}: No data was returned.")
+
+#     return process_market_data(market_data)

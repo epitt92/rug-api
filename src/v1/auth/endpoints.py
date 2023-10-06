@@ -17,7 +17,7 @@ from src.v1.auth.schemas import (
         UserAccessTokens, ResetPassword,
         CreateWeb3Account, SignInWeb3Account)
 
-# from src.v1.referral.endpoints import post_referral_code_use
+from src.v1.referral.endpoints import post_referral_code_use
 
 from src.v1.auth.exceptions import CognitoException, CognitoUserAlreadyExists, CognitoIncorrectCredentials, CognitoLambdaException, CognitoUserDoesNotExist
 
@@ -88,7 +88,7 @@ def decode_token(
 
         claims.validate()
     except errors.JoseError:
-        raise HTTPException(status_code=403, detail="Exception: Incorrect auth token used.")
+        raise HTTPException(status_code=403, detail="Bad auth token")
 
     return claims
 
@@ -97,6 +97,18 @@ def decode_token(
 #          JWT Token Validation              #
 #                                            #
 ##############################################
+
+@router.get("/email/validate/")
+def validate_access_token(access_token: str) -> bool:
+    try:
+        response = cognito.get_user(AccessToken=access_token)
+        return access_token if response.get("Username") else False
+    except cognito.exceptions.NotAuthorizedException as e:
+        logging.error(f"Exception: NotAuthorizedException: {e}")
+        return False
+    except Exception as e:
+        logging.error(f"Exception: Unknown Cognito Exception: {e}")
+        return False
 
 @router.get("/email/username/")
 def get_username_from_access_token(access_token: str) -> str:
@@ -166,6 +178,31 @@ async def check_username_exists(user: EmailStr):
         return JSONResponse(status_code=200, content={"exists": False, "detail": "Username is available."})
     except Exception as e:
         raise CognitoException(str(e))
+
+
+@router.delete("/email/delete/")
+async def rollback_user_creation(access_token: str = Depends(validate_access_token)) -> Response:
+    USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
+
+    if not USER_POOL_ID:
+        raise CognitoException("Exception: COGNITO_USER_POOL_ID not set in environment variables.")
+
+    # Rollback: Delete the user from Cognito if an error occurred after sign_up
+    try:
+        username = get_username_from_access_token(access_token).get("username")
+
+        if not username:
+            raise CognitoException("Exception: No username found in access token.")
+
+        cognito.admin_delete_user(
+            UserPoolId=USER_POOL_ID,  # Replace with your User Pool ID
+            Username=username
+        )
+    except ClientError as e:
+        logging.error(f"Exception: ClientError whilst attempting to rollback user creation: {e}")
+        raise CognitoException(f"Exception: ClientError whilst attempting to rollback user creation: {e}")
+
+    return JSONResponse(status_code=200, content={"detail": f"User {username} successfully rolled back and deleted from Cognito."})
 
 ##############################################
 #                                            #

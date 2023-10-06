@@ -24,7 +24,6 @@ from src.v1.tokens.schemas import SourceCodeResponse, Holder, Cluster, ClusterRe
 from src.v1.clustering.constants import CLUSTER_REPORT_STALENESS_THRESHOLD, HOLDERS_STALENESS_THRESHOLD
 
 from src.v1.sourcecode.endpoints import get_source_code
-from src.v1.auth.endpoints import decode_token
 
 with open('src/v1/clustering/files/labels.json') as f:
     labels = json.load(f)
@@ -59,7 +58,6 @@ CLUSTERING_QUEUE = DatabaseQueueObject(
 #                                                    #
 ######################################################
 
-@router.get("/supplytransferrability/{chain}/{token_address}", dependencies=[Depends(decode_token)], include_in_schema=True)
 async def get_supply_transferrability_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     _token_address = token_address.lower()
 
@@ -171,7 +169,7 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
 
     return supply_summary, transferrability_summary
 
-@router.get("/metadata/{chain}/{token_address}", dependencies=[Depends(decode_token)], include_in_schema=True)
+@router.get("/metadata/{chain}/{token_address}", include_in_schema=True)
 async def get_token_metrics(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     pk = get_primary_key(token_address, chain)
 
@@ -275,7 +273,7 @@ async def get_token_metrics(chain: ChainEnum, token_address: str = Depends(valid
     return output
 
 
-@router.get("/audit/{chain}/{token_address}", dependencies=[Depends(decode_token)], include_in_schema=True)
+@router.get("/audit/{chain}/{token_address}", include_in_schema=True)
 async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
 
@@ -343,7 +341,7 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends
         raise OutputValidationError()
 
 
-@router.get("/cluster/{chain}/{token_address}", dependencies=[Depends(decode_token)], include_in_schema=True)
+@router.get("/cluster/{chain}/{token_address}", include_in_schema=True)
 async def get_token_clustering(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
 
@@ -368,7 +366,7 @@ async def get_token_clustering(chain: ChainEnum, token_address: str = Depends(va
         return JSONResponse(status_code=500, content={"detail": f"Token {token_address} on chain {_chain} was returned but had no data."})
 
 
-@router.get("/holderchart/{chain}/{token_address}", dependencies=[Depends(decode_token)], include_in_schema=True)
+@router.get("/holderchart/{chain}/{token_address}", include_in_schema=True)
 async def get_holder_chart(chain: ChainEnum, token_address: str = Depends(validate_token_address), numClusters: int = 5):
     _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
 
@@ -665,7 +663,7 @@ async def get_audit_summary_from_cache(chain, token_address: str = Depends(valid
         return None
 
 
-@router.get("/score/{chain}/{token_address}", dependencies=[Depends(decode_token)], response_model=ScoreResponse, include_in_schema=True)
+@router.get("/score/{chain}/{token_address}", response_model=ScoreResponse, include_in_schema=True)
 async def get_score_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     # Fetch required data from various sources
     try:
@@ -746,7 +744,7 @@ async def get_score_info(chain: ChainEnum, token_address: str = Depends(validate
         raise OutputValidationError()
 
 
-@router.get("/info/{chain}/{token_address}", dependencies=[Depends(decode_token)], response_model=TokenInfoResponse)
+@router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
 async def get_token_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     tokenSummary = await get_token_metrics(chain, token_address)
     score = await get_score_info(chain, token_address)
@@ -768,7 +766,7 @@ async def get_token_info(chain: ChainEnum, token_address: str = Depends(validate
         raise OutputValidationError()
 
 
-@router.get("/review/{chain}/{token_address}", dependencies=[Depends(decode_token)], response_model=TokenReviewResponse)
+@router.get("/review/{chain}/{token_address}", response_model=TokenReviewResponse)
 async def get_token_detailed_review(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     # Get the supply and transferrability summary information
     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)

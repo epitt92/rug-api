@@ -35,13 +35,11 @@ router = APIRouter()
 
 FEEDS_DAO = DAO("feeds")
 
-@router.post("/eventclick", dependencies=[Depends(decode_token)])
+@router.post("/eventclick")
 async def post_event_click(eventClick: EventClick):
-    # TODO: Get user ID from token
-
     try:
-        eventHash = eventClick.event_hash
-        userId = "TEMP"
+        eventHash = eventClick.event_id
+        userId = eventClick.username
     except Exception as e:
         logging.error(f'An exception occurred whilst parsing the eventClick: {eventClick}. Exception: {e}')
         return JSONResponse(status_code=400, content={"detail": f"An exception occurred whilst parsing the eventClick: {eventClick}. Exception: {e}"})
@@ -53,13 +51,12 @@ async def post_event_click(eventClick: EventClick):
     return JSONResponse(status_code=200, content={"detail": f"Event view for {eventHash} from user {userId} recorded."})
 
 
-@router.post("/tokenview", dependencies=[Depends(decode_token)])
+@router.post("/tokenview")
 async def post_token_view(tokenView: TokenView):
-    # TODO: Get user ID from token
     try:
         chain = tokenView.chain
         token_address = tokenView.token_address
-        user_id = "TEMP"
+        user_id = tokenView.user_id
 
         _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
 
@@ -273,7 +270,7 @@ async def get_most_viewed_token_result(limit: int = 50, num_minutes: int = 30):
     return output
 
 # TODO: Add more robust exception handling to this endpoint
-@router.get("/topevents", dependencies=[Depends(decode_token)])
+@router.get("/topevents")
 async def get_top_events(limit: int = 50):
     logging.info(f'Fetching top event list with limit {limit}...')
 
@@ -514,7 +511,7 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
         return []
 
 # TODO: Add caching to this endpoint to reduce the number of calls to Timestream
-@router.get("/tokenevents",  dependencies=[Depends(decode_token)], include_in_schema=True)
+@router.get("/tokenevents", include_in_schema=True)
 async def get_token_events(number_of_events: int = 50, chain: ChainEnum = None):
     if number_of_events > 50:
         number_of_events = 50
