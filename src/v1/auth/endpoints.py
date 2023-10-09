@@ -348,18 +348,6 @@ async def sign_in(user: SignInEmailAccount) -> Response:
             "accessToken": response.get('AuthenticationResult').get('AccessToken'),
             "refreshToken": response.get('AuthenticationResult').get('RefreshToken'),
         }
-
-
-        # Set the tokens as cookies in the response
-        # httponly=True prevents the cookie from being accessed by JavaScript, which prevents cross-site scripting attacks
-        # secure=True ensures that the cookie is only sent over HTTPS
-
-        # response.set_cookie(key="accessToken", value=tokens.get('accessToken'), httponly=True, secure=True)
-        # response.set_cookie(key="refreshToken", value=tokens.get('refreshToken'), httponly=True, secure=True)
-
-        #  Authorize.set_access_cookies(tokens.get('accessToken'))
-        #  Authorize.set_refresh_cookies(tokens.get('refreshToken'))
-
     except cognito.exceptions.NotAuthorizedException as e:
         # Raise a custom exception here for invalid authentication
         raise CognitoIncorrectCredentials(user.username, user.password, f"Exception: NotAuthorizedException for user {user.username}")
@@ -403,16 +391,12 @@ async def request_reset_password(username: EmailStr):
         raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
 
     try:
-        # username = get_username_from_access_token(Authorize.get_raw_jwt().get("accessToken")).get("username")
-
         # The verification code will be sent to the user's registered email or phone number
         _ = cognito.forgot_password(
             ClientId=CLIENT_ID,
             Username=username
         )
     except cognito.exceptions.UserNotFoundException as e:
-        # if not username:
-        #     raise CognitoException("Exception: No username found in access token.")
         raise CognitoUserDoesNotExist(username, f"Exception: UserNotFoundException: {e}")
     except cognito.exceptions.InvalidParameterException as e:
         raise CognitoException(f"Exception: InvalidParameterException: {e}")
@@ -452,13 +436,3 @@ async def reset_password(user: ResetPassword):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/web3/signup/")
-async def sign_up_web3(user: CreateWeb3Account):
-    pass
-
-
-@router.post("/web3/signin", response_model=UserAccessTokens)
-async def sign_in_web3(user: SignInWeb3Account):
-    pass
