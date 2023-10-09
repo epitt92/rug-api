@@ -11,11 +11,6 @@ data "aws_ssm_parameter" "ecs_cluster_name_parameter_store" {
   name = "/rug/ecs/cluster/name"
 }
 
-
-data "aws_ssm_parameter" "rug_ml_api_endpoint_parameter_store" {
-  name = "/rug/ml/api/endpoint"
-}
-
 data "aws_ssm_parameter" "rug_ml_audit_queue_url_parameter_store" {
   name = "/rug/ml/audit/queue/url"
 }
@@ -82,10 +77,6 @@ module "rug_app_service" {
     {
       name  = "BNB_BLOCK_EXPLORER_URL"
       value = "https://api.bscscan.com/api"
-    },
-    {
-      name  = "ML_API_URL"
-      value = data.aws_ssm_parameter.rug_ml_api_endpoint_parameter_store.value
     },
     {
       name = "COGNITO_USER_POOL_ID"
