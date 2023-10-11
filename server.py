@@ -170,7 +170,5 @@ async def root():
         content={"detail": "rug-api"}
     )
 
-
-
 app.include_router(v1_router)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])

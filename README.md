@@ -1,47 +1,58 @@
 # rug-api
 
-- Ensure Python is installed on your machine, pull the repository and open it in terminal
+`rug-api` is a microservices-based application that serves the user interface for rug.ai. Powered by Python's FastAPI, it's designed to run seamlessly on AWS.
 
-- Call `pip install -r requirements.txt` to install package requirements
+## Table of Contents
 
-- Fill up the `.env` file in the root folder
+- [rug-api](#rug-api)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Installation](#installation)
+  - [Deployment on AWS](#deployment-on-aws)
+  - [Usage](#usage)
+  - [API Endpoints](#api-endpoints)
+  - [Contact](#contact)
 
-- Call `uvicorn server:app --reload` to run the API locally on port `8000`
+## Features
 
-- Navigate to `localhost:8000/endpoints` in browser to view the endpoints, or `localhost:8000/documentation` to view the documentation for the API
+- **FastAPI Backend**: Provides a high-performance backend API using Python's FastAPI.
+- **Microservices Architecture**: Modular and scalable approach to deploy and manage services.
+- **AWS Integration**: Optimized for deployment on Amazon Web Services.
 
-## Unit Tests
+## Installation
 
-Unit tests run via `pytest tests` in the console.
+Before deploying `rug-api` on AWS, you need to set it up locally:
 
+1. Clone the repository:
+   ```sh
+   git clone https://github.com/diffusion-io/rug-api.git
+   ```
 
-## Infrastructure
-The Rug API is hosted on AWS using Docker Swarm and EC2 Instances.
+2. Navigate to the project directory and install required packages:
+   ```sh
+   cd rug-api
+   pip install -r requirements.txt
+   ```
 
-![diffusion](https://github.com/diffusion-io/rug-api/assets/13097984/29335812-6ec4-44e9-8589-884c5622091d)
+3. Run the application locally:
+   ```sh
+   uvicorn main:app --reload
+   ```
 
+## Deployment on AWS
 
-## Deployments
-Rug API uses Github actions for deploying new changes to the AWS. The current workflow only monitor `main` branch for new changes. To deploy your branch merge it to main and it will automatically deploy to Docker Service.
+TODO @rawanb9:
+- Add deployment architecture diagram
+- Add deployment details
 
-## Manually setting up the Docker Servcie
-In case you need to setup the service from scratch please follow below steps:
-1. Login to ECR registry
-```aws ecr get-login-password --region eu-west-2 | sudo docker login --username AWS --password-stdin 379150053149.dkr.ecr.eu-west-2.amazonaws.com```
+## Usage
 
-2. Create new service with 2 containers using the target image tag
-```docker service create --name rug-api -e ETHERSCAN_API_KEY=<> --replicas 2 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:<tag>```
+Once the application is running, navigate to the provided IP and port in your browser to access the rug.ai user interface.
 
+## API Endpoints
 
-3. Update service to use new image with rolling upgrades
-```docker service update --image 379150053149.dkr.ecr.eu-west-2.amazonaws.com/rug-api:<tag> --update-parallelism 1 --update-delay 10s rug-api```
+Documentation for the API endpoints can be accessed at `localhost:8000/endpoints` on your local deployment.
 
+## Contact
 
-## Starting Docker container locally
-To start the Docker container locally
-1. Build the docker image run below from project repo:
-``` sudo docker build -t rug-api:latest . ```
-
-2. Start container from above image
-``` sudo docker run -ti -e ETHERSCAN_API_KEY=<> -p 80:80 rug-api:latest ```
-
+Jake Lee - `jake@diffusion.io`
