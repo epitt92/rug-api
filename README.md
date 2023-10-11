@@ -47,6 +47,7 @@ The architecture follows best practices for high availability and scalability.
 
 ![Rug API App Architecture](https://github.com/diffusion-io/rug-api/blob/main/images/rug-api-architecture.png)
 
+![rug api SQS ](https://github.com/diffusion-io/rug-api/blob/main/images/rug-api-SQS.png)
 
 ## Run the docker container locally
 
@@ -98,6 +99,17 @@ terragrunt init
 ```
 
 4. Deploy the module
+
+```bash
+terragrunt run-all apply
+```
+##### add terraform resources to the module
+
+1. add the terraform resources to the module in the terraform directory
+
+2. add the necessary variables to the terragrunt.hcl file or config folder
+
+3. push to the github to apply the changes by the pipeline or run the following command to apply the terraform code
 
 ```bash
 terragrunt run-all apply
