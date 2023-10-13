@@ -51,11 +51,11 @@ Before deploying `rug-api` on AWS, you need to set it up locally:
 
 ## Architecture
 
-The Rug API application is deployed on AWS ECS. We leverage an autoscaling group to ensure that the application scales up or down based on demand. In front of the ECS, we have a load balancer that evenly distributes incoming application traffic across multiple targets, increasing the availability of your application.
-
-The architecture follows best practices for high availability and scalability.
+The rug.ai API application is deployed on AWS ECS. It leverages an autoscaling group to ensure that the application scales up or down based on demand, this autoscaling functionality is managed by AWS Fargate. In front of the ECS, it also deploys a load balancer that evenly distributes incoming application traffic across multiple targets, increasing the availability of your application. The architecture follows best practices for high availability and scalability across multiple zones:
 
 ![Rug API App Architecture](https://github.com/diffusion-io/rug-api/blob/main/images/rug-api-architecture.png)
+
+In addition, some of the application endpoints make use of other rug.ai services, such as the SQS queue service and serverless compute functions deployed as part of another rug.ai application. This API does not contain deployment details for these services, although some of the API endpoints make use of the queue service to create workloads for other deployments in the stack:
 
 ![rug api SQS ](https://github.com/diffusion-io/rug-api/blob/main/images/rug-api-SQS.png)
 
@@ -118,7 +118,7 @@ terragrunt run-all apply
 
 1. Add the Terraform resources to the module in the Terraform modules directory,
 
-2. Add the necessary variables to the `terragrunt.hcl`` file or configuration folder, and,
+2. Add the necessary variables to the `terragrunt.hcl` file or configuration folder, and,
 
 3. Push to the GitHub to apply the changes by running the CI/CD pipeline or run the following command to apply the Terraform code from your local machine:
 
@@ -128,7 +128,7 @@ terragrunt run-all apply
 
 ### CI/CD Pipeline with Github Actions
 
-Github Actions is used to implement the Continuous Integration/Continuous Deployment (CI/CD) pipeline. This automated pipeline triggers on events such as pull requests, merges, or new tags. Each workflow comprises three main jobs - testing, building, and deploying. The testing phase involves running `pytest`` on the Python-based rug.ai API code to validate various endpoints and functionality. Upon successful testing, the build job executes, which compiles the code and pushes the resulting artifact to an ECR repository. Finally, the deployment job pulls this artifact and uses Terraform apply to deploy the updated infrastructure.
+Github Actions is used to implement the Continuous Integration/Continuous Deployment (CI/CD) pipeline. This automated pipeline triggers on events such as pull requests, merges, or new tags. Each workflow comprises three main jobs - testing, building, and deploying. The testing phase involves running `pytest` on the Python-based rug.ai API code to validate various endpoints and functionality. Upon successful testing, the build job executes, which compiles the code and pushes the resulting artifact to an ECR repository. Finally, the deployment job pulls this artifact and uses Terraform apply to deploy the updated infrastructure.
 
 ### Trunk-Based Git Strategy
 
