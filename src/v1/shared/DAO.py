@@ -179,6 +179,8 @@ class DatabaseQueueObject:
                     MessageGroupId=MessageGroupId,
                     MessageDeduplicationId=MessageGroupId
                 )
+
+                logging.info(f'Success: Message sent to SQS: {message_data}')
             except Exception as e:
                 logging.error(f'Exception: An error occurred whilst sending a message to SQS: {e}')
                 raise SQSException()
