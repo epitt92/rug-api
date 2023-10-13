@@ -1,7 +1,7 @@
 """
 Data Access Object (DAO) class to store and retrieve data from a file.
 """
-import json, logging, boto3
+import json, logging, boto3, time
 from typing import Any, Dict, List, Optional
 from boto3.dynamodb.conditions import Key
 
@@ -142,10 +142,11 @@ class DAO:
 
 class DatabaseQueueObject:
     """Object to interact with DynamoDB and SQS."""
-    def __init__(self, table_name: str, queue_url: str, region_name: str = 'eu-west-2'):
+    def __init__(self, table_name: str, queue_url: str, region_name: str = 'eu-west-2', staleness: Optional[int] = None) -> None:
         self.DAO = DAO(table_name=table_name, region_name=region_name)
         self.sqs = boto3.client('sqs', region_name=region_name)
         self.queue_url = queue_url
+        self.staleness = staleness
 
     def get_item(self, pk: str, MessageGroupId: str, message_data: dict) -> Optional[dict]:
         """Try to find most recent in DynamoDB, otherwise send a message to SQS.
@@ -171,7 +172,16 @@ class DatabaseQueueObject:
         """
         item = self.DAO.find_most_recent_by_pk(partition_key_value=pk)
 
-        if item is None:
+        to_queue = False
+
+        # Check whether the item is stale or exists
+        if item and item.get('timestamp'):
+            if self.staleness:
+                is_stale = int(time.time()) - int(item.get('timestamp')) > self.staleness
+                logging.info(f'Item found is stale: {is_stale}')
+                to_queue = True if is_stale else False
+            
+        if item is None or to_queue:
             try:
                 self.sqs.send_message(
                     QueueUrl=self.queue_url,

@@ -13,7 +13,7 @@ from src.v1.shared.DAO import DAO, DatabaseQueueObject
 from src.v1.shared.models import ChainEnum, validate_token_address
 from src.v1.shared.exceptions import RugAPIException, DatabaseLoadFailureException, DatabaseInsertFailureException, GoPlusDataException, UnsupportedChainException, OutputValidationError, BlockExplorerDataException
 
-from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD
+from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD, CLUSTERING_REPORT_STALENESS_THRESHOLD
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
 from src.v1.tokens.dependencies import get_go_plus_summary, get_block_explorer_data, get_go_plus_data, call_fetch_token_holders, call_total_supply
 from src.v1.tokens.schemas import Holder, Cluster, ClusterResponse, AIComment, AISummary, TokenMetadata, ContractResponse, AISummary
@@ -45,7 +45,8 @@ TOKEN_ANALYSIS_QUEUE = DatabaseQueueObject(
 
 CLUSTERING_QUEUE = DatabaseQueueObject(
     table_name='clusterreports',
-    queue_url=os.environ.get('CLUSTERING_QUEUE'))
+    queue_url=os.environ.get('CLUSTERING_QUEUE'),
+    staleness=CLUSTERING_REPORT_STALENESS_THRESHOLD)
 
 ######################################################
 #                                                    #
