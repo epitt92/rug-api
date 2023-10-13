@@ -14,7 +14,7 @@
     - [Infrastructure as Code (IaC) with Terraform](#infrastructure-as-code-iac-with-terraform)
       - [Deploy Infrastructure Locally](#deploy-infrastructure-locally)
         - [Prerequisites](#prerequisites)
-        - [Steps](#steps)
+        - [Deployment Steps](#deployment-steps)
         - [Adding Terraform Resources to Modules](#adding-terraform-resources-to-modules)
     - [CI/CD Pipeline with Github Actions](#cicd-pipeline-with-github-actions)
     - [Trunk-Based Git Strategy](#trunk-based-git-strategy)
@@ -44,7 +44,9 @@ Before deploying `rug-api` on AWS, you should set it up and test your changes lo
    pip install -r requirements.txt
    ```
 
-3. Run the application locally:
+3. Ensure you have created a `.env` file in the root of the repository with the required environment variables. See `.env.example` for a list of all required environment variables for this application.
+
+4. Finally, run the application locally:
    ```sh
    uvicorn main:app --reload
    ```
@@ -88,7 +90,7 @@ The rug.ai API employs Terraform for an Infrastructure as Code (IaC) approach. A
 3. You need to have Git installed on your local machine, and,
 4. You need to have set the Terragrunt environment variables.
 
-##### Steps
+##### Deployment Steps
 
 1. First, clone the repository on your local machine:
 
