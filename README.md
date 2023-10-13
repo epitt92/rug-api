@@ -1,10 +1,10 @@
-# rug-api
+# rug.ai API
 
 `rug-api` is a microservices-based application that serves the user interface for rug.ai. Powered by Python's FastAPI, it's designed to run seamlessly on AWS.
 
 ## Table of Contents
 
-- [rug-api](#rug-api)
+- [rug.ai API](#rugai-api)
   - [Table of Contents](#table-of-contents)
   - [Features](#features)
   - [Installation](#installation)
@@ -31,7 +31,7 @@
 
 ## Installation
 
-Before deploying `rug-api` on AWS, you need to set it up locally:
+Before deploying `rug-api` on AWS, you should set it up and test your changes locally:
 
 1. Clone the repository:
    ```sh
@@ -61,13 +61,13 @@ In addition, some of the application endpoints make use of other rug.ai services
 
 ## Running the Docker Container Locally
 
-1. Build the docker image
+1. Build the Docker image locally using `docker build`:
 
 ```bash
 docker build -t rug-api .
 ```
 
-2. Run the docker container
+2. Run the Docker container using `docker run`:
 
 ```bash
 docker run -p 80:8000 rug-api
