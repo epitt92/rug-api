@@ -58,6 +58,7 @@ CLUSTERING_QUEUE = DatabaseQueueObject(
 #                                                    #
 ######################################################
 
+@router.get("/simulations/{chain}/{token_address}", include_in_schema=True)
 async def get_supply_transferrability_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     _token_address = token_address.lower()
 
@@ -744,55 +745,55 @@ async def get_score_info(chain: ChainEnum, token_address: str = Depends(validate
         raise OutputValidationError()
 
 
-@router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
-async def get_token_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
-    tokenSummary = await get_token_metrics(chain, token_address)
-    score = await get_score_info(chain, token_address)
+# @router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
+# async def get_token_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
+#     tokenSummary = await get_token_metrics(chain, token_address)
+#     score = await get_score_info(chain, token_address)
 
-    try:
-        holderChart = await get_holder_chart(chain, token_address)
-    except UnsupportedChainException:
-        logging.warning(f"Exception: The `get_holder_chart` function is not supported for chain {chain}.")
-        holderChart = None
+#     try:
+#         holderChart = await get_holder_chart(chain, token_address)
+#     except UnsupportedChainException:
+#         logging.warning(f"Exception: The `get_holder_chart` function is not supported for chain {chain}.")
+#         holderChart = None
 
-    try:
-        output = TokenInfoResponse(tokenSummary=tokenSummary, score=score, holderChart=holderChart)
-        return output
-    except ValidationError as e:
-        logging.error(f"Exception: A ValidationError occurred whilst formatting the TokenInfoResponse for {token_address} on chain {chain}: {e}")
-        raise OutputValidationError()
-    except Exception as e:
-        logging.error(f"Exception: An unknown Exception occurred whilst formatting the TokenInfoResponse for {token_address} on chain {chain}: {e}")
-        raise OutputValidationError()
+#     try:
+#         output = TokenInfoResponse(tokenSummary=tokenSummary, score=score, holderChart=holderChart)
+#         return output
+#     except ValidationError as e:
+#         logging.error(f"Exception: A ValidationError occurred whilst formatting the TokenInfoResponse for {token_address} on chain {chain}: {e}")
+#         raise OutputValidationError()
+#     except Exception as e:
+#         logging.error(f"Exception: An unknown Exception occurred whilst formatting the TokenInfoResponse for {token_address} on chain {chain}: {e}")
+#         raise OutputValidationError()
 
 
-@router.get("/review/{chain}/{token_address}", response_model=TokenReviewResponse)
-async def get_token_detailed_review(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
-    # Get the supply and transferrability summary information
-    supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
+# @router.get("/review/{chain}/{token_address}", response_model=TokenReviewResponse)
+# async def get_token_detailed_review(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
+#     # Get the supply and transferrability summary information
+#     supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
 
-    # Get and cache the source code for the token
-    try:
-        sourceCode = await get_source_code(chain, token_address)
-    except UnsupportedChainException:
-        sourceCode = SourceCodeResponse()
+#     # Get and cache the source code for the token
+#     try:
+#         sourceCode = await get_source_code(chain, token_address)
+#     except UnsupportedChainException:
+#         sourceCode = SourceCodeResponse()
 
-    # Get the token summary for the token
-    token_info = await get_token_info(chain, token_address)
+#     # Get the token summary for the token
+#     token_info = await get_token_info(chain, token_address)
 
-    try:
-        output = TokenReviewResponse(
-                                tokenSummary=token_info.tokenSummary,
-                                score=token_info.score,
-                                holderChart=token_info.holderChart,
-                                supplySummary=supplySummary,
-                                transferrabilitySummary=transferrabilitySummary,
-                                sourceCode=sourceCode
-                                )
-        return output
-    except ValidationError as e:
-        logging.error(f"Exception: A ValidationError occurred whilst formatting the TokenReviewResponse for {token_address} on chain {chain}: {e}")
-        raise OutputValidationError()
-    except Exception as e:
-        logging.error(f"Exception: An unknown Exception occurred whilst formatting the TokenReviewResponse for {token_address} on chain {chain}: {e}")
-        raise OutputValidationError()
+#     try:
+#         output = TokenReviewResponse(
+#                                 tokenSummary=token_info.tokenSummary,
+#                                 score=token_info.score,
+#                                 holderChart=token_info.holderChart,
+#                                 supplySummary=supplySummary,
+#                                 transferrabilitySummary=transferrabilitySummary,
+#                                 sourceCode=sourceCode
+#                                 )
+#         return output
+#     except ValidationError as e:
+#         logging.error(f"Exception: A ValidationError occurred whilst formatting the TokenReviewResponse for {token_address} on chain {chain}: {e}")
+#         raise OutputValidationError()
+#     except Exception as e:
+#         logging.error(f"Exception: An unknown Exception occurred whilst formatting the TokenReviewResponse for {token_address} on chain {chain}: {e}")
+#         raise OutputValidationError()
