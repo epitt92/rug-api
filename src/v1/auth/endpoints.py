@@ -479,10 +479,15 @@ async def join_waitlist(email: EmailStr):
         "timestamp": sign_up_time
     }
 
-    WHITELIST_DAO.insert_one(email, item=waitlist_payload)
+    sent = None
+    
+    try:
+        WHITELIST_DAO.insert_one(email, item=waitlist_payload)
 
-    # Send confirmation email to user
-    sent = send_confirmation_join_waitlist(email)
+        # Send confirmation email to user
+        sent = send_confirmation_join_waitlist(email)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to insert user {email} into waitlist database.")
 
     if not sent:
         raise HTTPException(status_code=500, detail="Failed to send confirmation email to user.")
