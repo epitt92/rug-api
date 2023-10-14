@@ -1,4 +1,4 @@
-import re
+import re, jinja2
 
 from src.v1.auth.exceptions import InvalidReferralCodeFormat, InvalidReferralCode
 
@@ -19,3 +19,10 @@ def validate_referral_code(code: str):
         raise InvalidReferralCode(code, f"Exception: Invalid referral code, the provided code {code} is not valid.")
 
     return code
+
+
+def render_template(template, **kwargs):
+    templateLoader = jinja2.FileSystemLoader(searchpath="src/v1/auth/email/templates")
+    templateEnv = jinja2.Environment(loader=templateLoader)
+    templ = templateEnv.get_template(template)
+    return templ.render(kwargs)

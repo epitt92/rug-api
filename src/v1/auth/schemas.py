@@ -52,7 +52,6 @@ class ResetPassword(EmailAccountBase):
 class CreateNewPasswordToken(BaseModel):
     username: EmailStr
 
-#########
 
 class SignedMessage(BaseModel):
     address: constr(min_length=42, max_length=42)
@@ -71,39 +70,6 @@ class SignedMessage(BaseModel):
             raise ValueError('Address must be a valid Ethereum address.')
         return v 
 
-
-class CreateWeb3Account(BaseModel):
-    # ECDSA signature parameters
-    signed_message: SignedMessage
-
-    referral_code: str
- 
-    # Generated dynamically at instantiation
-    username: Optional[str]
-    password: Optional[str]
-
-    @root_validator(pre=True)
-    def pre_process(cls, values):        
-        if isinstance(values['signed_message'], dict):
-            address = values['signed_message'].get('address')
-        else:
-            address = values['signed_message'].address
-
-        values['username'] = address
-        values['password'] = Web3.keccak(text=address).hex()
-        return values
-
-    @validator('referral_code')
-    def referral_code_is_valid(cls, v):
-        # TODO: Must check if the referral code is valid
-        return v
-
-
-class SignInWeb3Account(BaseModel):
-    signed_message: SignedMessage
-
-#########
-# responses
 
 class UserAccessTokens(BaseModel):
     accessToken: str

@@ -1,7 +1,4 @@
-import os
-import boto3
-import logging
-import requests
+import os, boto3, logging, requests, time
 from functools import lru_cache
 from fastapi import Depends, HTTPException, APIRouter, Response, security
 from fastapi.responses import JSONResponse
@@ -14,12 +11,12 @@ from cachetools import cached, TTLCache
 from src.v1.auth.schemas import (
         EmailAccountBase, CreateEmailAccount,
         SignInEmailAccount, VerifyEmailAccount,
-        UserAccessTokens, ResetPassword,
-        CreateWeb3Account, SignInWeb3Account)
+        UserAccessTokens, ResetPassword)
 
 from src.v1.referral.endpoints import post_referral_code_use
 
 from src.v1.auth.exceptions import CognitoException, CognitoUserAlreadyExists, CognitoIncorrectCredentials, CognitoLambdaException, CognitoUserDoesNotExist
+from src.v1.auth.dependencies import render_template
 
 router = APIRouter()
 
@@ -27,6 +24,7 @@ token_scheme = security.HTTPBearer()
 
 # Initialize Cognito client
 cognito = boto3.client('cognito-idp', region_name="eu-west-2")
+ses = boto3.client('ses', region_name="eu-west-2")
 
 ##############################################
 #                                            #
@@ -436,3 +434,55 @@ async def reset_password(user: ResetPassword):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+def send_confirmation_join_waitlist(email: str):
+    subject = "Thanks for Joining the rug.ai Waitlist!"
+    body = render_template('join-waitlist.html', title=subject)
+
+    email_subject = subject
+    email_body = body
+    
+    try:
+        ses.send_email(
+            Source="no-reply@rug.ai",
+            Destination={
+                'ToAddresses': [
+                    email
+                ]
+            },
+            Message={
+                'Subject': {
+                    'Data': email_subject
+                },
+                'Body': {
+                    'Html': {
+                        'Data': email_body
+                    }
+                }
+            }
+        )
+
+        return True
+    except Exception as e:
+        logging.info(f"Exception: {e}")
+        return False
+
+
+@router.post("/waitlist")
+async def join_waitlist(email: EmailStr):
+    # TODO: Append email to waitlist database with timestamp
+    sign_up_time = int(time.time())
+
+    waitlist_payload = {
+        "email": email,
+        "signUpTime": sign_up_time
+    }
+
+    # Send confirmation email to user
+    sent = send_confirmation_join_waitlist(email)
+
+    if not sent:
+        raise HTTPException(status_code=500, detail="Failed to send confirmation email to user.")
+
+    return JSONResponse(status_code=200, content={"detail": "Successfully joined waitlist."})
