@@ -16,7 +16,7 @@ from src.v1.shared.exceptions import RugAPIException, DatabaseLoadFailureExcepti
 from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD, CLUSTERING_REPORT_STALENESS_THRESHOLD
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
 from src.v1.tokens.dependencies import get_go_plus_summary, get_block_explorer_data, get_go_plus_data, call_fetch_token_holders, call_total_supply
-from src.v1.tokens.schemas import Holder, Cluster, ClusterResponse, AIComment, AISummary, TokenMetadata, ContractResponse, AISummary
+from src.v1.tokens.schemas import Holder, Cluster, ClusterResponse, AIComment, AISummary, TokenMetadata, ContractResponse, AISummary, SimulationResponse
 
 from src.v1.clustering.constants import HOLDERS_STALENESS_THRESHOLD
 
@@ -54,7 +54,12 @@ CLUSTERING_QUEUE = DatabaseQueueObject(
 #                                                    #
 ######################################################
 
-@router.get("/simulations/{chain}/{token_address}", include_in_schema=True)
+@router.get("/simulations/{chain}/{token_address}", response_model=SimulationResponse, include_in_schema=True)
+async def get_simulation_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
+    supply_summary, transferrability_summary = await get_supply_transferrability_info(chain, token_address)
+    return SimulationResponse(supplySummary=supply_summary, transferrabilitySummary=transferrability_summary)
+
+
 async def get_supply_transferrability_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     _token_address = token_address.lower()
 
@@ -164,6 +169,7 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
         logging.error(f"Exception: An uncaught exception occurred was raised for `transferrability_summary`: {e}")
         raise OutputValidationError()
 
+    logging.info(f"Supply and transferrability summary for {token_address} on chain {chain} fetched successfully.")
     return supply_summary, transferrability_summary
 
 

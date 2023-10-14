@@ -152,18 +152,6 @@ class TokenMetadata(TokenBase, SocialMedia, MarketData):
     holders: Optional[int] = None
     latestPrice: Optional[float] = None
 
-######################################################
-#                                                    #
-#               Info & Review Schemas                #
-#                                                    #
-######################################################
-
-class TokenInfoResponse(BaseModel):
-    tokenSummary: TokenMetadata = None
-    score: ScoreResponse = None
-    holderChart: Optional[ClusterResponse] = None
-
-class TokenReviewResponse(TokenInfoResponse):
+class SimulationResponse(BaseModel):
     supplySummary: ContractResponse = None
     transferrabilitySummary: ContractResponse = None
-    sourceCode: SourceCodeResponse = None
