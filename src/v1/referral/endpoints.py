@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from botocore.exceptions import ClientError
 import logging, time
 
-from src.v1.referral.dependencies import generate_referral_code
+from src.v1.referral.dependencies import generate_referral_code, check_if_referral_code_exists
 from src.v1.referral.exceptions import UserDoesNotExist
 from src.v1.referral.schemas import UserReferralData, ReferralCode, ReferralCodeUse
 from src.v1.referral.constants import EXPIRY_BUFFER, DEFAULT_NUMBER_OF_USES
@@ -11,7 +11,6 @@ from src.v1.referral.constants import EXPIRY_BUFFER, DEFAULT_NUMBER_OF_USES
 from src.v1.shared.DAO import DAO
 from src.v1.shared.exceptions import DatabaseLoadFailureException
 
-USERS_DAO = DAO('users')
 REFERRAL_CODE_DAO = DAO('referralcodes')
 
 router = APIRouter()
