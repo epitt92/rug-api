@@ -8,15 +8,15 @@ from botocore.exceptions import ClientError
 from authlib.jose import JsonWebToken, JsonWebKey, KeySet, JWTClaims, errors
 from cachetools import cached, TTLCache
 
+from src.v1.referral.endpoints import post_referral_code_use
+from src.v1.shared.DAO import DAO
+
+from src.v1.auth.exceptions import CognitoException, CognitoUserAlreadyExists, CognitoIncorrectCredentials, CognitoLambdaException, CognitoUserDoesNotExist
+from src.v1.auth.dependencies import render_template
 from src.v1.auth.schemas import (
         EmailAccountBase, CreateEmailAccount,
         SignInEmailAccount, VerifyEmailAccount,
         UserAccessTokens, ResetPassword)
-
-from src.v1.referral.endpoints import post_referral_code_use
-
-from src.v1.auth.exceptions import CognitoException, CognitoUserAlreadyExists, CognitoIncorrectCredentials, CognitoLambdaException, CognitoUserDoesNotExist
-from src.v1.auth.dependencies import render_template
 
 router = APIRouter()
 
@@ -25,6 +25,8 @@ token_scheme = security.HTTPBearer()
 # Initialize Cognito client
 cognito = boto3.client('cognito-idp', region_name="eu-west-2")
 ses = boto3.client('ses', region_name="eu-west-2")
+
+WHITELIST_DAO = DAO(table_name='whitelist')
 
 ##############################################
 #                                            #
@@ -471,13 +473,13 @@ def send_confirmation_join_waitlist(email: str):
 
 @router.post("/waitlist")
 async def join_waitlist(email: EmailStr):
-    # TODO: Append email to waitlist database with timestamp
     sign_up_time = int(time.time())
 
     waitlist_payload = {
-        "email": email,
-        "signUpTime": sign_up_time
+        "timestamp": sign_up_time
     }
+
+    WHITELIST_DAO.insert_one(email, item=waitlist_payload)
 
     # Send confirmation email to user
     sent = send_confirmation_join_waitlist(email)
