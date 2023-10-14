@@ -28,7 +28,7 @@ load_access_token()
 logging.info(f"GoPlus access token file loaded successfully.")
 
 TITLE = "rug.ai API"
-VERSION = "2.3"
+VERSION = "2.4"
 
 app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, version=VERSION, favicon='https://rug.ai/favicon.ico')
 
