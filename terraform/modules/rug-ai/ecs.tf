@@ -190,6 +190,14 @@ module "rug_app_service" {
         Resource = [
           "*"
         ]
+      },
+      {
+        //send email by SES 
+        Action = ["ses:SendEmail", "ses:SendRawEmail"]
+        Effect = "Allow"
+        Resource = [
+          "*"
+        ]
       }
     ]
   }
