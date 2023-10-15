@@ -8,7 +8,7 @@ from botocore.exceptions import ClientError
 from authlib.jose import JsonWebToken, JsonWebKey, KeySet, JWTClaims, errors
 from cachetools import cached, TTLCache
 
-from src.v1.referral.endpoints import post_referral_code_use
+# from src.v1.referral.endpoints import post_referral_code_use
 from src.v1.shared.DAO import DAO
 
 from src.v1.auth.exceptions import CognitoException, CognitoUserAlreadyExists, CognitoIncorrectCredentials, CognitoLambdaException, CognitoUserDoesNotExist
@@ -278,7 +278,6 @@ async def verify_user(user: VerifyEmailAccount):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        # TODO: Add custom exception for this
         raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
 
     try:
@@ -287,8 +286,6 @@ async def verify_user(user: VerifyEmailAccount):
             Username=user.username,
             ConfirmationCode=user.confirmation_code
         )
-
-        # TODO: Add a users database insertion at this point
     except cognito.exceptions.CodeMismatchException as e:
         raise HTTPException(status_code=400, detail="Invalid confirmation code.")
     except cognito.exceptions.ExpiredCodeException as e:
