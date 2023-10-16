@@ -90,15 +90,15 @@ In an attempt to reduce the amount of concurrently open connections and increase
    2. Once the data is calculated, it is sent to the user in response to the request and also cached in both DynamoDB and Redis.
 
 ### Redis Access Object (RAO)
-The `RAO`` class provides a mechanism to store and retrieve data from an AWS ElastiCache Redis instance, essentially acting as a caching layer for DAO object queries.
+The `RAO` class provides a mechanism to store and retrieve data from an AWS ElastiCache Redis instance, essentially acting as a caching layer for DAO object queries.
 
 #### Overview:
 
-To instantiate the `RAO`, the user must provide a `prefix` key which will be used to prefix all data stored in the cache. For `RAO` objects instantiated as part of a Database Access Object, this `prefix` will correspond to the table in the corresponding database for which the `RAO` acts as a caching layer.
+To instantiate the `RAO`, the user must provide a `prefix` key which will be used to prefix all data stored in the cache. For `RAO` objects instantiated as part of a Database Access Object, this `prefix` will correspond to the table in the corresponding database for which the `RAO` acts as a caching layer:
 
 ```RAO(prefix: str)```
 
-`table_name`: The name of the specific table in DynamoDB for which this RAO instance will act as a caching layer.
+`prefix`: The unique prefix for all data stored in the cache.
 
 #### Attributes:
 
@@ -120,7 +120,7 @@ Generates a unique key for storage in Redis based on the table name and the prim
 
 **Returns:**
 
-A unique string key to be used for data storage in Redis.
+A unique string key to be used for data storage in Redis. This key is the concatenation given by the f-string `f"{prefix}_{pk}`.
 
 ##### `put(pk: str, data: dict)`
 Stores data associated with the given primary key (pk) in the Redis cache.
