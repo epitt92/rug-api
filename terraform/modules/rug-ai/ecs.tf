@@ -166,7 +166,18 @@ module "rug_app_service" {
       },
       {
         //cognito actions
-        Action = ["cognito-idp:AdminDeleteUser", "cognito-idp:AdminConfirmSignUp", "cognito-idp:AdminCreateUser", "cognito-idp:ConfirmSignUp", "cognito-idp:ResendConfirmationCode", "cognito-idp:ForgotPassword", "cognito-idp:ConfirmForgotPassword", "cognito-idp:SignUp", "cognito-idp:InitiateAuth"]
+        Action = ["cognito-idp:AdminDeleteUser", 
+        "cognito-idp:AdminConfirmSignUp", 
+        "cognito-idp:AdminCreateUser", 
+        "cognito-idp:ConfirmSignUp", 
+        "cognito-idp:ResendConfirmationCode", 
+        "cognito-idp:ForgotPassword", 
+        "cognito-idp:ConfirmForgotPassword", 
+        "cognito-idp:SignUp", 
+        "cognito-idp:InitiateAuth", 
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:AdminInitiateAuth"
+        ]
         Effect = "Allow"
         Resource = [
           aws_cognito_user_pool.user_pool.arn
@@ -175,6 +186,14 @@ module "rug_app_service" {
       {
         //cognito actions
         Action = ["sqs:SendMessage"]
+        Effect = "Allow"
+        Resource = [
+          "*"
+        ]
+      },
+      {
+        //send email by SES 
+        Action = ["ses:SendEmail", "ses:SendRawEmail"]
         Effect = "Allow"
         Resource = [
           "*"
