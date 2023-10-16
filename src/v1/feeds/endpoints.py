@@ -72,7 +72,8 @@ async def post_token_view(tokenView: TokenView):
 
 # TODO: Add more robust exception handling to this endpoint
 # TODO: Remove limit and numMinutes
-@router.get("/mostviewed", dependencies=[Depends(decode_token)])
+# ependencies=[Depends(decode_token)]
+@router.get("/mostviewed")
 async def get_most_viewed_tokens(limit: int = 50):
 
     # Add a DAO check for most viewed reel

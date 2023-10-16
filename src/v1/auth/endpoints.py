@@ -443,7 +443,7 @@ def send_confirmation_join_waitlist(email: str):
     email_body = body
     
     try:
-        ses.send_email(
+        _ = ses.send_email(
             Source="no-reply@rug.ai",
             Destination={
                 'ToAddresses': [
