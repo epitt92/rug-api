@@ -28,7 +28,6 @@
         - [`insert_new(partition_key_value: str, item: Dict[Any, Any]) -> None`](#insert_newpartition_key_value-str-item-dictany-any---none)
     - [Database Queue Object (DQO)](#database-queue-object-dqo)
       - [Overview](#overview-2)
-      - [Arguments](#arguments)
       - [Attributes](#attributes-2)
       - [Methods](#methods-2)
         - [`get_item(pk: str, MessageGroupId: str, message_data: dict) -> Optional[dict]`](#get_itempk-str-messagegroupid-str-message_data-dict---optionaldict)
@@ -263,7 +262,7 @@ To initialize the `DQO`, users provide a table_name (for DynamoDB), a queue_url 
 
 ```DatabaseQueueObject(table_name: str, queue_url: str, region_name: str = 'eu-west-2', staleness: Optional[int] = None)```
 
-#### Arguments
+**Arguments:**
 
 - `table_name`: Name of the DynamoDB table.
 - `queue_url`: URL for the desired SQS queue.
