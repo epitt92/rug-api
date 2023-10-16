@@ -7,6 +7,6 @@ module "redis" {
   redis_node_type            = var.redis_node_type
   automatic_failover_enabled = var.automatic_failover_enabled
   num_cache_clusters         = var.num_cache_clusters
-  transit_encryption_enabled = true
+  transit_encryption_enabled = false
   private                    = false
 }
