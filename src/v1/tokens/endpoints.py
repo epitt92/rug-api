@@ -1,5 +1,5 @@
-import time, os, requests, logging, math
-from fastapi import APIRouter, HTTPException, Depends
+import time, os, logging, math, json
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 from typing import List
 from dotenv import load_dotenv
@@ -9,16 +9,19 @@ from pydantic import ValidationError
 
 from src.v1.shared.dependencies import get_primary_key, get_chain
 from src.v1.shared.schemas import ScoreResponse, Score
-from src.v1.shared.DAO import DAO
+from src.v1.shared.DAO import DAO, DatabaseQueueObject
 from src.v1.shared.models import ChainEnum, validate_token_address
 from src.v1.shared.exceptions import RugAPIException, DatabaseLoadFailureException, DatabaseInsertFailureException, GoPlusDataException, UnsupportedChainException, OutputValidationError, BlockExplorerDataException
 
-from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD
+from src.v1.tokens.constants import SUPPLY_REPORT_STALENESS_THRESHOLD, TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD, TOKEN_METRICS_STALENESS_THRESHOLD, CLUSTERING_REPORT_STALENESS_THRESHOLD
 from src.v1.tokens.dependencies import get_supply_summary, get_transferrability_summary
-from src.v1.tokens.dependencies import get_go_plus_summary, get_block_explorer_data, get_go_plus_data
-from src.v1.tokens.schemas import SourceCodeResponse, Holder, Cluster, ClusterResponse, AIComment, AISummary, TokenInfoResponse, TokenReviewResponse, TokenMetadata, ContractResponse, ContractItem, AISummary
+from src.v1.tokens.dependencies import get_go_plus_summary, get_block_explorer_data, get_go_plus_data, call_fetch_token_holders, call_total_supply
+from src.v1.tokens.schemas import Holder, Cluster, ClusterResponse, AIComment, AISummary, TokenMetadata, ContractResponse, AISummary, SimulationResponse
 
-from src.v1.sourcecode.endpoints import get_source_code
+from src.v1.clustering.constants import HOLDERS_STALENESS_THRESHOLD
+
+with open('src/v1/clustering/files/labels.json') as f:
+    labels = json.load(f)
 
 load_dotenv()
 
@@ -30,9 +33,20 @@ router = APIRouter()
 #                                                    #
 ######################################################
 
-SUPPLY_REPORT_DAO = DAO("supplyreports")
-TRANSFERRABILITY_REPORT_DAO = DAO("transferrabilityreports")
-TOKEN_METRICS_DAO = DAO("tokenmetrics")
+SUPPLY_REPORT_DAO = DAO(table_name="supplyreports")
+TRANSFERRABILITY_REPORT_DAO = DAO(table_name="transferrabilityreports")
+TOKEN_METRICS_DAO = DAO(table_name="tokenmetrics")
+CLUSTER_REPORT_DAO = DAO(table_name="clusterreports")
+HOLDERS_DAO = DAO(table_name='holders')
+
+TOKEN_ANALYSIS_QUEUE = DatabaseQueueObject(
+    table_name='tokenanalysis',
+    queue_url=os.environ.get('TOKEN_ANALYSIS_QUEUE'))
+
+CLUSTERING_QUEUE = DatabaseQueueObject(
+    table_name='clusterreports',
+    queue_url=os.environ.get('CLUSTERING_QUEUE'),
+    staleness=CLUSTERING_REPORT_STALENESS_THRESHOLD)
 
 ######################################################
 #                                                    #
@@ -40,9 +54,15 @@ TOKEN_METRICS_DAO = DAO("tokenmetrics")
 #                                                    #
 ######################################################
 
+@router.get("/simulations/{chain}/{token_address}", response_model=SimulationResponse, include_in_schema=True)
+async def get_simulation_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
+    supply_summary, transferrability_summary = await get_supply_transferrability_info(chain, token_address)
+    return SimulationResponse(supplySummary=supply_summary, transferrabilitySummary=transferrability_summary)
+
+
 async def get_supply_transferrability_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
     _token_address = token_address.lower()
-    
+
     pk = get_primary_key(_token_address, chain)
 
     # Load existing data for the requested token if it exists
@@ -71,7 +91,7 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
     # If this data is found and is not stale, return it
     if _supply_summary and _transferrability_summary:
         # Check whether values are stale based on UNIX timestamp comparisons
-        supply_summary_is_not_stale = (time.time() - int(_supply_summary.get('timestamp'))) < SUPPLY_REPORT_STALENESS_THRESHOLD 
+        supply_summary_is_not_stale = (time.time() - int(_supply_summary.get('timestamp'))) < SUPPLY_REPORT_STALENESS_THRESHOLD
         transferrability_summary_is_not_stale = (time.time() - int(_transferrability_summary.get('timestamp'))) < TRANSFERRABILITY_REPORT_STALENESS_THRESHOLD
 
         if supply_summary_is_not_stale and transferrability_summary_is_not_stale:
@@ -96,14 +116,14 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
         except Exception as e:
             logging.error(f"Exception: Raised in call to `get_go_plus_data`: {e}")
             raise GoPlusDataException(chain, _token_address)
-        
+
         # Process this data and produce a supply and a transferrability summary
         try:
             supply_summary = get_supply_summary(data)
         except Exception as e:
             logging.error(f"Exception: An exception occurred whilst processing the supply summary for {token_address} on chain {chain}.")
             raise GoPlusDataException(chain, _token_address)
-        
+
         try:
             transferrability_summary = get_transferrability_summary(data)
         except Exception as e:
@@ -119,7 +139,7 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
         except Exception as e:
             logging.error(f"Exception: Whilst writing to 'supplyreports' using `insert_new` for PK: {pk}")
             raise DatabaseInsertFailureException()
-        
+
         # Cache this data to the `transferrabilityreports` table
         try:
             TRANSFERRABILITY_REPORT_DAO.insert_new(partition_key_value=pk, item={'timestamp': int(time.time()), 'summary': dict(transferrability_summary)})
@@ -139,7 +159,7 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
     except Exception as e:
         logging.error(f"Exception: An uncaught exception occurred was raised for `supply_summary`: {e}")
         raise OutputValidationError()
-    
+
     try:
         transferrability_summary = ContractResponse(items=transferrability_summary.get("items"), score=transferrability_summary.get("score"), description=None, summaryDescription=transferrability_summary.get("summary"))
     except ValidationError as e:
@@ -149,7 +169,9 @@ async def get_supply_transferrability_info(chain: ChainEnum, token_address: str 
         logging.error(f"Exception: An uncaught exception occurred was raised for `transferrability_summary`: {e}")
         raise OutputValidationError()
 
+    logging.info(f"Supply and transferrability summary for {token_address} on chain {chain} fetched successfully.")
     return supply_summary, transferrability_summary
+
 
 @router.get("/metadata/{chain}/{token_address}", include_in_schema=True)
 async def get_token_metrics(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
@@ -185,14 +207,14 @@ async def get_token_metrics(chain: ChainEnum, token_address: str = Depends(valid
 
         # Fetch the data from all sources and then cache it in the database
         lastUpdatedTimestamp = int(time.time())
-        
+
         # Fetch and process market data from GoPlus
         try:
             market_data = get_go_plus_summary(chain, token_address)
         except Exception as e:
             logging.warning(f'Exception: Failed to fetch GoPlus data for {token_address} on chain {chain}. Using empty dictionary and continuing...')
             market_data = {}
-        
+
         # Fetch and process token social data from Etherscan
         try:
             explorer_data = get_block_explorer_data(chain, token_address)
@@ -225,7 +247,7 @@ async def get_token_metrics(chain: ChainEnum, token_address: str = Depends(valid
         for key in _token_metrics['summary']:
             if isinstance(_token_metrics['summary'][key], float):
                 _token_metrics['summary'][key] = Decimal(str(_token_metrics['summary'][key]))
-        
+
         try:
             TOKEN_METRICS_DAO.insert_new(partition_key_value=pk, item=_token_metrics)
         except ClientError as e:
@@ -234,7 +256,7 @@ async def get_token_metrics(chain: ChainEnum, token_address: str = Depends(valid
         except Exception as e:
             logging.error(f'An unknown exception occurred which was not caught by boto3 exception handling...')
             raise DatabaseInsertFailureException()
-        
+
     _token_metrics = {
         **_token_metrics['summary'],
         **{
@@ -262,82 +284,54 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends
     # If the chain is unsupported, raise the correct exception to handle this
     if _chain != 'ethereum':
         raise UnsupportedChainException(chain=_chain)
-    
-    if not os.environ.get('ML_API_URL'):
-        logging.error(f"The environment variable `ML_API_URL` is not configured.")
-        raise Exception()
 
-    URL = os.environ.get('ML_API_URL') + f'/v1/audit/{_chain}/{token_address}'
+    # PK for lookup in DB and message for, if there is no data in the DB, make the queue request
+    pk = get_primary_key(token_address=token_address, chain=chain)
+    message = {"token_address": token_address, "chain": chain.value}
 
     try:
-        response = requests.get(URL)
-        response.raise_for_status()
+        response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, MessageGroupId=f"audit_{pk}", message_data=message)
     except Exception as e:
-        logging.error(f"Exception: Whilst calling the rug.ai ML API for `audit` for {token_address} on chain {chain}.")
+        logging.error(f"Exception: Whilst calling the queue object for `audit` for {token_address} on chain {chain}.")
         raise RugAPIException()
 
-    response = response.json()
+    if response is None:
+        return JSONResponse(status_code=202, content={"detail": f"Token {token_address} on chain {_chain} was queued for audit analysis."})
 
-    # TODO: Refactor this once response model for rug.ai ML API is fixed
-    try:
-        status = response.get("data").get("status")
-    except:
-        status = None
+    description = response.get("summaryText")
 
-    # Check if the token is queued for analysis by another user, and return the corresponding message
-    if status:
-        return JSONResponse(
-            status_code=202,  # Success
-            content={"detail": response.get("data").get("detail")},
-        )
+    overallScore = float(response.get("tokenScore"))
+    files = response.get("files")
+    numIssues = sum([len(item.get("result")) for item in files])
 
-    # Otherwise, attempt to parse the response
-    data = response.get("data")
+    logging.debug(f'Audit report for {token_address} on chain {chain.value} fetched successfully. Score: {overallScore}, numIssues: {numIssues}.')
 
-    if data:
-        description = data.get("tokenSummary")
+    comments = []
+    for smart_contract in files:
+        for issue in smart_contract.get("result"):
+            lines = issue.get("lines")
 
-        if not data.get('tokenScore') and not data.get('filesResult'):
-            detail = "Failed to fetch AI data for {_token_address} on chain {chain.value}: Response did not have tokenScore or filesResult entries."
-            raise HTTPException(status_code=500, detail=detail)
+            if lines:
+                lines = [int(item) for item in lines]
 
-        overallScore = float(data.get("tokenScore"))
-        files = data.get("filesResult")
-        numIssues = sum([len(item.get("result")) for item in files])
+            try:
+                comment = AIComment(
+                    commentType="Function",
+                    title=issue.get("title"),
+                    description=issue.get("description"),
+                    severity=issue.get("level"),
+                    fileName=smart_contract.get("fileName"),
+                    sourceCode=issue.get("function_code"),
+                    lines=lines
+                )
 
-        logging.debug(f'Audit report for {token_address} on chain {chain.value} fetched successfully. Score: {overallScore}, numIssues: {numIssues}.')
-
-        comments = []
-        for smart_contract in files:
-            for issue in smart_contract.get("result"):
-                lines = issue.get("lines")
-
-                if lines:
-                    lines = [int(item) for item in lines]
-
-                try:
-                    comment = AIComment(
-                        commentType="Function",
-                        title=issue.get("title"),
-                        description=issue.get("description"),
-                        severity=issue.get("level"),
-                        fileName=smart_contract.get("fileName"),
-                        sourceCode=issue.get("function_code"),
-                        lines=lines
-                    )
-                
-                    comments.append(comment)
-                except ValidationError as e:
-                    logging.error(f"Exception: A ValidationError was raised while adding an issue to the list of comments: {e} {issue}")
-                    continue
-                except Exception as e:
-                    logging.error(f"Exception: An unknown Exception was raised while adding an issue to the list of comments: {e} {issue}")
-                    continue
-    else:
-        return JSONResponse(
-            status_code=500,  # Internal Server Error
-            content={"detail": "The call to the rug.ai ML API succeeded, but the response was empty."},
-        )
+                comments.append(comment)
+            except ValidationError as e:
+                logging.error(f"Exception: A ValidationError was raised while adding an issue to the list of comments: {e} {issue}")
+                continue
+            except Exception as e:
+                logging.error(f"Exception: An unknown Exception was raised while adding an issue to the list of comments: {e} {issue}")
+                continue
 
     try:
         output = AISummary(description=description, numIssues=numIssues, overallScore=overallScore, comments=comments)
@@ -357,37 +351,23 @@ async def get_token_clustering(chain: ChainEnum, token_address: str = Depends(va
     # If the chain is unsupported, raise the correct exception to handle this
     if _chain != 'ethereum':
         raise UnsupportedChainException(chain=_chain)
-    
-    if not os.environ.get('ML_API_URL'):
-        logging.error(f"The environment variable `ML_API_URL` is not configured.")
-        raise Exception()
-    
-    URL = os.environ.get('ML_API_URL') + f'/v1/clustering/{chain.value}/{token_address.lower()}'
+    # Get the pk for DB lookup, and the message data for the queue (if there is no data in the DB)
+    pk = get_primary_key(token_address, chain)
+    message_data = {"token_address": token_address, "chain": chain.value}
 
-    try:
-        response = requests.get(URL)
-    except Exception as e:
-        logging.error(f"Exception: Whilst calling the rug.ai ML API for `cluster` for {token_address} on chain {chain}.")
-        raise RugAPIException()
-    
-    response = response.json()
-    
-    # TODO: Bolster this once ML responses have been refactored
+    # TODO: There is repeated logic inside lambda that allows to fetch_holders, get_cluster_response
+    # TODO: We have duplicated code also in the src.v1.clustering, maybe create a package
+    response = CLUSTERING_QUEUE.get_item(pk=pk, MessageGroupId=f"cluster_{pk}", message_data=message_data)
 
-    try:
-        status = response.get("data").get("status")
-    except:
-        status = None
-
-    if status == 102:
-        # The token is queued for analysis by another user, returning this
-        return JSONResponse(
-            status_code=202,  # Success
-            content={"detail": response.get("data").get("detail")},
-        )
-
-    return response
+    if response is None:
+        return JSONResponse(status_code=202, content={"detail": f"Token {token_address} on chain {_chain} was queued for cluster analysis."})
     
+    if response.get("data"):
+        return {**json.loads(response.get("data")), 'timestamp': response.get("timestamp")}
+    else:
+        logging.error(f"Exception: Token {token_address} on chain {_chain} was returned but had no data.")
+        return JSONResponse(status_code=500, content={"detail": f"Token {token_address} on chain {_chain} was returned but had no data."})
+
 
 @router.get("/holderchart/{chain}/{token_address}", include_in_schema=True)
 async def get_holder_chart(chain: ChainEnum, token_address: str = Depends(validate_token_address), numClusters: int = 5):
@@ -396,26 +376,18 @@ async def get_holder_chart(chain: ChainEnum, token_address: str = Depends(valida
     # If the chain is unsupported, raise the correct exception to handle this
     if _chain != 'ethereum':
         raise UnsupportedChainException(chain=chain)
-    
-    cluster_summary = await get_clustering_summary_from_cache(chain, token_address)
+
+    cluster_summary = await get_token_clustering(chain, token_address)
 
     if not cluster_summary:
-        if not os.environ.get('ML_API_URL'):
-            logging.error(f"The environment variable `ML_API_URL` is not configured.")
-            raise Exception()
-
-        URL = os.environ.get('ML_API_URL') + f'/v1/clustering/holders/{chain.value}/{token_address.lower()}'
-
+        logging.info(f"Exception: No cluster summary was found for {token_address} on chain {chain}.")
         try:
-            response = requests.get(URL)
-            response.raise_for_status()
+            data = fetch_holders(token_address=token_address, chain=chain)
         except Exception as e:
-            logging.error(f"Exception: Whilst calling the rug.ai ML API for `holders` for {token_address} on chain {chain}.")
+            logging.error(f"Exception: Whilst trying to obtain `holders` for {token_address} on chain {chain}: {e}")
             raise RugAPIException()
 
         try:
-            data = response.json()
-
             top_holders = sorted(data.keys(), key=lambda k: data[k]["percentTokens"], reverse=True)[:numClusters]
             holders = {holder: data[holder] for holder in top_holders}
 
@@ -427,7 +399,7 @@ async def get_holder_chart(chain: ChainEnum, token_address: str = Depends(valida
         except Exception as e:
             logging.error(f"Exception: An unknown Exception occurred whilst formatting the clustering response for {token_address} on chain {chain}: {e}")
             raise OutputValidationError()
-    
+
     # Fetch components
     components = cluster_summary.get('components')[:numClusters]
 
@@ -448,8 +420,8 @@ async def get_holder_chart(chain: ChainEnum, token_address: str = Depends(valida
             raise OutputValidationError()
         except Exception as e:
             logging.error(f"Exception: An unknown Exception occurred whilst formatting the components response for {token_address} on chain {chain}: {e}")
-            raise OutputValidationError() 
-        
+            raise OutputValidationError()
+
     try:
         output = ClusterResponse(clusters=clusters)
         return output
@@ -458,64 +430,52 @@ async def get_holder_chart(chain: ChainEnum, token_address: str = Depends(valida
         raise OutputValidationError()
     except Exception as e:
         logging.error(f"Exception: An unknown Exception occurred whilst formatting the ClusterResponse for {token_address} on chain {chain}: {e}")
-        raise OutputValidationError() 
+        raise OutputValidationError()
 
 
-async def get_clustering_summary_from_cache(chain: ChainEnum, token_address: str = Depends(validate_token_address)):
-    """
-    Note: These functions deliberately attempt not to raise Exceptions, since they are called internally as part of "short-pulls" on the database.
-    
-    All calls which would raise Exceptions should return None, which is interpreted as "unavailable" by the functions which call them.
-    """
-    _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
+def fetch_holders(token_address: str, chain: ChainEnum):
+    _token_address = token_address.lower()
+    pk = get_primary_key(chain.value, _token_address)
 
-    # If the chain is unsupported, raise the correct exception to handle this
-    if _chain != 'ethereum':
-        raise UnsupportedChainException(chain=chain)
+    # Attempt to fetch holders from DAO object
+    logging.info(f'Attempting to find holders for token {token_address} on chain {chain.value} in the database...')
+    holders = HOLDERS_DAO.find_most_recent_by_pk(pk)
 
-    URL = os.environ.get('ML_API_URL') + f'/v1/clustering/cache/{chain.value}/{token_address.lower()}'
+    # If holders are found, check if they are stale
+    if holders:
+        logging.info(f'Holders found for token {token_address} on chain {chain.value} in the database.')
+        timestamp = int(holders.get('timestamp'))
+        if time.time() - timestamp < HOLDERS_STALENESS_THRESHOLD:
+            logging.info(f'Holders for token {token_address} on chain {chain.value} are not stale, returning...')
+            return holders.get('holders')
 
-    try:
-        response = requests.get(URL)
-        response.raise_for_status()
-    except Exception as e:
-        logging.error(f'An exception occurred whilst trying to fetch clustering data from cache for token {token_address} on chain {chain}: {e}')
-        return None
-    
-    try:
-        data = response.json()
-        return data.get('data')
-    except Exception as e:
-        logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
-        return None
+    logging.info(f'Holders for token {token_address} on chain {chain.value} are stale or not found in the database, fetching from the blockchain...')
+    data = call_fetch_token_holders(chain=chain.value, token_address=token_address)
+    total_supply = call_total_supply(token_address=token_address)
 
+    if data.get('status') and data['status'] == "1":
+        result = data.get('result')
+        output = {}
+        for item in result:
+            address, numTokens = item.get('TokenHolderAddress'), int(item.get('TokenHolderQuantity'))
+            output[address] = {'numTokens': numTokens, 'percentTokens': Decimal(str(numTokens / total_supply))}
 
-async def get_audit_summary_from_cache(chain, token_address: str = Depends(validate_token_address)):
-    """
-    Note: These functions deliberately attempt not to raise Exceptions, since they are called internally as part of "short-pulls" on the database.
-    
-    All calls which would raise Exceptions should return None, which is interpreted as "unavailable" by the functions which call them.
-    """
-    _chain = chain.value if isinstance(chain, ChainEnum) else str(chain)
+        # Reduce the size of the holders object to top holders
+        if len(output) > 1000:
+            top_holders = sorted(output.keys(), key=lambda k: output[k]["percentTokens"], reverse=True)[:1000]
+            output = {holder: output[holder] for holder in top_holders}
 
-    if _chain != 'ethereum':
-        return None
+        # Save transfers to DAO object
+        logging.error(f"Saving holders to DAO object for token {token_address} on chain {chain.value}")
 
-    URL = os.environ.get('ML_API_URL') + f'/v1/audit/cache/{chain.value}/{token_address.lower()}'
+        try:
+            HOLDERS_DAO.insert_new(partition_key_value=pk, item={'timestamp': int(time.time()), 'holders': output})
+        except ClientError as e:
+            logging.error(f"Error saving holders to DAO object for token {token_address} on chain {chain.value}: {e}")
+            logging.error(f"Primary key used for database insertion: {pk}")
+            raise e
 
-    try:
-        response = requests.get(URL)
-        response.raise_for_status()
-    except Exception as e:
-        logging.error(f'An exception occurred whilst trying to fetch clustering data from cache for token {token_address} on chain {chain}: {e}')
-        return None
-
-    try:
-        data = response.json()
-        return data.get('data')
-    except Exception as e:
-        logging.error(f'An exception occurred whilst trying to fetch clustering data for token {token_address} on chain {chain}: {e}')
-        return None
+    return output
 
 
 @router.get("/score/{chain}/{token_address}", response_model=ScoreResponse, include_in_schema=True)
@@ -535,11 +495,20 @@ async def get_score_info(chain: ChainEnum, token_address: str = Depends(validate
         supply, transferrability = Score(), Score()
 
     try:
-        liquiditySummary = await get_clustering_summary_from_cache(chain, token_address)
+        # Attempt to queue up the clustering job
+        liquiditySummary = await get_token_clustering(chain, token_address)
 
-        if liquiditySummary:
+        if isinstance(liquiditySummary, JSONResponse):
+            if liquiditySummary.status_code == 202:
+                liquidity = Score()
+            else:
+                logging.warning(f"Exception: A JSONResponse was returned from `get_token_clustering` for {token_address} on chain {chain}.")
+                liquidity = Score()
+
+        try:
             liquidity = Score(value=liquiditySummary.get('score'), description=liquiditySummary.get('description'))
-        else:
+        except Exception as e:
+            logging.error(f"Exception: An exception occurred whilst formatting the liquidity score for {token_address} on chain {chain}.")
             liquidity = Score()
     except ValidationError as e:
         logging.error(f"Exception: ValidationError was raised on call to format into liquidity into Score responses for {token_address} on chain {chain}: {e}")
@@ -549,11 +518,20 @@ async def get_score_info(chain: ChainEnum, token_address: str = Depends(validate
         liquidity = Score()
 
     try:
-        auditSummary = await get_audit_summary_from_cache(chain, token_address)
+        # Attempt to queue up the audit job
+        auditSummary = await get_token_audit_summary(chain, token_address)
 
-        if auditSummary:
-            audit = Score(value=float(auditSummary.get('tokenScore')), description=auditSummary.get('tokenSummary')[:512])
-        else:
+        if isinstance(auditSummary, JSONResponse):
+            if auditSummary.status_code == 202:
+                audit = Score()
+            else:
+                logging.warning(f"Exception: A JSONResponse was returned from `get_token_audit_summary` for {token_address} on chain {chain}.")
+                audit = Score()
+
+        try:
+            audit = Score(value=float(auditSummary.overallScore), description=None)
+        except Exception as e:
+            logging.error(f"Exception: An exception occurred whilst formatting the audit score for {token_address} on chain {chain}: {e}")
             audit = Score(value=None, description=None)
     except ValidationError as e:
         logging.error(f"Exception: ValidationError was raised on call to format into audit into Score responses for {token_address} on chain {chain}: {e}")
@@ -566,7 +544,7 @@ async def get_score_info(chain: ChainEnum, token_address: str = Depends(validate
 
     def calculate_overall_score(scores: List[Score]) -> float:
         _scores = [score.value for score in scores]
-        
+
         # Calculate and return the geometric mean of all valid score contributors
 
         output, N = 1.0, 0
@@ -584,70 +562,16 @@ async def get_score_info(chain: ChainEnum, token_address: str = Depends(validate
 
     # Format response into ScoreResponse format object
     try:
-        score = ScoreResponse(overallScore=calculate_overall_score(scores), 
-                            supplyScore=supply, 
+        score = ScoreResponse(overallScore=calculate_overall_score(scores),
+                            supplyScore=supply,
                             transferrabilityScore=transferrability,
                             liquidityScore=liquidity,
                             auditScore=audit)
-        
+
         return score
     except ValidationError as e:
         logging.error(f"Exception: A ValidationError occurred whilst formatting the ScoreResponse for {token_address} on chain {chain}: {e}")
         raise OutputValidationError()
     except Exception as e:
         logging.error(f"Exception: An unknown Exception occurred whilst formatting the ScoreResponse for {token_address} on chain {chain}: {e}")
-        raise OutputValidationError() 
-
-
-@router.get("/info/{chain}/{token_address}", response_model=TokenInfoResponse)
-async def get_token_info(chain: ChainEnum, token_address: str = Depends(validate_token_address)):    
-    tokenSummary = await get_token_metrics(chain, token_address)
-    score = await get_score_info(chain, token_address)
-
-    try:
-        holderChart = await get_holder_chart(chain, token_address)
-    except UnsupportedChainException:
-        logging.warning(f"Exception: The `get_holder_chart` function is not supported for chain {chain}.")
-        holderChart = None
-
-    try:
-        output = TokenInfoResponse(tokenSummary=tokenSummary, score=score, holderChart=holderChart)
-        return output
-    except ValidationError as e:
-        logging.error(f"Exception: A ValidationError occurred whilst formatting the TokenInfoResponse for {token_address} on chain {chain}: {e}")
         raise OutputValidationError()
-    except Exception as e:
-        logging.error(f"Exception: An unknown Exception occurred whilst formatting the TokenInfoResponse for {token_address} on chain {chain}: {e}")
-        raise OutputValidationError() 
-
-
-@router.get("/review/{chain}/{token_address}", response_model=TokenReviewResponse)
-async def get_token_detailed_review(chain: ChainEnum, token_address: str = Depends(validate_token_address)): 
-    # Get the supply and transferrability summary information
-    supplySummary, transferrabilitySummary = await get_supply_transferrability_info(chain, token_address)
-
-    # Get and cache the source code for the token
-    try:
-        sourceCode = await get_source_code(chain, token_address)
-    except UnsupportedChainException:
-        sourceCode = SourceCodeResponse()
-
-    # Get the token summary for the token
-    token_info = await get_token_info(chain, token_address)
-
-    try:
-        output = TokenReviewResponse(
-                                tokenSummary=token_info.tokenSummary, 
-                                score=token_info.score, 
-                                holderChart=token_info.holderChart, 
-                                supplySummary=supplySummary, 
-                                transferrabilitySummary=transferrabilitySummary, 
-                                sourceCode=sourceCode
-                                )
-        return output
-    except ValidationError as e:
-        logging.error(f"Exception: A ValidationError occurred whilst formatting the TokenReviewResponse for {token_address} on chain {chain}: {e}")
-        raise OutputValidationError()
-    except Exception as e:
-        logging.error(f"Exception: An unknown Exception occurred whilst formatting the TokenReviewResponse for {token_address} on chain {chain}: {e}")
-        raise OutputValidationError() 

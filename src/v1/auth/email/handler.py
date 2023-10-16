@@ -1,5 +1,4 @@
-import jinja2
-import boto3
+import jinja2, boto3, logging
 import urllib.parse as urlparse
 
 ses = boto3.client('ses', region_name="eu-west-2")

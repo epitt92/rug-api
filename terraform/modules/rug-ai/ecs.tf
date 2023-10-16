@@ -11,9 +11,12 @@ data "aws_ssm_parameter" "ecs_cluster_name_parameter_store" {
   name = "/rug/ecs/cluster/name"
 }
 
+data "aws_ssm_parameter" "rug_ml_audit_queue_url_parameter_store" {
+  name = "/rug/ml/audit/queue/url"
+}
 
-data "aws_ssm_parameter" "rug_ml_api_endpoint_parameter_store" {
-  name = "/rug/ml/api/endpoint"
+data "aws_ssm_parameter" "rug_ml_cluster_queue_url_parameter_store" {
+  name = "/rug/ml/cluster/queue/url"
 }
 
 data "aws_ssm_parameter" "rug_timestream_db_arn_parameter_store" {
@@ -76,16 +79,20 @@ module "rug_app_service" {
       value = "https://api.bscscan.com/api"
     },
     {
-      name  = "ML_API_URL"
-      value = data.aws_ssm_parameter.rug_ml_api_endpoint_parameter_store.value
-    },
-    {
       name = "COGNITO_USER_POOL_ID"
       value = aws_cognito_user_pool.user_pool.id
     },
     {
       name = "COGNITO_APP_CLIENT_ID"
       value = aws_cognito_user_pool_client.client.id
+    },
+    {
+      name = "CLUSTERING_QUEUE"
+      value = data.aws_ssm_parameter.rug_ml_cluster_queue_url_parameter_store.value
+    },
+    {
+      name = "TOKEN_ANALYSIS_QUEUE"
+      value = data.aws_ssm_parameter.rug_ml_audit_queue_url_parameter_store.value
     }
   ]
   alb_certifcate_arn = aws_acm_certificate.cert.arn
@@ -159,10 +166,37 @@ module "rug_app_service" {
       },
       {
         //cognito actions
-        Action = ["cognito-idp:AdminDeleteUser", "cognito-idp:AdminConfirmSignUp", "cognito-idp:AdminCreateUser", "cognito-idp:ConfirmSignUp", "cognito-idp:ResendConfirmationCode", "cognito-idp:ForgotPassword", "cognito-idp:ConfirmForgotPassword", "cognito-idp:SignUp", "cognito-idp:InitiateAuth"]
+        Action = ["cognito-idp:AdminDeleteUser", 
+        "cognito-idp:AdminConfirmSignUp", 
+        "cognito-idp:AdminCreateUser", 
+        "cognito-idp:ConfirmSignUp", 
+        "cognito-idp:ResendConfirmationCode", 
+        "cognito-idp:ForgotPassword", 
+        "cognito-idp:ConfirmForgotPassword", 
+        "cognito-idp:SignUp", 
+        "cognito-idp:InitiateAuth", 
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:AdminInitiateAuth"
+        ]
         Effect = "Allow"
         Resource = [
           aws_cognito_user_pool.user_pool.arn
+        ]
+      },
+      {
+        //cognito actions
+        Action = ["sqs:SendMessage"]
+        Effect = "Allow"
+        Resource = [
+          "*"
+        ]
+      },
+      {
+        //send email by SES 
+        Action = ["ses:SendEmail", "ses:SendRawEmail"]
+        Effect = "Allow"
+        Resource = [
+          "*"
         ]
       }
     ]

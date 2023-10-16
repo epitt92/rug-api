@@ -1,12 +1,11 @@
 """
 Data Access Object (DAO) class to store and retrieve data from a file.
 """
-
-from typing import Any, Dict, List
-
-import boto3
+import json, logging, boto3, time
+from typing import Any, Dict, List, Optional
 from boto3.dynamodb.conditions import Key
 
+from src.v1.shared.exceptions import SQSException
 
 class DAO:
     """
@@ -139,3 +138,61 @@ class DAO:
         """
         item[self.partition_key_name] = partition_key_value
         self.table.put_item(Item=item)
+
+
+class DatabaseQueueObject:
+    """Object to interact with DynamoDB and SQS."""
+    def __init__(self, table_name: str, queue_url: str, region_name: str = 'eu-west-2', staleness: Optional[int] = None) -> None:
+        self.DAO = DAO(table_name=table_name, region_name=region_name)
+        self.sqs = boto3.client('sqs', region_name=region_name)
+        self.queue_url = queue_url
+        self.staleness = staleness
+
+    def get_item(self, pk: str, MessageGroupId: str, message_data: dict) -> Optional[dict]:
+        """Try to find most recent in DynamoDB, otherwise send a message to SQS.
+
+        To make this function work, we consider the following:
+        - DynamoDB has a partition key that can be used to find the most recent item
+        - The structure of the SQS message is a JSON object, therefore the input must be a serializable dict
+        - We first verify if we can find the PK in DynamoDB, if not, we send a message to SQS
+        - The message to SQS has the purpose of creating a new item in DynamoDB
+        - While the message in SQS is not processed (by Lambda) new messages will be sent to SQS
+        - Once the message is processed, the item will be created in DynamoDB
+        - The additional messages in SQS will be ignored, since the item already exists in DynamoDB (however, we still
+            call the Lambda function, which is not ideal) #TODO: Fix this
+
+        Args:
+            pk (str): Partition key
+            MessageGroupId (str): MessageGroupId to send to SQS
+            message_data (dict): Message to send to SQS
+
+        Returns:
+            Optional[dict]: If the item is found in DynamoDB, return the item, otherwise create a message
+                in SQS and return None
+        """
+        item = self.DAO.find_most_recent_by_pk(partition_key_value=pk)
+
+        to_queue = False
+
+        # Check whether the item is stale or exists
+        if item and item.get('timestamp'):
+            if self.staleness:
+                is_stale = int(time.time()) - int(item.get('timestamp')) > self.staleness
+                logging.info(f'Item found is stale: {is_stale}')
+                to_queue = True if is_stale else False
+            
+        if item is None or to_queue:
+            try:
+                self.sqs.send_message(
+                    QueueUrl=self.queue_url,
+                    MessageBody=json.dumps(message_data),
+                    MessageGroupId=MessageGroupId,
+                    MessageDeduplicationId=MessageGroupId
+                )
+
+                logging.info(f'Success: Message sent to SQS: {message_data}')
+            except Exception as e:
+                logging.error(f'Exception: An error occurred whilst sending a message to SQS: {e}')
+                raise SQSException()
+
+        return item

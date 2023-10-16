@@ -38,11 +38,11 @@ async def fetch_raw_code(chain: ChainEnum, token_address: str = Depends(validate
     if not prefix:
         logging.error(f"The environment variable '{_chain.upper()}_BLOCK_EXPLORER_URL' was not found.")
         raise Exception(f"The environment variable '{_chain.upper()}_BLOCK_EXPLORER_URL' was not found.")
-    
+
     if not api_key:
         logging.error(f"The environment variable '{_chain.upper()}_BLOCK_EXPLORER_API_KEY' was not found.")
         raise Exception(f"The environment variable '{_chain.upper()}_BLOCK_EXPLORER_API_KEY' was not found.")
-    
+
     payload = {
         'module': 'contract',
         'action': 'getsourcecode',
@@ -71,6 +71,9 @@ async def fetch_raw_code(chain: ChainEnum, token_address: str = Depends(validate
 
 
 async def parse_raw_code(source: str) -> dict:
+    if not source:
+        return None
+    
     if source.startswith('{'):
         # Clean up the source by removing the extra curly braces and newline characters
         clean_source = source.replace('{{', '{').replace('}}', '}').replace('\r', '').replace('\n', '')
@@ -97,6 +100,9 @@ async def get_source_code_map(chain: ChainEnum, token_address: str = Depends(val
         logging.error(f"Exception: During nested call to fetch and parse source code for {token_address} on chain {chain}: {e}")
         raise Exception(f"Exception: During nested call to fetch and parse source code for {token_address} on chain {chain}: {e}")
 
+    if not source:
+        return None
+    
     if isinstance(source, str):
         if len(source) == 0:
             logging.debug(f"No source code was found. Returning an empty response.")
@@ -156,7 +162,7 @@ async def get_source_code(chain: ChainEnum, token_address: str = Depends(validat
                     logging.error(f'Exception: We do not allow duplicate writes for source code, since it is immutable.')
                 else:
                     logging.error(f'Exception: An unknown boto3 exception occurred while writing source code map for {token_address} on chain {chain} to DAO: {e}')
-                
+
                 raise DatabaseInsertFailureException()
             except Exception as e:
                 logging.warning(f'Exception: An unknown exception occurred while writing source code map for {token_address} on chain {chain} to DAO: {e}')
@@ -177,7 +183,7 @@ async def get_source_code(chain: ChainEnum, token_address: str = Depends(validat
     except Exception as e:
         logging.error(f"Exception: An uncaught exception occurred was raised for SourceCodeFile: {e}")
         raise OutputValidationError()
-    
+
     try:
         return SourceCodeResponse(files=output)
     except ValidationError as e:

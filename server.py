@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -10,11 +10,11 @@ from router import v1_router
 from src.v1.shared.dependencies import load_access_token
 
 from src.v1.shared.exceptions import (
-                                    RugAPIException, DatabaseLoadFailureException, 
-                                    DatabaseInsertFailureException, GoPlusDataException, 
-                                    UnsupportedChainException, OutputValidationError, 
+                                    RugAPIException, DatabaseLoadFailureException,
+                                    DatabaseInsertFailureException, GoPlusDataException,
+                                    UnsupportedChainException, OutputValidationError,
                                     BlockExplorerDataException, InvalidTokenAddressException,
-                                    RPCProviderException
+                                    RPCProviderException, SQSException
                                     )
 from src.v1.chart.exceptions import CoinGeckoChartException
 from src.v1.auth.exceptions import CognitoException
@@ -28,7 +28,7 @@ load_access_token()
 logging.info(f"GoPlus access token file loaded successfully.")
 
 TITLE = "rug.ai API"
-VERSION = "2.3"
+VERSION = "2.4"
 
 app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, version=VERSION, favicon='https://rug.ai/favicon.ico')
 
@@ -38,17 +38,15 @@ app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, ve
 #                                                    #
 ######################################################
 
-# Application level exception handling, this is overriden by exception handling at the lower level
-# This prevents re-booting of containers and issues with performance degredation
-@app.exception_handler(Exception)
-async def general_exception_handler(request: Request, exc: Exception):
-    return JSONResponse(
-        status_code=500, # Internal Server Error
-        content={"detail": "An unexpected and uncaught exception was raised during an API call."}
-    )
-
 @app.exception_handler(CognitoException)
 async def cognito_exception_handler(request, exc: CognitoException):
+    return JSONResponse(
+        status_code=500,  # Internal Server Error
+        content={"detail": str(exc)},
+    )
+
+@app.exception_handler(SQSException)
+async def sqs_exception_handler(request, exc: SQSException):
     return JSONResponse(
         status_code=500,  # Internal Server Error
         content={"detail": str(exc)},
@@ -145,6 +143,21 @@ async def block_explorer_data_exception_handler(request, exc: BlockExplorerDataE
         content={"detail": str(exc)},
     )
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
+# Application level exception handling, this is overriden by exception handling at the lower level
+# This prevents re-booting of containers and issues with performance degredation
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=exc.status_code, # Internal Server Error
+        content={"detail": "An unexpected and uncaught exception was raised during an API call."}
+    )
 
 ######################################################
 #                                                    #
@@ -162,8 +175,6 @@ async def root():
         status_code=200,
         content={"detail": "rug-api"}
     )
-
-
 
 app.include_router(v1_router)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
