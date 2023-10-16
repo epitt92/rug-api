@@ -8,6 +8,14 @@
   - [Response Formatting](#response-formatting)
     - [Authentication Errors](#authentication-errors)
   - [Rate Limiting](#rate-limiting)
+  - [Data Architecture](#data-architecture)
+    - [Step-by-Step Flow](#step-by-step-flow)
+    - [Database Access Object (DAO)](#database-access-object-dao)
+      - [DAO Functions:](#dao-functions)
+    - [Redis Access Object (RAO)](#redis-access-object-rao)
+      - [RAO Functions:](#rao-functions)
+    - [Database Queue Access Object (DQAO)](#database-queue-access-object-dqao)
+      - [DQAO Functions:](#dqao-functions)
   - [Endpoint Documentation](#endpoint-documentation)
     - [Authentication Endpoints](#authentication-endpoints)
     - [Token Endpoints](#token-endpoints)
@@ -48,6 +56,76 @@ In addition, any endpoint which requires authentication and for which the suppli
 ## Rate Limiting
 
 -- Not Yet Implemented --
+
+## Data Architecture
+
+In an attempt to reduce the amount of concurrently open connections and increase the responsiveness of the service, the service employs database and in-memory caching to attempt to serve requests more efficiently and reduce the end-to-end latency of the system. The following architecture diagram demonstrates the logical flow of data manipulation and fetching upon receiving an API request, detailing the interactions between deployed services including Amazon ElasticCache (Redis), Amazon DynamoDB, and other integrated components such as the queue system:
+
+![rug API Data Flow ](https://github.com/diffusion-io/rug-api/blob/main/images/rug-api-data.png)
+
+### Step-by-Step Flow
+
+1. API Request Initiation:
+   1. The process begins with a user-initiated API request.
+   2. The system first checks whether the required data is present in Redis.
+2. Redis Access Object Interraction:
+   1. If the data is present in Redis and is fresh, the system directly responds to the API request.
+   2. If the data is stale or not present, the flow moves to check DynamoDB.
+3. Database Access Object Interaction:
+   1. The system checks for data presence in DynamoDB.
+   2. If fresh data is found, it responds directly to the request.
+   3. If the data is stale, it queues a job to calculate the data and responds with the stale data.
+   4. If no data is found, it checks if there's an SQS queue available.
+4. Queue Interaction:
+   1. If there's an SQS queue, the request message is sent to the SQS to initiate the data calculation process.
+   2. Upon completion, the fresh data is calculated with the connection open, then cached in DynamoDB and stored in Redis for faster future accesses.
+5. Data Calculation and Response:
+   1. If there's no SQS queue, the system calculates the data with the connection open.
+   2. Once the data is calculated, it is responded to the request and also cached in both DynamoDB and Redis.
+
+### Database Access Object (DAO)
+Role: Responsible for interacting directly with Amazon DynamoDB.
+Key Operations:
+Get data from DynamoDB.
+Cache data in DynamoDB with a typical expiry of 30 minutes.
+Template for DAO:
+
+#### DAO Functions:
+
+- **Function Name**: [Function Name]
+    - **Description**: [Brief Description]
+    - **Parameters**:
+        1. [Parameter Name]: [Description]
+    - **Return Type**: [Return Type]
+  
+### Redis Access Object (RAO)
+Role: Manages interactions with Amazon ElasticCache/Redis.
+Key Operations:
+Retrieve key from Redis.
+Cache data in Redis.
+Template for RAO:
+
+#### RAO Functions:
+
+- **Function Name**: [Function Name]
+    - **Description**: [Brief Description]
+    - **Parameters**:
+        1. [Parameter Name]: [Description]
+    - **Return Type**: [Return Type]
+
+### Database Queue Access Object (DQAO)
+Role: Handles queue interactions and data fetch operations.
+Key Operations:
+Get data/key from the queue.
+Template for DQAO:
+
+#### DQAO Functions:
+
+- **Function Name**: [Function Name]
+    - **Description**: [Brief Description]
+    - **Parameters**:
+        1. [Parameter Name]: [Description]
+    - **Return Type**: [Return Type]
 
 ## Endpoint Documentation
 
