@@ -10,10 +10,15 @@
   - [Rate Limiting](#rate-limiting)
   - [Data Architecture](#data-architecture)
     - [Step-by-Step Flow](#step-by-step-flow)
+    - [Redis Access Object (RAO)](#redis-access-object-rao)
+      - [Overview:](#overview)
+      - [Attributes:](#attributes)
+      - [Methods:](#methods)
+        - [`generate_key(pk: str) -> str`](#generate_keypk-str---str)
+        - [`put(pk: str, data: dict)`](#putpk-str-data-dict)
+        - [`get(pk: str) -> dict`](#getpk-str---dict)
     - [Database Access Object (DAO)](#database-access-object-dao)
       - [DAO Functions:](#dao-functions)
-    - [Redis Access Object (RAO)](#redis-access-object-rao)
-      - [RAO Functions:](#rao-functions)
     - [Database Queue Access Object (DQAO)](#database-queue-access-object-dqao)
       - [DQAO Functions:](#dqao-functions)
   - [Endpoint Documentation](#endpoint-documentation)
@@ -68,20 +73,84 @@ In an attempt to reduce the amount of concurrently open connections and increase
 1. API Request Initiation:
    1. The process begins with a user-initiated API request.
    2. The system first checks whether the required data is present in Redis.
-2. Redis Access Object Interraction:
+2. **Redis Access Object** Interraction:
    1. If the data is present in Redis and is fresh, the system directly responds to the API request.
    2. If the data is stale or not present, the flow moves to check DynamoDB.
-3. Database Access Object Interaction:
+3. **Database Access Object** Interaction:
    1. The system checks for data presence in DynamoDB.
    2. If fresh data is found, it responds directly to the request.
-   3. If the data is stale, it queues a job to calculate the data and responds with the stale data.
+   3. If the data is stale, it queues a job to calculate the data but responds immediately with the stale data.
    4. If no data is found, it checks if there's an SQS queue available.
 4. Queue Interaction:
-   1. If there's an SQS queue, the request message is sent to the SQS to initiate the data calculation process.
-   2. Upon completion, the fresh data is calculated with the connection open, then cached in DynamoDB and stored in Redis for faster future accesses.
+   1. If there's an SQS queue available for this request, the request parameters are sent to SQS queue to initiate the data calculation process.
+   2. The user is served an immediate response with HTTP status code 202, indicating that the request is queued.
+   3. Upon completion, the fresh data is then cached in DynamoDB and stored in Redis for faster future accesses.
 5. Data Calculation and Response:
-   1. If there's no SQS queue, the system calculates the data with the connection open.
-   2. Once the data is calculated, it is responded to the request and also cached in both DynamoDB and Redis.
+   1. If there's no SQS queue for this request, the system calculates the data with the connection open.
+   2. Once the data is calculated, it is sent to the user in response to the request and also cached in both DynamoDB and Redis.
+
+### Redis Access Object (RAO)
+The `RAO`` class provides a mechanism to store and retrieve data from an AWS ElastiCache Redis instance, essentially acting as a caching layer for DAO object queries.
+
+#### Overview:
+
+To instantiate the `RAO`, the user must provide a `prefix` key which will be used to prefix all data stored in the cache. For `RAO` objects instantiated as part of a Database Access Object, this `prefix` will correspond to the table in the corresponding database for which the `RAO` acts as a caching layer.
+
+```RAO(prefix: str)```
+
+`table_name`: The name of the specific table in DynamoDB for which this RAO instance will act as a caching layer.
+
+#### Attributes:
+
+- `client_url`: The URL of the Redis server (specified by an environment variable for the Redis instance).
+- `client_port`: The port on which the Redis server is running (specified by an environment variable for the Redis instance).
+- `prefix`: The unique prefix for all data stored in the cache.
+- `tte`: Time-To-Expiry for cached keys (default is 30 minutes or 1800 seconds).
+- `client`: An instance of the `redis.Redis` object that connects to the Redis server.
+
+#### Methods:
+
+##### `generate_key(pk: str) -> str`
+
+Generates a unique key for storage in Redis based on the table name and the primary key (pk).
+
+**Arguments:**
+
+`pk`: Primary key (usually a unique identifier) for the data you want to cache.
+
+**Returns:**
+
+A unique string key to be used for data storage in Redis.
+
+##### `put(pk: str, data: dict)`
+Stores data associated with the given primary key (pk) in the Redis cache.
+
+**Arguments:**
+
+`pk`: Primary key (usually a unique identifier) for the data you want to cache.
+`data`: The data (in dictionary format) you want to cache.
+
+**Note:**
+
+- The data is stored in a JSON-serialized string format.
+- The cached data will expire after the specified tte (Time-To-Expiry) duration.
+
+##### `get(pk: str) -> dict`
+Retrieves data from the Redis cache based on the given primary key (`pk`).
+
+**Arguments:**
+
+`pk`: Primary key (usually a unique identifier) for the data you want to retrieve.
+
+**Returns:**
+
+The cached data (in dictionary format) associated with the provided primary key.
+Returns `None` if the key is not found in the cache.
+
+**Note:**
+
+- This class assumes that there is a `REDIS_URL` and a `REDIS_PORT` as environment variables which specify the URL and port for the Redis server. If these are not provided, it defaults to creating a Redis client with default settings (assuming a localhost deployment of Redis).
+- This object has `redis` and `json` modules as dependencies, and these should be imported prior to instantiating the `RAO`.
 
 ### Database Access Object (DAO)
 Role: Responsible for interacting directly with Amazon DynamoDB.
@@ -98,21 +167,6 @@ Template for DAO:
         1. [Parameter Name]: [Description]
     - **Return Type**: [Return Type]
   
-### Redis Access Object (RAO)
-Role: Manages interactions with Amazon ElasticCache/Redis.
-Key Operations:
-Retrieve key from Redis.
-Cache data in Redis.
-Template for RAO:
-
-#### RAO Functions:
-
-- **Function Name**: [Function Name]
-    - **Description**: [Brief Description]
-    - **Parameters**:
-        1. [Parameter Name]: [Description]
-    - **Return Type**: [Return Type]
-
 ### Database Queue Access Object (DQAO)
 Role: Handles queue interactions and data fetch operations.
 Key Operations:
