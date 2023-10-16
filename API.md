@@ -11,14 +11,21 @@
   - [Data Architecture](#data-architecture)
     - [Step-by-Step Flow](#step-by-step-flow)
     - [Redis Access Object (RAO)](#redis-access-object-rao)
-      - [Overview:](#overview)
-      - [Attributes:](#attributes)
-      - [Methods:](#methods)
+      - [Overview](#overview)
+      - [Attributes](#attributes)
+      - [Methods](#methods)
         - [`generate_key(pk: str) -> str`](#generate_keypk-str---str)
         - [`put(pk: str, data: dict)`](#putpk-str-data-dict)
         - [`get(pk: str) -> dict`](#getpk-str---dict)
     - [Database Access Object (DAO)](#database-access-object-dao)
-      - [DAO Functions:](#dao-functions)
+      - [Overview](#overview-1)
+      - [Attributes](#attributes-1)
+      - [Methods](#methods-1)
+        - [`find_all_by_pk(partition_key_value: str) -> List[Dict[Any, Any]]`](#find_all_by_pkpartition_key_value-str---listdictany-any)
+        - [`find_most_recent_by_pk(partition_key_value: str) -> Dict[Any, Any]`](#find_most_recent_by_pkpartition_key_value-str---dictany-any)
+        - [`find_count_by_pk(partition_key_value: str) -> int`](#find_count_by_pkpartition_key_value-str---int)
+        - [`insert_one(partition_key_value: str, item: Dict[Any, Any]) -> None`](#insert_onepartition_key_value-str-item-dictany-any---none)
+        - [`insert_new(partition_key_value: str, item: Dict[Any, Any]) -> None`](#insert_newpartition_key_value-str-item-dictany-any---none)
     - [Database Queue Access Object (DQAO)](#database-queue-access-object-dqao)
       - [DQAO Functions:](#dqao-functions)
   - [Endpoint Documentation](#endpoint-documentation)
@@ -92,15 +99,17 @@ In an attempt to reduce the amount of concurrently open connections and increase
 ### Redis Access Object (RAO)
 The `RAO` class provides a mechanism to store and retrieve data from an AWS ElastiCache Redis instance, essentially acting as a caching layer for DAO object queries.
 
-#### Overview:
+#### Overview
 
 To instantiate the `RAO`, the user must provide a `prefix` key which will be used to prefix all data stored in the cache. For `RAO` objects instantiated as part of a Database Access Object, this `prefix` will correspond to the table in the corresponding database for which the `RAO` acts as a caching layer:
 
 ```RAO(prefix: str)```
 
-`prefix`: The unique prefix for all data stored in the cache.
+**Arguments:**
 
-#### Attributes:
+- `prefix`: The unique prefix for all data stored in the cache.
+
+#### Attributes
 
 - `client_url`: The URL of the Redis server (specified by an environment variable for the Redis instance).
 - `client_port`: The port on which the Redis server is running (specified by an environment variable for the Redis instance).
@@ -108,7 +117,7 @@ To instantiate the `RAO`, the user must provide a `prefix` key which will be use
 - `tte`: Time-To-Expiry for cached keys (default is 30 minutes or 1800 seconds).
 - `client`: An instance of the `redis.Redis` object that connects to the Redis server.
 
-#### Methods:
+#### Methods
 
 ##### `generate_key(pk: str) -> str`
 
@@ -116,7 +125,7 @@ Generates a unique key for storage in Redis based on the table name and the prim
 
 **Arguments:**
 
-`pk`: Primary key (usually a unique identifier) for the data you want to cache.
+- `pk`: Primary key (usually a unique identifier) for the data you want to cache.
 
 **Returns:**
 
@@ -127,8 +136,8 @@ Stores data associated with the given primary key (pk) in the Redis cache.
 
 **Arguments:**
 
-`pk`: Primary key (usually a unique identifier) for the data you want to cache.
-`data`: The data (in dictionary format) you want to cache.
+- `pk`: Primary key (usually a unique identifier) for the data you want to cache.
+- `data`: The data (in dictionary format) you want to cache.
 
 **Note:**
 
@@ -140,7 +149,7 @@ Retrieves data from the Redis cache based on the given primary key (`pk`).
 
 **Arguments:**
 
-`pk`: Primary key (usually a unique identifier) for the data you want to retrieve.
+- `pk`: Primary key (usually a unique identifier) for the data you want to retrieve.
 
 **Returns:**
 
@@ -153,19 +162,92 @@ Returns `None` if the key is not found in the cache.
 - This object has `redis` and `json` modules as dependencies, and these should be imported prior to instantiating the `RAO`.
 
 ### Database Access Object (DAO)
-Role: Responsible for interacting directly with Amazon DynamoDB.
-Key Operations:
-Get data from DynamoDB.
-Cache data in DynamoDB with a typical expiry of 30 minutes.
-Template for DAO:
+The DAO class facilitates the storage and retrieval of data from an AWS DynamoDB table. It provides a set of methods for interacting with a specified DynamoDB table, abstracting away the complexities associated with the direct use of the boto3 library for DynamoDB.
 
-#### DAO Functions:
+#### Overview
 
-- **Function Name**: [Function Name]
-    - **Description**: [Brief Description]
-    - **Parameters**:
-        1. [Parameter Name]: [Description]
-    - **Return Type**: [Return Type]
+To initialize the DAO, users need to provide a table_name, which corresponds to the DynamoDB table they intend to interact with. Additionally, they can specify a region_name to target a specific AWS region:
+
+```DAO(table_name: str, region_name: str = 'eu-west-2')```
+
+**Arguments:**
+
+- `table_name`: Name of the DynamoDB table.
+- `region_name`: AWS region where the table resides (default is 'eu-west-2').
+
+#### Attributes
+
+- `table_name`: Name of the specified DynamoDB table.
+- `table`: DynamoDB table object from `boto3`.
+- `partition_key_name`: Name of the table's partition key.
+- `partition_range_name`: Name of the table's range key (if present).
+
+#### Methods
+
+##### `find_all_by_pk(partition_key_value: str) -> List[Dict[Any, Any]]`
+
+Retrieve all records that match a specific partition key value.
+
+**Arguments:**
+
+- `partition_key_value`: Value of the partition key to search for.
+
+**Returns:**
+
+A list of dictionaries, each representing a record that matches the provided partition key value.
+
+##### `find_most_recent_by_pk(partition_key_value: str) -> Dict[Any, Any]`
+
+Fetch the most recent record corresponding to a specific partition key value.
+
+**Arguments:**
+
+- `partition_key_value`: Value of the partition key to search for.
+
+**Returns:**
+
+A dictionary representing the most recent record that matches the given partition key value, or `None` if no match is found.
+
+##### `find_count_by_pk(partition_key_value: str) -> int`
+
+Count the number of records that match a specific partition key value.
+
+**Arguments:**
+
+- `partition_key_value`: Value of the partition key to count.
+
+**Returns:**
+
+An integer representing the number of records that match the given partition key value.
+
+##### `insert_one(partition_key_value: str, item: Dict[Any, Any]) -> None`
+
+Insert a record into the DynamoDB table with a specific partition key value.
+
+**Arguments:**
+
+- `partition_key_value`: Value for the partition key of the item to be inserted.
+- `item`: Dictionary containing the item data.
+
+**Raises:**
+
+- `ConditionalCheckFailedException`: This exception is raised if a record with the same partition key value already exists in the table.
+
+##### `insert_new(partition_key_value: str, item: Dict[Any, Any]) -> None`
+
+Insert a record with a specific partition key value. Unlike insert_one, this method does not check for the existence of a record with the same partition key value.
+
+**Arguments:**
+
+- `partition_key_value`: Value for the partition key of the item to be inserted.
+- `item`: Dictionary containing the item data.
+
+**Notes:**
+
+- This class requires the `boto3` library to interface with AWS DynamoDB.
+- Ensure proper AWS configurations and credentials are set, either as environment variables or in the AWS credentials file.
+- Before using the `DAO` class, users must ensure the specified DynamoDB table exists and has a partition key defined.
+- The class automatically determines the names of the partition key and (if present) range key of the specified table upon instantiation.
   
 ### Database Queue Access Object (DQAO)
 Role: Handles queue interactions and data fetch operations.
