@@ -437,8 +437,9 @@ async def reset_password(user: ResetPassword):
 
 def send_confirmation_join_waitlist(email: str):
     subject = "Thanks for Joining the rug.ai Waitlist!"
+    logging.info(f"Sending confirmation email to user {email}.")
     body = render_template('join-waitlist.html', title=subject)
-
+    logging.info(f"Email body: {body}")
     email_subject = subject
     email_body = body
     
