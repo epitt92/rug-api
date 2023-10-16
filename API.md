@@ -26,8 +26,12 @@
         - [`find_count_by_pk(partition_key_value: str) -> int`](#find_count_by_pkpartition_key_value-str---int)
         - [`insert_one(partition_key_value: str, item: Dict[Any, Any]) -> None`](#insert_onepartition_key_value-str-item-dictany-any---none)
         - [`insert_new(partition_key_value: str, item: Dict[Any, Any]) -> None`](#insert_newpartition_key_value-str-item-dictany-any---none)
-    - [Database Queue Access Object (DQAO)](#database-queue-access-object-dqao)
-      - [DQAO Functions:](#dqao-functions)
+    - [Database Queue Object (DQO)](#database-queue-object-dqo)
+      - [Overview](#overview-2)
+      - [Arguments](#arguments)
+      - [Attributes](#attributes-2)
+      - [Methods](#methods-2)
+        - [`get_item(pk: str, MessageGroupId: str, message_data: dict) -> Optional[dict]`](#get_itempk-str-messagegroupid-str-message_data-dict---optionaldict)
   - [Endpoint Documentation](#endpoint-documentation)
     - [Authentication Endpoints](#authentication-endpoints)
     - [Token Endpoints](#token-endpoints)
@@ -173,7 +177,7 @@ To initialize the DAO, users need to provide a table_name, which corresponds to 
 **Arguments:**
 
 - `table_name`: Name of the DynamoDB table.
-- `region_name`: AWS region where the table resides (default is 'eu-west-2').
+- `region_name`: AWS region where the table resides (default is `'eu-west-2'`).
 
 #### Attributes
 
@@ -249,19 +253,58 @@ Insert a record with a specific partition key value. Unlike insert_one, this met
 - Before using the `DAO` class, users must ensure the specified DynamoDB table exists and has a partition key defined.
 - The class automatically determines the names of the partition key and (if present) range key of the specified table upon instantiation.
   
-### Database Queue Access Object (DQAO)
-Role: Handles queue interactions and data fetch operations.
-Key Operations:
-Get data/key from the queue.
-Template for DQAO:
+### Database Queue Object (DQO)
 
-#### DQAO Functions:
+The `DQO` class facilitates interactions with both AWS DynamoDB and Amazon Simple Queue Service (SQS). It combines the data access capabilities of DynamoDB with the queuing mechanisms of SQS, allowing for asynchronous processing and updating of data.
 
-- **Function Name**: [Function Name]
-    - **Description**: [Brief Description]
-    - **Parameters**:
-        1. [Parameter Name]: [Description]
-    - **Return Type**: [Return Type]
+#### Overview
+
+To initialize the `DQO`, users provide a table_name (for DynamoDB), a queue_url (for SQS), an optional region_name to target a specific AWS region, and an optional staleness parameter:
+
+```DatabaseQueueObject(table_name: str, queue_url: str, region_name: str = 'eu-west-2', staleness: Optional[int] = None)```
+
+#### Arguments
+
+- `table_name`: Name of the DynamoDB table.
+- `queue_url`: URL for the desired SQS queue.
+- `region_name`: AWS region (default is `'eu-west-2')`.
+- `staleness`: Duration (in seconds) to determine if an item is considered stale (optional).
+
+#### Attributes
+
+- `DAO`: An instance of the previously defined `DAO` class for DynamoDB interactions.
+- `sqs`: Client object for interacting with Amazon SQS.
+- `queue_url`: URL of the desired SQS queue.
+- `staleness`: Duration (in seconds) used to determine item staleness.
+
+#### Methods
+
+##### `get_item(pk: str, MessageGroupId: str, message_data: dict) -> Optional[dict]`
+
+Retrieve the most recent item from DynamoDB using a partition key. If the item does not exist or is considered stale, a new message is sent to SQS to trigger an update or creation process.
+
+**Arguments:**
+
+- `pk`: Partition key to search in DynamoDB.
+- `MessageGroupId`: Message group ID for sending the message to SQS.
+- `message_data`: Dictionary containing data to send as a message to SQS.
+
+**Returns:**
+
+An `Optional[dict]`: If the item is found in DynamoDB and is not stale, the method returns the item. If the item does not exist or is stale, a message is created in SQS, and the method returns `None`.
+
+**Logic:**
+
+- If the requested item is not found in DynamoDB or is considered stale (based on the staleness attribute), a message is sent to SQS.
+- This message prompts an external process (e.g., an AWS Lambda function) to create or update the corresponding item in DynamoDB.
+- The Lambda function or equivalent service processes the message from SQS, updates/creates the DynamoDB record, and then removes the message from SQS.
+- Any additional messages in the SQS queue with the same `MessageGroupId` will be ignored by the Lambda function, but it will still be triggered, which may lead to inefficiencies.
+
+**Notes:**
+
+- This class requires the `boto3` library to interface with both AWS DynamoDB and Amazon SQS.
+- Proper AWS configurations and credentials should be set, either as environment variables or in the AWS credentials file.
+- Ensure that both the specified DynamoDB table and SQS queue exist prior to using the `DAO`.
 
 ## Endpoint Documentation
 
