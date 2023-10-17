@@ -90,7 +90,7 @@ def decode_token(
 
         claims.validate()
     except errors.JoseError:
-        raise HTTPException(status_code=403, detail="Bad auth token")
+        raise HTTPException(status_code=403, detail="Exception: Invalid Authentication Token Provided.")
 
     return claims
 
@@ -99,18 +99,6 @@ def decode_token(
 #          JWT Token Validation              #
 #                                            #
 ##############################################
-
-@router.get("/email/validate/")
-def validate_access_token(access_token: str) -> bool:
-    try:
-        response = cognito.get_user(AccessToken=access_token)
-        return access_token if response.get("Username") else False
-    except cognito.exceptions.NotAuthorizedException as e:
-        logging.error(f"Exception: NotAuthorizedException: {e}")
-        return False
-    except Exception as e:
-        logging.error(f"Exception: Unknown Cognito Exception: {e}")
-        return False
 
 @router.get("/email/username/")
 def get_username_from_access_token(access_token: str) -> str:
@@ -131,34 +119,6 @@ def get_username_from_access_token(access_token: str) -> str:
     except Exception as e:
         logging.error(f"Exception: Unknown Cognito Exception: {e}")
         return {}
-
-
-@router.get("/email/refresh/")
-def refresh_access_token(refresh_token: str) -> Response:
-    CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
-
-    if not CLIENT_ID:
-        # TODO: Add custom exception for this
-        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
-
-    try:
-        response = cognito.initiate_auth(
-            ClientId=CLIENT_ID,
-            AuthFlow='REFRESH_TOKEN_AUTH',
-            AuthParameters={
-                'REFRESH_TOKEN': refresh_token
-            }
-        )
-
-        if response.get('AuthenticationResult'):
-            access_token = response.get('AuthenticationResult').get('AccessToken')
-            return JSONResponse(status_code=200, content={"accessToken": access_token})
-        else:
-            return None
-    except ClientError as e:
-        logging.warning(f"Exception: ClientError whilst attempting to refresh access token: {e}")
-        return None
-    
 
 @router.get("/email/exists/") 
 async def check_username_exists(user: EmailStr):
@@ -182,8 +142,7 @@ async def check_username_exists(user: EmailStr):
         raise CognitoException(str(e))
 
 
-@router.delete("/email/delete/")
-async def rollback_user_creation(access_token: str = Depends(validate_access_token)) -> Response:
+async def rollback_user_creation(username: str) -> Response:
     USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
 
     if not USER_POOL_ID:
@@ -191,7 +150,7 @@ async def rollback_user_creation(access_token: str = Depends(validate_access_tok
 
     # Rollback: Delete the user from Cognito if an error occurred after sign_up
     try:
-        username = get_username_from_access_token(access_token).get("username")
+        # username = get_username_from_access_token(access_token).get("username")
 
         if not username:
             raise CognitoException("Exception: No username found in access token.")
@@ -241,11 +200,7 @@ async def create_user(user: CreateEmailAccount):
         logging.error(f"Rolling back user creation for user {user.username}.")
 
         if error_code == "UsernameExistsException":
-            try:
-                await rollback_user_creation(user.username)
-            except Exception as f:
-                logging.error(f"Exception: An exception occurred whilst attempting to rollback user creation: {f}")
-
+            logging.error(f"Exception: An exception occurred whilst attempting to rollback user creation: {f}")
             raise CognitoUserAlreadyExists(user.username, f"User with given email {user.username} already exists.")
         elif error_code == "UnexpectedLambdaException":
             try:
