@@ -250,7 +250,9 @@ async def verify_user(user: VerifyEmailAccount):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    return JSONResponse(status_code=200, content={"detail": "User account successfully verified!"})
+    logging.info(f"User {user.username} successfully verified their account.")
+
+    return await sign_in(SignInEmailAccount(username=user.username, password=user.password))
 
 
 @router.post("/email/verify/resend")
