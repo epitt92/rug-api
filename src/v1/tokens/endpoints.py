@@ -290,7 +290,9 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends
     message = {"token_address": token_address, "chain": chain.value}
 
     try:
-        response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, MessageGroupId=f"audit_{pk}", message_data=message)
+        # TODO: Quick fix for now to avoid excessive API charges
+        # response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, MessageGroupId=f"audit_{pk}", message_data=message)
+        response = None
     except Exception as e:
         logging.error(f"Exception: Whilst calling the queue object for `audit` for {token_address} on chain {chain}.")
         raise RugAPIException()
@@ -351,6 +353,7 @@ async def get_token_clustering(chain: ChainEnum, token_address: str = Depends(va
     # If the chain is unsupported, raise the correct exception to handle this
     if _chain != 'ethereum':
         raise UnsupportedChainException(chain=_chain)
+    
     # Get the pk for DB lookup, and the message data for the queue (if there is no data in the DB)
     pk = get_primary_key(token_address, chain)
     message_data = {"token_address": token_address, "chain": chain.value}
