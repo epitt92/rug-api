@@ -126,3 +126,4 @@ terraform.tfvars.json
 *.tfstate.backup
 .terraform.lock.hcl
 src/v1/shared/files/access_token.json
+rug-dev-bastion.pem

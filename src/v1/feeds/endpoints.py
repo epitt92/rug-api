@@ -36,8 +36,10 @@ router = APIRouter()
 
 FEEDS_DAO = DAO("feeds")
 
-@router.post("/eventclick")
+@router.post("/eventclick", dependencies=[Depends(decode_token)])
 async def post_event_click(eventClick: EventClick):
+    # TODO: Fetch username from access token provided in header
+
     try:
         eventHash = eventClick.event_id
         userId = eventClick.username
@@ -52,8 +54,10 @@ async def post_event_click(eventClick: EventClick):
     return JSONResponse(status_code=200, content={"detail": f"Event view for {eventHash} from user {userId} recorded."})
 
 
-@router.post("/tokenview")
+@router.post("/tokenview", dependencies=[Depends(decode_token)])
 async def post_token_view(tokenView: TokenView):
+    # TODO: Fetch username from access token provided in header
+
     try:
         chain = tokenView.chain
         token_address = tokenView.token_address
@@ -73,7 +77,7 @@ async def post_token_view(tokenView: TokenView):
 # TODO: Add more robust exception handling to this endpoint
 # TODO: Remove limit and numMinutes
 # ependencies=[Depends(decode_token)]
-@router.get("/mostviewed")
+@router.get("/mostviewed", dependencies=[Depends(decode_token)])
 async def get_most_viewed_tokens(limit: int = 50):
 
     # Add a DAO check for most viewed reel
@@ -272,7 +276,7 @@ async def get_most_viewed_token_result(limit: int = 50, num_minutes: int = 30):
     return output
 
 # TODO: Add more robust exception handling to this endpoint
-@router.get("/topevents")
+@router.get("/topevents", dependencies=[Depends(decode_token)])
 async def get_top_events(limit: int = 50):
     logging.info(f'Fetching top event list with limit {limit}...')
 
@@ -513,7 +517,7 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
         return []
 
 # TODO: Add caching to this endpoint to reduce the number of calls to Timestream
-@router.get("/tokenevents", include_in_schema=True)
+@router.get("/tokenevents", dependencies=[Depends(decode_token)], include_in_schema=True)
 async def get_token_events(number_of_events: int = 50, chain: ChainEnum = None):
     if number_of_events > 50:
         number_of_events = 50

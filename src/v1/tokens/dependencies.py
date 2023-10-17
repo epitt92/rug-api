@@ -9,8 +9,6 @@ from src.v1.shared.constants import CHAIN_ID_MAPPING
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.dependencies import load_access_token
 
-from src.v1.clustering.constants import ETHEREUM_BLOCK_EXPLORER_URL
-
 dotenv.load_dotenv()
 
 simple_mapping = {
@@ -391,7 +389,7 @@ def call_fetch_token_holders(chain: str, token_address: str) -> dict:
         while not found:
             payload['page'] = page
 
-            data = requests.get(ETHEREUM_BLOCK_EXPLORER_URL, params=payload)
+            data = requests.get(os.getenv('ETHEREUM_BLOCK_EXPLORER_URL'), params=payload)
 
             # Verify if result is valid
             # TODO: The API should return other than 200 for failed calls...
@@ -425,7 +423,7 @@ def call_total_supply(token_address: str) -> float:
         'apikey': api_key
     }
 
-    total_supply = requests.get(ETHEREUM_BLOCK_EXPLORER_URL, params=total_supply_params)
+    total_supply = requests.get(os.getenv('ETHEREUM_BLOCK_EXPLORER_URL'), params=total_supply_params)
     total_supply.raise_for_status()
     total_supply = total_supply.json().get("result")
     return float(total_supply)
