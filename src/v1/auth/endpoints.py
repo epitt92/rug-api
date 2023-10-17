@@ -200,7 +200,7 @@ async def create_user(user: CreateEmailAccount):
         logging.error(f"Rolling back user creation for user {user.username}.")
 
         if error_code == "UsernameExistsException":
-            logging.error(f"Exception: An exception occurred whilst attempting to rollback user creation: {f}")
+            logging.error(f"Exception: The user with given email {user.username} already exists.")
             raise CognitoUserAlreadyExists(user.username, f"User with given email {user.username} already exists.")
         elif error_code == "UnexpectedLambdaException":
             try:
