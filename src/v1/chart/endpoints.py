@@ -11,6 +11,8 @@ from src.v1.chart.models import FrequencyEnum
 from src.v1.chart.schemas import ChartResponse
 from src.v1.chart.exceptions import CoinGeckoChartException
 
+from src.v1.auth.endpoints import decode_token
+
 logging.basicConfig(level=logging.INFO)
 
 router = APIRouter()
@@ -49,7 +51,7 @@ async def get_pool_address(chain: ChainEnum, token_address: str = Depends(valida
         logging.error(f"Exception: `pair_address` was not defined for the GoPlus response from {token_address} on chain {chain}.")
         raise GoPlusDataException(chain=chain, token_address=token_address)
 
-@router.get("/{chain}/{token_address}", response_model=ChartResponse)
+@router.get("/{chain}/{token_address}", dependencies=[Depends(decode_token)], response_model=ChartResponse)
 async def get_chart_data(chain: ChainEnum, frequency: FrequencyEnum, token_address: str = Depends(validate_token_address)):
     # TODO: Eventually want to store pool address as part of the metadata, and do a call to fetch it from there
     pool_address = await get_pool_address(chain, token_address)

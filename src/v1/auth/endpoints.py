@@ -1,4 +1,4 @@
-import os, boto3, logging, requests, time
+import os, boto3, logging, requests, time, dotenv
 from functools import lru_cache
 from fastapi import Depends, HTTPException, APIRouter, Response, security
 from fastapi.responses import JSONResponse
@@ -17,6 +17,8 @@ from src.v1.auth.schemas import (
         EmailAccountBase, CreateEmailAccount,
         SignInEmailAccount, VerifyEmailAccount,
         UserAccessTokens, ResetPassword)
+
+dotenv.load_dotenv()
 
 router = APIRouter()
 
