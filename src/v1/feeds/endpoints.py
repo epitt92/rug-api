@@ -20,7 +20,7 @@ from src.v1.shared.exceptions import DatabaseLoadFailureException, DatabaseInser
 from src.v1.tokens.endpoints import get_score_info
 
 from src.v1.auth.endpoints import decode_token
-from src.v1.feeds.schemas import TokenInfoResponse
+from src.v1.feeds.schemas import MarketDataResponse
 
 dotenv.load_dotenv()
 
@@ -593,7 +593,7 @@ async def get_token_details(chain: ChainEnum, token_address: str):
 
     return token_details
 
-@router.get("/tokeninfo", response_model=TokenInfoResponse, dependencies=[Depends(decode_token)], include_in_schema=True)
+@router.get("/marketdata", response_model=MarketDataResponse, dependencies=[Depends(decode_token)], include_in_schema=True)
 def get_token_information(token_address: str, dex: DexEnum = 'uniswapv2', chain: ChainEnum = None):
     """
     Retrieve token information by using a token address and chain.
@@ -605,10 +605,10 @@ def get_token_information(token_address: str, dex: DexEnum = 'uniswapv2', chain:
     """
 
     marketCap = 5800000
-    liquidity = 30700
-    volume = 10000
-    dex_link = generate_dex_link(dex.value, chain.value, token_address)
-    return TokenInfoResponse(marketCap=marketCap, liquidity=liquidity, volume=volume, dex_link=dex_link)
+    liquidityUsd = 30700
+    volume24h = 10000
+    swapLink = generate_dex_link(dex.value, chain.value, token_address)
+    return MarketDataResponse(marketCap=marketCap, liquidityUsd=liquidityUsd, volume24h=volume24h, swapLink=swapLink)
 
 def generate_dex_link(dex_name, network, token_address):
     swap_urls = {
