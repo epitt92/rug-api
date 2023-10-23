@@ -379,7 +379,9 @@ async def get_holder_chart(chain: ChainEnum, token_address: str = Depends(valida
 
     cluster_summary = await get_token_clustering(chain, token_address)
 
-    if not cluster_summary:
+    found = not cluster_summary or isinstance(cluster_summary, JSONResponse)
+
+    if not found:
         logging.info(f"Exception: No cluster summary was found for {token_address} on chain {chain}.")
         try:
             data = fetch_holders(token_address=token_address, chain=chain)
