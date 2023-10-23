@@ -594,9 +594,9 @@ async def get_token_details(chain: ChainEnum, token_address: str):
     return token_details
 
 @router.get("/marketdata", response_model=MarketDataResponse, dependencies=[Depends(decode_token)], include_in_schema=True)
-def get_token_information(token_address: str, dex: DexEnum = 'uniswapv2', chain: ChainEnum = None):
+def get_market_data(token_address: str, dex: DexEnum = 'uniswapv2', chain: ChainEnum = None):
     """
-    Retrieve token information by using a token address and chain.
+    Retrieve token market data by using a token address and chain.
 
     __Parameters:__
     - **token_address** (str): The token address for the information.
