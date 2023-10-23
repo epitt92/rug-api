@@ -148,7 +148,7 @@ class DatabaseQueueObject:
         self.queue_url = queue_url
         self.staleness = staleness
 
-    def get_item(self, pk: str, MessageGroupId: str, message_data: dict) -> Optional[dict]:
+    def get_item(self, pk: str, MessageGroupId: str, message_data: dict, post_to_queue: bool = True) -> Optional[dict]:
         """Try to find most recent in DynamoDB, otherwise send a message to SQS.
 
         To make this function work, we consider the following:
@@ -182,17 +182,18 @@ class DatabaseQueueObject:
                 to_queue = True if is_stale else False
             
         if item is None or to_queue:
-            try:
-                self.sqs.send_message(
-                    QueueUrl=self.queue_url,
-                    MessageBody=json.dumps(message_data),
-                    MessageGroupId=MessageGroupId,
-                    MessageDeduplicationId=MessageGroupId
-                )
+            if post_to_queue:
+                try:
+                    self.sqs.send_message(
+                        QueueUrl=self.queue_url,
+                        MessageBody=json.dumps(message_data),
+                        MessageGroupId=MessageGroupId,
+                        MessageDeduplicationId=MessageGroupId
+                    )
 
-                logging.info(f'Success: Message sent to SQS: {message_data}')
-            except Exception as e:
-                logging.error(f'Exception: An error occurred whilst sending a message to SQS: {e}')
-                raise SQSException()
+                    logging.info(f'Success: Message sent to SQS: {message_data}')
+                except Exception as e:
+                    logging.error(f'Exception: An error occurred whilst sending a message to SQS: {e}')
+                    raise SQSException()
 
         return item
