@@ -11,7 +11,7 @@ from src.v1.feeds.models import EventClick, TokenView
 from src.v1.feeds.exceptions import TimestreamReadException, TimestreamWriteException
 
 from src.v1.shared.models import ChainEnum
-from src.v1.shared.DAO import DAO
+from src.v1.shared.DAO import DAO, RAO
 from src.v1.shared.models import validate_token_address
 from src.v1.shared.dependencies import get_token_contract_details, get_chain
 from src.v1.shared.exceptions import DatabaseLoadFailureException, DatabaseInsertFailureException
@@ -35,6 +35,7 @@ write_client = TimestreamEventAdapter()
 router = APIRouter()
 
 FEEDS_DAO = DAO("feeds")
+CHAIN_FEEDS_RAO = RAO("chainfeeds", tte=2*60)
 
 @router.post("/eventclick")
 async def post_event_click(eventClick: EventClick):
@@ -515,6 +516,18 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
 # TODO: Add caching to this endpoint to reduce the number of calls to Timestream
 @router.get("/tokenevents", include_in_schema=True)
 async def get_token_events(number_of_events: int = 50, chain: ChainEnum = None):
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else "all"
+
+    try:
+        data = CHAIN_FEEDS_RAO.get(_chain)
+    except Exception as e:
+        logging.error(f'An exception occurred whilst fetching data from RAO: {e}')
+        data = None
+        pass
+
+    if data:
+        return data
+
     if number_of_events > 50:
         number_of_events = 50
 
@@ -572,7 +585,15 @@ async def get_token_events(number_of_events: int = 50, chain: ChainEnum = None):
     pdf['timestamp'] = pdf['timestamp'].apply(lambda x: int(float(x)))
 
     # Return the data as a list of dictionaries
-    return pdf.to_dict('records')
+    output = pdf.to_dict('records')
+
+    try:
+        data = CHAIN_FEEDS_RAO.put(_chain, output)
+    except Exception as e:
+        logging.error(f'An exception occurred whilst writing data to RAO: {e}')
+        pass
+
+    return output
 
 # TODO: Add more robust exception handling to this endpoint
 async def get_token_details(chain: ChainEnum, token_address: str):
