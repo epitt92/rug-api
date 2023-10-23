@@ -11,6 +11,7 @@ from src.v1.feeds.models import EventClick, TokenView
 from src.v1.feeds.exceptions import TimestreamReadException, TimestreamWriteException
 
 from src.v1.shared.models import ChainEnum
+from src.v1.shared.models import DexEnum
 from src.v1.shared.DAO import DAO
 from src.v1.shared.models import validate_token_address
 from src.v1.shared.dependencies import get_token_contract_details, get_chain
@@ -19,6 +20,7 @@ from src.v1.shared.exceptions import DatabaseLoadFailureException, DatabaseInser
 from src.v1.tokens.endpoints import get_score_info
 
 from src.v1.auth.endpoints import decode_token
+from src.v1.feeds.schemas import TokenInfoResponse
 
 dotenv.load_dotenv()
 
@@ -590,3 +592,38 @@ async def get_token_details(chain: ChainEnum, token_address: str):
         raise e
 
     return token_details
+
+@router.get("/tokeninfo", response_model=TokenInfoResponse, dependencies=[Depends(decode_token)], include_in_schema=True)
+def get_token_information(token_address: str, dex: DexEnum = 'uniswapv2', chain: ChainEnum = None):
+    """
+    Retrieve token information by using a token address and chain.
+
+    __Parameters:__
+    - **token_address** (str): The token address for the information.
+    - **chain** (str): The chain name on which the token is deployed.
+    - **dex** (str): The DEX name on which the token is deployed.
+    """
+
+    marketCap = 5800000
+    liquidity = 30700
+    volume = 10000
+    dex_link = generate_dex_link(dex.value, chain.value, token_address)
+    return TokenInfoResponse(marketCap=marketCap, liquidity=liquidity, volume=volume, dex_link=dex_link)
+
+def generate_dex_link(dex_name, network, token_address):
+    swap_urls = {
+        'uniswapv2': f'https://app.uniswap.org/swap?inputCurrency={token_address}',
+        'uniswapv3': f'https://app.uniswap.org/swap?inputCurrency={token_address}',
+        'pancakeswapv2': f'https://pancakeswap.finance/swap?inputCurrency={token_address}',
+        'pancakeswapv3': f'https://pancakeswap.finance/swap?inputCurrency={token_address}',
+        'sushiswap': f'https://app.sushi.com/swap?inputCurrency={token_address}',
+        'baseswap': f'https://baseswap.fi/swap?inputCurrency={token_address}',
+        'rocketswap': f'https://rocketswap.exchange/swap?inputCurrency={token_address}',
+        'traderjoe': f'https://traderjoexyz.com/{network}/trade?inputCurrency={token_address}',
+    }
+
+    if dex_name not in swap_urls:
+        logging.error(f'An exception occurred while fetching the token information - Unsupported DEX name: {dex_name}')
+        raise ValueError(f"Unsupported DEX name: {dex_name}")
+
+    return swap_urls[dex_name]
