@@ -138,8 +138,12 @@ class DAO:
         Returns:
             List[Dict[Any, Any]]: A list containing one document if found, empty list otherwise
         """
-        # Check if the key is in Redis
-        data = self.rao.get(partition_key_value)
+        try:
+            # Check if the key is in Redis
+            data = self.rao.get(partition_key_value)
+        except Exception as e:
+            logging.error(f"Exception: An exception occurred whilst fetching data from Redis: {e}")
+            data = None
 
         if data:
             logging.info(f"Key {partition_key_value} was stored in Redis...")
@@ -156,8 +160,14 @@ class DAO:
 
         if len(response['Items']) == 1:
             data = response['Items'][0]
-            # Store in Redis
-            self.rao.put(partition_key_value, data)
+
+            try:
+                # Store in Redis
+                self.rao.put(partition_key_value, data)
+            except Exception as e:
+                logging.error(f"Exception: An exception occurred whilst storing data in Redis: {e}")
+                pass
+
             logging.info(f"Key {partition_key_value} was stored in Redis...")
             return data
         else:
@@ -202,8 +212,12 @@ class DAO:
             Item=item,
             ConditionExpression=f'attribute_not_exists({self.partition_key_name})')
         
-        # Update Redis
-        self.rao.put(partition_key_value, item)
+        try:
+            # Update Redis
+            self.rao.put(partition_key_value, item)
+        except Exception as e:
+            logging.error(f"Exception: An exception occurred whilst storing data in Redis: {e}")
+            pass
 
     def insert_new(
         self,
@@ -219,8 +233,12 @@ class DAO:
         item[self.partition_key_name] = partition_key_value
         self.table.put_item(Item=item)
 
-        # Update Redis
-        self.rao.put(partition_key_value, item)
+        try:
+            # Update Redis
+            self.rao.put(partition_key_value, item)
+        except Exception as e:
+            logging.error(f"Exception: An exception occurred whilst storing data in Redis: {e}")
+            pass
 
 
 class DatabaseQueueObject:
