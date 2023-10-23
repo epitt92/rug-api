@@ -93,6 +93,14 @@ module "rug_app_service" {
     {
       name = "TOKEN_ANALYSIS_QUEUE"
       value = data.aws_ssm_parameter.rug_ml_audit_queue_url_parameter_store.value
+    },
+    {
+      name = "REDIS_CLIENT_URL",
+      value = module.redis.redis_cache_connection_string
+    },
+    {
+      name = "REDIS_CLIENT_PORT",
+      value = module.redis.redis_cache_connection_port
     }
   ]
   alb_certifcate_arn = aws_acm_certificate.cert.arn

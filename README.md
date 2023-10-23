@@ -48,7 +48,7 @@ Before deploying `rug-api` on AWS, you should set it up and test your changes lo
 
 4. Finally, run the application locally:
    ```sh
-   uvicorn main:app --reload
+   uvicorn server:app --reload
    ```
 
 ## Architecture
