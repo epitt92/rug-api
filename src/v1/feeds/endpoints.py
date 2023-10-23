@@ -595,7 +595,7 @@ async def get_token_details(chain: ChainEnum, token_address: str):
 
 
 @router.get("/marketdata", response_model=MarketDataResponse, dependencies=[Depends(decode_token)], include_in_schema=True)
-def get_market_data(token_address: str, dex: DexEnum, chain: ChainEnum):
+def get_market_data(chain: ChainEnum, token_address: str = Depends(validate_token_address), dex: DexEnum = DexEnum.uniswapv2):
     """
     Retrieve token market data by using a token address and chain.
 
@@ -604,7 +604,6 @@ def get_market_data(token_address: str, dex: DexEnum, chain: ChainEnum):
     - **chain** (str): The chain name on which the token is deployed.
     - **dex** (str): The DEX name on which the token is deployed.
     """
-
     marketCap = 5_800_000
     liquidityUsd = 30_700
     volume24h = 10_000
