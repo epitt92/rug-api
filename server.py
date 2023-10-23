@@ -143,6 +143,13 @@ async def block_explorer_data_exception_handler(request, exc: BlockExplorerDataE
         content={"detail": str(exc)},
     )
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+
 # Application level exception handling, this is overriden by exception handling at the lower level
 # This prevents re-booting of containers and issues with performance degredation
 @app.exception_handler(Exception)
