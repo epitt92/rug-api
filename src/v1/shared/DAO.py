@@ -1,11 +1,70 @@
 """
 Data Access Object (DAO) class to store and retrieve data from a file.
 """
-import json, logging, boto3, time
+import json, logging, boto3, time, redis, logging, os, dotenv
 from typing import Any, Dict, List, Optional
 from boto3.dynamodb.conditions import Key
+from decimal import Decimal
+from json import JSONEncoder
 
 from src.v1.shared.exceptions import SQSException
+
+dotenv.load_dotenv()
+
+CLIENT_URL = os.environ.get('REDIS_CLIENT_URL')
+CLIENT_PORT = os.environ.get('REDIS_CLIENT_PORT')
+
+class DecimalEncoder(JSONEncoder):
+    def default(self, o):
+        if isinstance(o, Decimal):
+            return float(o)
+        return super().default(o)
+
+class RAO:
+    """
+    Redis Access Object (RAO) class to store and retrieve data from Redis/ElastiCache.
+    
+    This object corresponds to a specific table name in DynamoDB. It then acts as a base layer for caching for DAO object queries.
+    
+    It has a TTE (Time-To-Expiry) which determines after which amount of time cached keys expire.
+    
+    It stores all data in a JSON-serialised string format on the Redis server.
+    """
+    def __init__(self, prefix: str, tte: int = 20) -> None:
+        self.client_url = CLIENT_URL
+        self.client_port = CLIENT_PORT
+        self.prefix = prefix
+        self.tte = tte # 30 minutes until keys expire
+        
+        if not self.client_url or not self.client_port:
+            self.client = redis.Redis()
+        else:
+            self.client = redis.Redis(host=self.client_url, port=self.client_port, db=0)
+    
+    def generate_key(self, pk: str):
+        return self.prefix + "_" + pk
+    
+    def put(self, pk: str, data: dict):
+        key = self.generate_key(pk)
+        logging.info(f"Storing key {key} in Redis...")
+        serialised_data = json.dumps(data, cls=DecimalEncoder)
+        self.client.set(key, serialised_data, ex=self.tte)
+        logging.info(f"Key {key} stored in Redis...")
+        return
+
+    def get(self, pk: str):
+        key = self.generate_key(pk)
+        serialised_data = self.client.get(key)
+        
+        if not serialised_data:
+            logging.info(f"Key {key} was not stored in Redis...")
+            return serialised_data
+        
+        logging.info(f"Key {key} was stored in Redis...")
+        data = json.loads(serialised_data, parse_float=float, parse_int=int)
+
+        return data
+
 
 class DAO:
     """
@@ -28,6 +87,8 @@ class DAO:
         partition_key_name = None
         partition_range_name = None
         dynamodb = boto3.resource('dynamodb', region_name=region_name)
+
+        self.rao = RAO(prefix=table_name)
 
         # Select the table
         self.table = dynamodb.Table(table_name)
@@ -77,6 +138,16 @@ class DAO:
         Returns:
             List[Dict[Any, Any]]: A list containing one document if found, empty list otherwise
         """
+        # Check if the key is in Redis
+        data = self.rao.get(partition_key_value)
+
+        if data:
+            logging.info(f"Key {partition_key_value} was stored in Redis...")
+            return data
+        
+        logging.info(f"Key {partition_key_value} was not stored in Redis...")
+
+        # If not, fetch from DynamoDB
         response = self.table.query(
             KeyConditionExpression=Key(self.partition_key_name).eq(partition_key_value),
             ScanIndexForward=False,
@@ -84,7 +155,11 @@ class DAO:
         )
 
         if len(response['Items']) == 1:
-            return response['Items'][0]
+            data = response['Items'][0]
+            # Store in Redis
+            self.rao.put(partition_key_value, data)
+            logging.info(f"Key {partition_key_value} was stored in Redis...")
+            return data
         else:
             # Returning None here so that it's easy to do a check on whether a value exists
             return None
@@ -121,9 +196,14 @@ class DAO:
             ConditionalCheckFailedException: If the document already exists
         """
         item[self.partition_key_name] = partition_key_value
+
+        logging.info(f"Inserting item {item} into DynamoDB...")
         self.table.put_item(
             Item=item,
             ConditionExpression=f'attribute_not_exists({self.partition_key_name})')
+        
+        # Update Redis
+        self.rao.put(partition_key_value, item)
 
     def insert_new(
         self,
@@ -138,6 +218,9 @@ class DAO:
         """
         item[self.partition_key_name] = partition_key_value
         self.table.put_item(Item=item)
+
+        # Update Redis
+        self.rao.put(partition_key_value, item)
 
 
 class DatabaseQueueObject:
