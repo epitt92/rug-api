@@ -35,7 +35,7 @@ write_client = TimestreamEventAdapter()
 router = APIRouter()
 
 FEEDS_DAO = DAO("feeds")
-CHAIN_FEEDS_RAO = RAO("chainfeeds", tte=2*60)
+CHAIN_FEEDS_RAO = RAO("chainfeeds", tte=5*60)
 
 @router.post("/eventclick", dependencies=[Depends(decode_token)])
 async def post_event_click(eventClick: EventClick):

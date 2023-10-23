@@ -50,10 +50,10 @@ class RAO:
     
     def put(self, pk: str, data: dict):
         key = self.generate_key(pk)
-        logging.info(f"Storing key {key} in Redis...")
+        logging.info(f"Storing key {key} in Redis for {self.tte}s...")
         serialised_data = json.dumps(data, cls=DecimalEncoder)
         self.client.set(key, serialised_data, ex=self.tte)
-        logging.info(f"Key {key} stored in Redis...")
+        logging.info(f"Key {key} stored in Redis for {self.tte}s...")
         return
 
     def get(self, pk: str):
