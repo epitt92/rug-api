@@ -14,6 +14,10 @@ dotenv.load_dotenv()
 CLIENT_URL = os.environ.get('REDIS_CLIENT_URL')
 CLIENT_PORT = os.environ.get('REDIS_CLIENT_PORT')
 
+if not CLIENT_URL or not CLIENT_PORT:
+    logging.error(f"Exception: Redis Client URL or Port not found in environment variables.")
+    raise Exception("Exception: Redis Client URL or Port not found in environment variables.")
+
 class DecimalEncoder(JSONEncoder):
     def default(self, o):
         if isinstance(o, Decimal):
@@ -37,9 +41,9 @@ class RAO:
         self.tte = tte # 30 minutes until keys expire
         
         if not self.client_url or not self.client_port:
-            self.client = redis.Redis()
-        else:
-            self.client = redis.Redis(host=self.client_url, port=self.client_port, db=0)
+            raise Exception("Exception: Redis Client URL or Port not found.")
+        
+        self.client = redis.Redis(host=self.client_url, port=self.client_port, db=0)
     
     def generate_key(self, pk: str):
         return self.prefix + "_" + pk
