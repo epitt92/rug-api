@@ -6,9 +6,10 @@ from botocore.exceptions import ClientError
 from decimal import Decimal
 
 from src.v1.feeds.constants import TOP_EVENTS_STALENESS_THRESHOLD, TOP_EVENTS_LIMIT, MOST_VIEWED_TOKENS_STALENESS_THRESHOLD, MOST_VIEWED_TOKENS_LIMIT, MOST_VIEWED_TOKENS_NUM_MINUTES, TOP_EVENTS_NUM_MINUTES
-from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter, convert_floats_to_decimals
+from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter, convert_floats_to_decimals, get_swap_link
 from src.v1.feeds.models import EventClick, TokenView
 from src.v1.feeds.exceptions import TimestreamReadException, TimestreamWriteException
+from src.v1.feeds.schemas import MarketDataResponse
 
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.models import DexEnum
@@ -20,7 +21,6 @@ from src.v1.shared.exceptions import DatabaseLoadFailureException, DatabaseInser
 from src.v1.tokens.endpoints import get_score_info
 
 from src.v1.auth.endpoints import decode_token
-from src.v1.feeds.schemas import MarketDataResponse
 
 dotenv.load_dotenv()
 
@@ -593,8 +593,9 @@ async def get_token_details(chain: ChainEnum, token_address: str):
 
     return token_details
 
+
 @router.get("/marketdata", response_model=MarketDataResponse, dependencies=[Depends(decode_token)], include_in_schema=True)
-def get_market_data(token_address: str, dex: DexEnum = 'uniswapv2', chain: ChainEnum = None):
+def get_market_data(token_address: str, dex: DexEnum, chain: ChainEnum):
     """
     Retrieve token market data by using a token address and chain.
 
@@ -604,26 +605,8 @@ def get_market_data(token_address: str, dex: DexEnum = 'uniswapv2', chain: Chain
     - **dex** (str): The DEX name on which the token is deployed.
     """
 
-    marketCap = 5800000
-    liquidityUsd = 30700
-    volume24h = 10000
-    swapLink = generate_dex_link(dex.value, chain.value, token_address)
+    marketCap = 5_800_000
+    liquidityUsd = 30_700
+    volume24h = 10_000
+    swapLink = get_swap_link(dex.value, chain.value, token_address)
     return MarketDataResponse(marketCap=marketCap, liquidityUsd=liquidityUsd, volume24h=volume24h, swapLink=swapLink)
-
-def generate_dex_link(dex_name, network, token_address):
-    swap_urls = {
-        'uniswapv2': f'https://app.uniswap.org/swap?inputCurrency={token_address}',
-        'uniswapv3': f'https://app.uniswap.org/swap?inputCurrency={token_address}',
-        'pancakeswapv2': f'https://pancakeswap.finance/swap?inputCurrency={token_address}',
-        'pancakeswapv3': f'https://pancakeswap.finance/swap?inputCurrency={token_address}',
-        'sushiswap': f'https://app.sushi.com/swap?inputCurrency={token_address}',
-        'baseswap': f'https://baseswap.fi/swap?inputCurrency={token_address}',
-        'rocketswap': f'https://rocketswap.exchange/swap?inputCurrency={token_address}',
-        'traderjoe': f'https://traderjoexyz.com/{network}/trade?inputCurrency={token_address}',
-    }
-
-    if dex_name not in swap_urls:
-        logging.error(f'An exception occurred while fetching the token information - Unsupported DEX name: {dex_name}')
-        raise ValueError(f"Unsupported DEX name: {dex_name}")
-
-    return swap_urls[dex_name]

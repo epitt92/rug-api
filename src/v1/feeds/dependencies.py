@@ -20,6 +20,7 @@ def process_row(row):
         'value': value
     }
 
+
 def convert_floats_to_decimals(data):
     if isinstance(data, dict):
         for key, value in data.items():
@@ -31,6 +32,26 @@ def convert_floats_to_decimals(data):
         return Decimal(str(data))
     else:
         return data
+
+
+def get_swap_link(dex, network, token_address):
+    SWAP_URLS = {
+        'uniswapv2': f'https://app.uniswap.org/swap?inputCurrency={token_address}',
+        'uniswapv3': f'https://app.uniswap.org/swap?inputCurrency={token_address}',
+        'pancakeswapv2': f'https://pancakeswap.finance/swap?inputCurrency={token_address}',
+        'pancakeswapv3': f'https://pancakeswap.finance/swap?inputCurrency={token_address}',
+        'sushiswap': f'https://app.sushi.com/swap?inputCurrency={token_address}',
+        'baseswap': f'https://baseswap.fi/swap?inputCurrency={token_address}',
+        'rocketswap': f'https://rocketswap.exchange/swap?inputCurrency={token_address}',
+        'traderjoe': f'https://traderjoexyz.com/{network}/trade?inputCurrency={token_address}',
+    }
+
+    if dex not in SWAP_URLS:
+        logging.error(f'Exception: Unsupported DEX {dex}')
+        raise ValueError(f"Unsupported DEX: {dex}")
+
+    return SWAP_URLS[dex]
+
 
 class TimestreamEventAdapter():
     def __init__(self, database: str = "rug_api_db") -> None:
