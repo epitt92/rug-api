@@ -34,11 +34,11 @@ class RAO:
     
     It stores all data in a JSON-serialised string format on the Redis server.
     """
-    def __init__(self, prefix: str, tte: int = 20) -> None:
+    def __init__(self, prefix: str, tte: int = 5 * 60) -> None:
         self.client_url = CLIENT_URL
         self.client_port = CLIENT_PORT
         self.prefix = prefix
-        self.tte = tte # 30 minutes until keys expire
+        self.tte = tte # 5 minutes until keys expire
         
         if not self.client_url or not self.client_port:
             raise Exception("Exception: Redis Client URL or Port not found.")
