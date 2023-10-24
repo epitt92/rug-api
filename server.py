@@ -147,7 +147,7 @@ async def block_explorer_data_exception_handler(request, exc: BlockExplorerDataE
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail}
+        content={"status_code": exc.status_code, "detail": exc.detail}
     )
 
 # Application level exception handling, this is overriden by exception handling at the lower level
