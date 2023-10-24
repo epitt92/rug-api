@@ -2,6 +2,7 @@ import time, boto3, logging
 from botocore.exceptions import BotoCoreError, ClientError
 from decimal import Decimal
 
+from src.v1.shared.constants import CHAIN_ID_MAPPING, CHAIN_SYMBOL_MAPPING
 from src.v1.feeds.exceptions import TimestreamWriteException
 
 def process_row(row):
@@ -36,13 +37,13 @@ def convert_floats_to_decimals(data):
 
 def get_swap_link(dex, network, token_address):
     SWAP_URLS = {
-        'uniswapv2': f'https://app.uniswap.org/swap?inputCurrency={token_address}',
-        'uniswapv3': f'https://app.uniswap.org/swap?inputCurrency={token_address}',
-        'pancakeswapv2': f'https://pancakeswap.finance/swap?inputCurrency={token_address}',
-        'pancakeswapv3': f'https://pancakeswap.finance/swap?inputCurrency={token_address}',
-        'sushiswap': f'https://app.sushi.com/swap?inputCurrency={token_address}',
+        'uniswapv2': f'https://app.uniswap.org/swap?chain={network}&inputCurrency={token_address}',
+        'uniswapv3': f'https://app.uniswap.org/swap?chain={network}&inputCurrency={token_address}',
+        'pancakeswapv2': f'https://pancakeswap.finance/swap?chain={CHAIN_SYMBOL_MAPPING[network]}&inputCurrency={token_address}',
+        'pancakeswapv3': f'https://pancakeswap.finance/swap?chain={CHAIN_SYMBOL_MAPPING[network]}&inputCurrency={token_address}',
+        'sushiswap': f'https://app.sushi.com/swap?chainId={CHAIN_ID_MAPPING[network]}&inputCurrency={token_address}',
         'baseswap': f'https://baseswap.fi/swap?inputCurrency={token_address}',
-        'rocketswap': f'https://rocketswap.exchange/swap?inputCurrency={token_address}',
+        'rocketswap': f'https://rocketswap.exchange/swap?chain={network}&inputCurrency={token_address}',
         'traderjoe': f'https://traderjoexyz.com/{network}/trade?inputCurrency={token_address}',
     }
 
