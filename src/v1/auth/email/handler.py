@@ -40,10 +40,10 @@ def custom_message_forgot_password(event):
     subject = "You've Requested to Reset Your Password"
 
     # Only encode the parameter values
-    encoded_recipient = urlparse.quote_plus(recipient)
-    encoded_reset_code = urlparse.quote_plus(reset_code)
+    recipient_ = recipient.split('@')
+    encoded_recipient = recipient_[0] + urlparse.quote_plus('@') + recipient_[1]
 
-    reset_link = f"https://rug.ai/reset-pwd?username={encoded_recipient}&code={encoded_reset_code}"
+    reset_link = f"https://rug.ai/reset-pwd?username={encoded_recipient}&code={reset_code}"
 
     body = render_template('reset-password.html', title=subject, username=recipient, reset_link=reset_link)
 
