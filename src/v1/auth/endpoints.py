@@ -462,3 +462,8 @@ async def join_waitlist(email: EmailStr):
         return JSONResponse(status_code=200, content={"status_code": 200, "detail": {"body": "Successfully Joined Waitlist!", "title": "We'll notify you as soon as a spot becomes available."}})
     else:
         raise HTTPException(status_code=400, detail={"body": "We'll notify you as soon as a spot becomes available.", "title": "You're Already On The Waitlist!"})
+
+
+@router.get("/valid", dependencies=[Depends(decode_token)])
+async def get_auth():
+    return JSONResponse(status_code=200, content={"status_code": 200, "detail": "Successfully authenticated."})
