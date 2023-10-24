@@ -6,11 +6,13 @@ from botocore.exceptions import ClientError
 from decimal import Decimal
 
 from src.v1.feeds.constants import TOP_EVENTS_STALENESS_THRESHOLD, TOP_EVENTS_LIMIT, MOST_VIEWED_TOKENS_STALENESS_THRESHOLD, MOST_VIEWED_TOKENS_LIMIT, MOST_VIEWED_TOKENS_NUM_MINUTES, TOP_EVENTS_NUM_MINUTES
-from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter, convert_floats_to_decimals
+from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter, convert_floats_to_decimals, get_swap_link
 from src.v1.feeds.models import EventClick, TokenView
 from src.v1.feeds.exceptions import TimestreamReadException, TimestreamWriteException
+from src.v1.feeds.schemas import MarketDataResponse
 
 from src.v1.shared.models import ChainEnum
+from src.v1.shared.models import DexEnum
 from src.v1.shared.DAO import DAO, RAO
 from src.v1.shared.models import validate_token_address
 from src.v1.shared.dependencies import get_token_contract_details, get_chain
@@ -607,3 +609,20 @@ async def get_token_details(chain: ChainEnum, token_address: str):
         raise e
 
     return token_details
+
+
+@router.get("/marketdata", response_model=MarketDataResponse, dependencies=[Depends(decode_token)], include_in_schema=True)
+def get_market_data(chain: ChainEnum, token_address: str = Depends(validate_token_address), dex: DexEnum = DexEnum.uniswapv2):
+    """
+    Retrieve token market data by using a token address and chain.
+
+    __Parameters:__
+    - **token_address** (str): The token address for the information.
+    - **chain** (str): The chain name on which the token is deployed.
+    - **dex** (str): The DEX name on which the token is deployed.
+    """
+    marketCap = 5_800_000
+    liquidityUsd = 30_700
+    volume24h = 10_000
+    swapLink = get_swap_link(dex.value, chain.value, token_address)
+    return MarketDataResponse(marketCap=marketCap, liquidityUsd=liquidityUsd, volume24h=volume24h, swapLink=swapLink)
