@@ -457,8 +457,8 @@ async def join_waitlist(email: EmailStr):
             raise HTTPException(status_code=500, detail=f"Failed to insert user {email} into waitlist database.")
 
         if not sent:
-            raise HTTPException(status_code=500, detail="Failed to send confirmation email to user.")
+            raise HTTPException(status_code=500, detail={"body": "Failed to send confirmation email to user."})
 
-        return JSONResponse(status_code=200, content={"body": "Successfully Joined Waitlist!", "title": "We'll notify you as soon as a spot becomes available."})
+        return JSONResponse(status_code=200, content={"status_code": 200, "body": "Successfully Joined Waitlist!", "title": "We'll notify you as soon as a spot becomes available."})
     else:
         raise HTTPException(status_code=400, detail={"body": "We'll notify you as soon as a spot becomes available.", "title": "You're Already On The Waitlist!"})
