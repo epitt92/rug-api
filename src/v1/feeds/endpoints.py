@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Cookie
 from fastapi.responses import JSONResponse
 from fastapi_jwt_auth import AuthJWT
-import json, boto3, os, dotenv, pandas as pd, logging, time, ast
+import json, boto3, os, dotenv, pandas as pd, logging, time, random
 from botocore.exceptions import ClientError
 from decimal import Decimal
 
@@ -38,6 +38,7 @@ router = APIRouter()
 
 FEEDS_DAO = DAO("feeds")
 CHAIN_FEEDS_RAO = RAO("chainfeeds", tte=5*60)
+MARKET_METRICS_RAO = RAO("marketmetrics", tte=2*60)
 
 @router.post("/eventclick", dependencies=[Depends(decode_token)])
 async def post_event_click(eventClick: EventClick):
@@ -621,8 +622,30 @@ def get_market_data(chain: ChainEnum, token_address: str = Depends(validate_toke
     - **chain** (str): The chain name on which the token is deployed.
     - **dex** (str): The DEX name on which the token is deployed.
     """
-    marketCap = 5_800_000
-    liquidityUsd = 30_700
-    volume24h = 10_000
-    swapLink = get_swap_link(dex.value, chain.value, token_address)
-    return MarketDataResponse(marketCap=marketCap, liquidityUsd=liquidityUsd, volume24h=volume24h, swapLink=swapLink)
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
+    _dex = str(dex.value) if isinstance(dex, DexEnum) else str(dex)
+    _key = f"{_chain}_{_dex}_{token_address}"
+
+    try:
+        data = MARKET_METRICS_RAO.get(_key)
+    except Exception as e:
+        logging.error(f'An exception occurred whilst fetching data from RAO: {e}')
+        data = None
+        pass
+
+    if not data:
+        # TODO: Implement calculations for market data here
+        marketCap = random.randint(100_000, 1_000_000_000)
+        liquidityUsd = random.randint(500, 10_000_000)
+        volume24h = int(random.randint(0, 1000) * liquidityUsd / 1000)
+        swapLink = get_swap_link(dex.value, chain.value, token_address)
+
+        data = {"marketCap": marketCap, "liquidityUsd": liquidityUsd, "volume24h": volume24h, "swapLink": swapLink}
+
+        try:
+            MARKET_METRICS_RAO.put(_key, data)
+        except Exception as e:
+            logging.error(f'An exception occurred whilst writing data to RAO: {e}')
+            pass
+
+    return MarketDataResponse(**data)
