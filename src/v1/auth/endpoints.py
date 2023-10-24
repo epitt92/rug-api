@@ -1,4 +1,4 @@
-import os, boto3, logging, requests, time
+import os, boto3, logging, requests, time, dotenv
 from functools import lru_cache
 from fastapi import Depends, HTTPException, APIRouter, Response, security
 from fastapi.responses import JSONResponse
@@ -17,6 +17,8 @@ from src.v1.auth.schemas import (
         EmailAccountBase, CreateEmailAccount,
         SignInEmailAccount, VerifyEmailAccount,
         UserAccessTokens, ResetPassword)
+
+dotenv.load_dotenv()
 
 router = APIRouter()
 
@@ -88,7 +90,7 @@ def decode_token(
 
         claims.validate()
     except errors.JoseError:
-        raise HTTPException(status_code=403, detail="Bad auth token")
+        raise HTTPException(status_code=403, detail="Exception: Invalid Authentication Token Provided.")
 
     return claims
 
@@ -97,18 +99,6 @@ def decode_token(
 #          JWT Token Validation              #
 #                                            #
 ##############################################
-
-@router.get("/email/validate/")
-def validate_access_token(access_token: str) -> bool:
-    try:
-        response = cognito.get_user(AccessToken=access_token)
-        return access_token if response.get("Username") else False
-    except cognito.exceptions.NotAuthorizedException as e:
-        logging.error(f"Exception: NotAuthorizedException: {e}")
-        return False
-    except Exception as e:
-        logging.error(f"Exception: Unknown Cognito Exception: {e}")
-        return False
 
 @router.get("/email/username/")
 def get_username_from_access_token(access_token: str) -> str:
@@ -129,34 +119,6 @@ def get_username_from_access_token(access_token: str) -> str:
     except Exception as e:
         logging.error(f"Exception: Unknown Cognito Exception: {e}")
         return {}
-
-
-@router.get("/email/refresh/")
-def refresh_access_token(refresh_token: str) -> Response:
-    CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
-
-    if not CLIENT_ID:
-        # TODO: Add custom exception for this
-        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
-
-    try:
-        response = cognito.initiate_auth(
-            ClientId=CLIENT_ID,
-            AuthFlow='REFRESH_TOKEN_AUTH',
-            AuthParameters={
-                'REFRESH_TOKEN': refresh_token
-            }
-        )
-
-        if response.get('AuthenticationResult'):
-            access_token = response.get('AuthenticationResult').get('AccessToken')
-            return JSONResponse(status_code=200, content={"accessToken": access_token})
-        else:
-            return None
-    except ClientError as e:
-        logging.warning(f"Exception: ClientError whilst attempting to refresh access token: {e}")
-        return None
-    
 
 @router.get("/email/exists/") 
 async def check_username_exists(user: EmailStr):
@@ -180,8 +142,7 @@ async def check_username_exists(user: EmailStr):
         raise CognitoException(str(e))
 
 
-@router.delete("/email/delete/")
-async def rollback_user_creation(access_token: str = Depends(validate_access_token)) -> Response:
+async def rollback_user_creation(username: str) -> Response:
     USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
 
     if not USER_POOL_ID:
@@ -189,7 +150,7 @@ async def rollback_user_creation(access_token: str = Depends(validate_access_tok
 
     # Rollback: Delete the user from Cognito if an error occurred after sign_up
     try:
-        username = get_username_from_access_token(access_token).get("username")
+        # username = get_username_from_access_token(access_token).get("username")
 
         if not username:
             raise CognitoException("Exception: No username found in access token.")
@@ -239,11 +200,7 @@ async def create_user(user: CreateEmailAccount):
         logging.error(f"Rolling back user creation for user {user.username}.")
 
         if error_code == "UsernameExistsException":
-            try:
-                await rollback_user_creation(user.username)
-            except Exception as f:
-                logging.error(f"Exception: An exception occurred whilst attempting to rollback user creation: {f}")
-
+            logging.error(f"Exception: The user with given email {user.username} already exists.")
             raise CognitoUserAlreadyExists(user.username, f"User with given email {user.username} already exists.")
         elif error_code == "UnexpectedLambdaException":
             try:
@@ -293,7 +250,9 @@ async def verify_user(user: VerifyEmailAccount):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    return JSONResponse(status_code=200, content={"detail": "User account successfully verified!"})
+    logging.info(f"User {user.username} successfully verified their account.")
+
+    return await sign_in(SignInEmailAccount(username=user.username, password=user.password))
 
 
 @router.post("/email/verify/resend")
@@ -348,6 +307,8 @@ async def sign_in(user: SignInEmailAccount) -> Response:
     except cognito.exceptions.NotAuthorizedException as e:
         # Raise a custom exception here for invalid authentication
         raise CognitoIncorrectCredentials(user.username, user.password, f"Exception: NotAuthorizedException for user {user.username}")
+    except cognito.exceptions.UserNotConfirmedException as e:
+        raise HTTPException(status_code=401, detail=f"User {user.username} has not confirmed their OTP.")
     except ClientError as e:
         error_code = e.response['Error']['Code']
 
@@ -444,7 +405,7 @@ def send_confirmation_join_waitlist(email: str):
     email_body = body
     
     try:
-        ses.send_email(
+        _ = ses.send_email(
             Source="no-reply@rug.ai",
             Destination={
                 'ToAddresses': [
@@ -496,8 +457,13 @@ async def join_waitlist(email: EmailStr):
             raise HTTPException(status_code=500, detail=f"Failed to insert user {email} into waitlist database.")
 
         if not sent:
-            raise HTTPException(status_code=500, detail="Failed to send confirmation email to user.")
+            raise HTTPException(status_code=500, detail={"title": "Unable to Send Email", "body": "We failed to send you an email on that address, please try again."})
 
-        return JSONResponse(status_code=200, content={"detail": "Successfully joined waitlist."})
+        return JSONResponse(status_code=200, content={"status_code": 200, "detail": {"body": "Successfully Joined Waitlist!", "title": "We'll notify you as soon as a spot becomes available."}})
     else:
-        raise HTTPException(status_code=400, detail="User already on waitlist.")
+        raise HTTPException(status_code=400, detail={"body": "We'll notify you as soon as a spot becomes available.", "title": "You're Already On The Waitlist!"})
+
+
+@router.get("/valid", dependencies=[Depends(decode_token)])
+async def get_auth():
+    return JSONResponse(status_code=200, content={"status_code": 200, "detail": "Successfully authenticated."})

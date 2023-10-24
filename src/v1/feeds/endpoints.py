@@ -1,17 +1,19 @@
 from fastapi import APIRouter, Depends, Cookie
 from fastapi.responses import JSONResponse
 from fastapi_jwt_auth import AuthJWT
-import json, boto3, os, dotenv, pandas as pd, logging, time, ast
+import json, boto3, os, dotenv, pandas as pd, logging, time, random
 from botocore.exceptions import ClientError
 from decimal import Decimal
 
 from src.v1.feeds.constants import TOP_EVENTS_STALENESS_THRESHOLD, TOP_EVENTS_LIMIT, MOST_VIEWED_TOKENS_STALENESS_THRESHOLD, MOST_VIEWED_TOKENS_LIMIT, MOST_VIEWED_TOKENS_NUM_MINUTES, TOP_EVENTS_NUM_MINUTES
-from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter, convert_floats_to_decimals
+from src.v1.feeds.dependencies import process_row, TimestreamEventAdapter, convert_floats_to_decimals, get_swap_link
 from src.v1.feeds.models import EventClick, TokenView
 from src.v1.feeds.exceptions import TimestreamReadException, TimestreamWriteException
+from src.v1.feeds.schemas import MarketDataResponse
 
 from src.v1.shared.models import ChainEnum
-from src.v1.shared.DAO import DAO
+from src.v1.shared.models import DexEnum
+from src.v1.shared.DAO import DAO, RAO
 from src.v1.shared.models import validate_token_address
 from src.v1.shared.dependencies import get_token_contract_details, get_chain
 from src.v1.shared.exceptions import DatabaseLoadFailureException, DatabaseInsertFailureException
@@ -35,9 +37,13 @@ write_client = TimestreamEventAdapter()
 router = APIRouter()
 
 FEEDS_DAO = DAO("feeds")
+CHAIN_FEEDS_RAO = RAO("chainfeeds", tte=5*60)
+MARKET_METRICS_RAO = RAO("marketmetrics", tte=2*60)
 
-@router.post("/eventclick")
+@router.post("/eventclick", dependencies=[Depends(decode_token)])
 async def post_event_click(eventClick: EventClick):
+    # TODO: Fetch username from access token provided in header
+
     try:
         eventHash = eventClick.event_id
         userId = eventClick.username
@@ -52,8 +58,10 @@ async def post_event_click(eventClick: EventClick):
     return JSONResponse(status_code=200, content={"detail": f"Event view for {eventHash} from user {userId} recorded."})
 
 
-@router.post("/tokenview")
+@router.post("/tokenview", dependencies=[Depends(decode_token)])
 async def post_token_view(tokenView: TokenView):
+    # TODO: Fetch username from access token provided in header
+
     try:
         chain = tokenView.chain
         token_address = tokenView.token_address
@@ -70,11 +78,8 @@ async def post_token_view(tokenView: TokenView):
     return JSONResponse(status_code=200, content={"detail": f"Token view for token {token_address} on chain {chain} from user {user_id} recorded."})
 
 
-# TODO: Add more robust exception handling to this endpoint
-# TODO: Remove limit and numMinutes
 @router.get("/mostviewed", dependencies=[Depends(decode_token)])
 async def get_most_viewed_tokens(limit: int = 50):
-
     # Add a DAO check for most viewed reel
     try:
         _most_viewed_tokens = FEEDS_DAO.find_most_recent_by_pk("mostviewed")
@@ -271,7 +276,7 @@ async def get_most_viewed_token_result(limit: int = 50, num_minutes: int = 30):
     return output
 
 # TODO: Add more robust exception handling to this endpoint
-@router.get("/topevents")
+@router.get("/topevents", dependencies=[Depends(decode_token)])
 async def get_top_events(limit: int = 50):
     logging.info(f'Fetching top event list with limit {limit}...')
 
@@ -512,8 +517,20 @@ async def get_most_viewed_events_result(limit: int = 50, numMinutes: int = 30):
         return []
 
 # TODO: Add caching to this endpoint to reduce the number of calls to Timestream
-@router.get("/tokenevents", include_in_schema=True)
+@router.get("/tokenevents", dependencies=[Depends(decode_token)], include_in_schema=True)
 async def get_token_events(number_of_events: int = 50, chain: ChainEnum = None):
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else "all"
+
+    try:
+        data = CHAIN_FEEDS_RAO.get(_chain)
+    except Exception as e:
+        logging.error(f'An exception occurred whilst fetching data from RAO: {e}')
+        data = None
+        pass
+
+    if data:
+        return data
+
     if number_of_events > 50:
         number_of_events = 50
 
@@ -571,7 +588,15 @@ async def get_token_events(number_of_events: int = 50, chain: ChainEnum = None):
     pdf['timestamp'] = pdf['timestamp'].apply(lambda x: int(float(x)))
 
     # Return the data as a list of dictionaries
-    return pdf.to_dict('records')
+    output = pdf.to_dict('records')
+
+    try:
+        data = CHAIN_FEEDS_RAO.put(_chain, output)
+    except Exception as e:
+        logging.error(f'An exception occurred whilst writing data to RAO: {e}')
+        pass
+
+    return output
 
 # TODO: Add more robust exception handling to this endpoint
 async def get_token_details(chain: ChainEnum, token_address: str):
@@ -585,3 +610,42 @@ async def get_token_details(chain: ChainEnum, token_address: str):
         raise e
 
     return token_details
+
+
+@router.get("/marketdata", response_model=MarketDataResponse, dependencies=[Depends(decode_token)], include_in_schema=True)
+def get_market_data(chain: ChainEnum, token_address: str = Depends(validate_token_address), dex: DexEnum = DexEnum.uniswapv2):
+    """
+    Retrieve token market data by using a token address and chain.
+
+    __Parameters:__
+    - **token_address** (str): The token address for the information.
+    - **chain** (str): The chain name on which the token is deployed.
+    - **dex** (str): The DEX name on which the token is deployed.
+    """
+    _chain = str(chain.value) if isinstance(chain, ChainEnum) else str(chain)
+    _dex = str(dex.value) if isinstance(dex, DexEnum) else str(dex)
+    _key = f"{_chain}_{_dex}_{token_address}"
+
+    try:
+        data = MARKET_METRICS_RAO.get(_key)
+    except Exception as e:
+        logging.error(f'An exception occurred whilst fetching data from RAO: {e}')
+        data = None
+        pass
+
+    if not data:
+        # TODO: Implement calculations for market data here
+        marketCap = random.randint(100_000, 1_000_000_000)
+        liquidityUsd = random.randint(500, 10_000_000)
+        volume24h = int(random.randint(0, 1000) * liquidityUsd / 1000)
+        swapLink = get_swap_link(dex.value, chain.value, token_address)
+
+        data = {"marketCap": marketCap, "liquidityUsd": liquidityUsd, "volume24h": volume24h, "swapLink": swapLink}
+
+        try:
+            MARKET_METRICS_RAO.put(_key, data)
+        except Exception as e:
+            logging.error(f'An exception occurred whilst writing data to RAO: {e}')
+            pass
+
+    return MarketDataResponse(**data)

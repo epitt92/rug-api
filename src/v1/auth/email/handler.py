@@ -38,7 +38,13 @@ def custom_message_forgot_password(event):
     reset_code = event['request']['codeParameter']
 
     subject = "You've Requested to Reset Your Password"
-    reset_link = urlparse.quote_plus(f"https://rug.ai/reset-pwd?username={recipient}&code={reset_code}")
+
+    # Only encode the parameter values
+    recipient_ = recipient.split('@')
+    encoded_recipient = recipient_[0] + urlparse.quote_plus('@') + recipient_[1]
+
+    reset_link = f"https://rug-fe-git-dev-diffusion-io.vercel.app/reset-pwd?username={encoded_recipient}&code={reset_code}"
+
     body = render_template('reset-password.html', title=subject, username=recipient, reset_link=reset_link)
 
     event['response']['emailSubject'] = subject

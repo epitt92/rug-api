@@ -29,6 +29,7 @@ class SignInEmailAccount(EmailAccountBase):
 
 class VerifyEmailAccount(BaseModel):
     username: EmailStr
+    password: constr(min_length=10)
     confirmation_code: str
     
     @root_validator(pre=True)

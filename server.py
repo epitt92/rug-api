@@ -28,7 +28,7 @@ load_access_token()
 logging.info(f"GoPlus access token file loaded successfully.")
 
 TITLE = "rug.ai API"
-VERSION = "2.4"
+VERSION = "2.5"
 
 app = FastAPI(docs_url="/endpoints", redoc_url="/documentation", title=TITLE, version=VERSION, favicon='https://rug.ai/favicon.ico')
 
@@ -144,10 +144,10 @@ async def block_explorer_data_exception_handler(request, exc: BlockExplorerDataE
     )
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc: HTTPException):
+async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail}
+        content={"status_code": exc.status_code, "detail": exc.detail}
     )
 
 # Application level exception handling, this is overriden by exception handling at the lower level
@@ -155,7 +155,7 @@ async def http_exception_handler(request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
-        status_code=exc.status_code, # Internal Server Error
+        status_code=500, # Internal Server Error
         content={"detail": "An unexpected and uncaught exception was raised during an API call."}
     )
 

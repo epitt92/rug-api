@@ -19,3 +19,4 @@ ARBITRUM_NATIVE_ASSET = "ETH"
 BASE_NATIVE_ASSET = "ETH"
 
 CHAIN_ID_MAPPING = {'ethereum': 1, 'bsc': 56, 'arbitrum': 42161, 'base': 8453}
+CHAIN_SYMBOL_MAPPING = {'ethereum': 'eth', 'bsc': 'bsc', 'arbitrum': 'arb', 'base': 'base'}
