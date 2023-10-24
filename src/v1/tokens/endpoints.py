@@ -288,7 +288,7 @@ async def get_token_audit_summary(chain: ChainEnum, token_address: str = Depends
 
     try:
         # TODO: Quick fix for now to avoid excessive API charges
-        # response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, MessageGroupId=f"audit_{pk}", message_data=message)
+        response = TOKEN_ANALYSIS_QUEUE.get_item(pk=pk, MessageGroupId=f"audit_{pk}", message_data=message, post_to_queue=False)
         response = None
     except Exception as e:
         logging.error(f"Exception: Whilst calling the queue object for `audit` for {token_address} on chain {chain}.")
@@ -379,7 +379,9 @@ async def get_holder_chart(chain: ChainEnum, token_address: str = Depends(valida
 
     cluster_summary = await get_token_clustering(chain, token_address)
 
-    if not cluster_summary:
+    found = not cluster_summary or isinstance(cluster_summary, JSONResponse)
+
+    if not found:
         logging.info(f"Exception: No cluster summary was found for {token_address} on chain {chain}.")
         try:
             data = fetch_holders(token_address=token_address, chain=chain)

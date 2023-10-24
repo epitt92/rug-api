@@ -307,6 +307,8 @@ async def sign_in(user: SignInEmailAccount) -> Response:
     except cognito.exceptions.NotAuthorizedException as e:
         # Raise a custom exception here for invalid authentication
         raise CognitoIncorrectCredentials(user.username, user.password, f"Exception: NotAuthorizedException for user {user.username}")
+    except cognito.exceptions.UserNotConfirmedException as e:
+        raise HTTPException(status_code=401, detail=f"User {user.username} has not confirmed their OTP.")
     except ClientError as e:
         error_code = e.response['Error']['Code']
 
