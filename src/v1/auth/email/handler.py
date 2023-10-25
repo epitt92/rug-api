@@ -41,7 +41,7 @@ def custom_message_forgot_password(event):
 
     # Only encode the parameter values
     recipient_ = recipient.split('@')
-    encoded_recipient = recipient_[0] + urlparse.quote_plus('@') + recipient_[1]
+    encoded_recipient = urlparse.quote_plus(recipient_[0]) + urlparse.quote_plus('@') + recipient_[1]
 
     reset_link = f"https://rug-fe-git-dev-diffusion-io.vercel.app/reset-pwd?username={encoded_recipient}&code={reset_code}"
 
