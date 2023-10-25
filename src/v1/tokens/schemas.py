@@ -14,6 +14,7 @@ from src.v1.sourcecode.schemas import SourceCodeResponse
 
 severity_mapping = {"high": 3, "medium": 2, "low": 1}
 
+
 class AIComment(BaseModel):
     commentType: str = None
     title: str = None
@@ -25,9 +26,10 @@ class AIComment(BaseModel):
 
     @root_validator(pre=True)
     def pre_process(cls, values):
-        if values['severity'] in severity_mapping:
-            values['severity'] = severity_mapping.get(values['severity'])
+        if values["severity"] in severity_mapping:
+            values["severity"] = severity_mapping.get(values["severity"])
         return values
+
 
 class AISummary(BaseModel):
     numIssues: int
@@ -35,11 +37,13 @@ class AISummary(BaseModel):
     description: str
     comments: List[AIComment]
 
+
 ######################################################
 #                                                    #
 #                  Cluster Schemas                   #
 #                                                    #
 ######################################################
+
 
 class Holder(BaseModel):
     address: str
@@ -48,17 +52,22 @@ class Holder(BaseModel):
     @root_validator(pre=True)
     def pre_process(cls, values):
         # Convert tokenAddress to lowercase
-        if 'address' in values:
-            values['address'] = values['address'].lower()
+        if "address" in values:
+            values["address"] = values["address"].lower()
         return values
-    
-    @validator('address')
+
+    @validator("address")
     def validate_address(cls, value):
-        if not value.startswith('0x'):
-            raise ValueError('Field "address" must be a valid Ethereum address beginning with "0x".')
+        if not value.startswith("0x"):
+            raise ValueError(
+                'Field "address" must be a valid Ethereum address beginning with "0x".'
+            )
         if len(value) != 42:
-            raise ValueError('Field "address" must be a valid Ethereum address with length 42.')
+            raise ValueError(
+                'Field "address" must be a valid Ethereum address with length 42.'
+            )
         return value
+
 
 class Cluster(BaseModel):
     members: List[Holder]
@@ -68,18 +77,19 @@ class Cluster(BaseModel):
 
     @root_validator(pre=True)
     def pre_process(cls, values):
-        values['numMembers'] = len(values['members'])
-        values['percentage'] = 0
-        for holder in values['members']:
+        values["numMembers"] = len(values["members"])
+        values["percentage"] = 0
+        for holder in values["members"]:
             if isinstance(holder, dict):
-                values['percentage'] += holder['percentage']
+                values["percentage"] += holder["percentage"]
             elif isinstance(holder, Holder):
-                values['percentage'] += holder.percentage
+                values["percentage"] += holder.percentage
 
-        if not values.get('label'):
-            values['label'] = 'holder'
-            
+        if not values.get("label"):
+            values["label"] = "holder"
+
         return values
+
 
 class ClusterResponse(BaseModel):
     clusters: List[Cluster]
@@ -88,28 +98,31 @@ class ClusterResponse(BaseModel):
 
     @root_validator(pre=True)
     def pre_process(cls, values):
-        values['numClusters'] = len(values['clusters'])
-        values['totalPercentage'] = 0
-        for cluster in values['clusters']:
+        values["numClusters"] = len(values["clusters"])
+        values["totalPercentage"] = 0
+        for cluster in values["clusters"]:
             if isinstance(cluster, dict):
-                values['totalPercentage'] += cluster['percentage']
+                values["totalPercentage"] += cluster["percentage"]
             elif isinstance(cluster, Cluster):
-                values['totalPercentage'] += cluster.percentage
+                values["totalPercentage"] += cluster.percentage
         return values
-    
+
+
 ######################################################
 #                                                    #
 #         Supply & Transferrability Schemas          #
 #                                                    #
 ######################################################
 
+
 class ContractItem(BaseModel):
     title: str = None
     description: str = None
     severity: int = None
 
+
 class ContractResponse(BaseModel):
-    items : List[ContractItem]
+    items: List[ContractItem]
     numIssues: int = None
     score: confloat(ge=0.0, le=100.0) = None
     description: str = None
@@ -117,8 +130,9 @@ class ContractResponse(BaseModel):
 
     @root_validator(pre=True)
     def pre_process(cls, values):
-        values['numIssues'] = len(values['items'])
+        values["numIssues"] = len(values["items"])
         return values
+
 
 ######################################################
 #                                                    #
@@ -126,12 +140,14 @@ class ContractResponse(BaseModel):
 #                                                    #
 ######################################################
 
+
 class SocialMedia(BaseModel):
     twitter: Optional[HttpUrl] = None
     telegram: Optional[HttpUrl] = None
     discord: Optional[HttpUrl] = None
     webUrl: Optional[HttpUrl] = None
     buyLink: Optional[HttpUrl] = None
+
 
 class MarketData(BaseModel):
     lockedLiquidity: Optional[float] = None
@@ -145,12 +161,14 @@ class MarketData(BaseModel):
     totalSupply: Optional[float] = None
     totalSupplyPercentage: Optional[float] = None
 
+
 class TokenMetadata(TokenBase, SocialMedia, MarketData):
     contractDeployer: Optional[str] = None
     lastUpdatedTimestamp: Optional[int] = None
     txCount: Optional[int] = None
     holders: Optional[int] = None
     latestPrice: Optional[float] = None
+
 
 class SimulationResponse(BaseModel):
     supplySummary: ContractResponse = None
