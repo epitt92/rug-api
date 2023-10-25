@@ -26,7 +26,7 @@
 #         raise DatabaseLoadFailureException(message=f"Exception: Boto3 exception whilst fetching data from 'users' with PK: {user}")
 #     except Exception as _:
 #         raise DatabaseLoadFailureException(message=f"Exception: Unknown exception whilst fetching data from 'users' with PK: {user}")
-    
+
 #     if user_data:
 #         return UserReferralData(**user_data)
 #     else:
@@ -53,8 +53,8 @@
 #     if not current_referral_code:
 #         # Generate a new referral code with a default number of uses
 #         new_referral_code = ReferralCode(
-#                                 code=generate_referral_code(), 
-#                                 expiry=int(time.time()) + EXPIRY_BUFFER, 
+#                                 code=generate_referral_code(),
+#                                 expiry=int(time.time()) + EXPIRY_BUFFER,
 #                                 initialUses=DEFAULT_NUMBER_OF_USES,
 #                                 uses=[]
 #                                 )
@@ -65,14 +65,14 @@
 
 #         if number_of_uses == 0:
 #             raise Exception(f"Exception: The referral code {current_referral_code} has no uses remaining.")
-        
+
 #         new_referral_code = ReferralCode(
-#                                 code=generate_referral_code(), 
-#                                 expiry=int(time.time()) + EXPIRY_BUFFER, 
+#                                 code=generate_referral_code(),
+#                                 expiry=int(time.time()) + EXPIRY_BUFFER,
 #                                 initialUses=number_of_uses,
 #                                 uses=[]
 #                                 )
-    
+
 #     # TODO: Update the database for the user with this new referral code object
 #     # TODO: Update the database for the referral code with the new referral code object
 
@@ -87,7 +87,7 @@
 #         referral_code_data = REFERRAL_CODE_DAO.find_most_recent_by_pk(code)
 #     except ClientError as e:
 #         raise DatabaseLoadFailureException(message=f"Exception: Boto3 exception whilst fetching data from 'referralcodes' with PK: {code}")
-    
+
 #     if referral_code_data:
 #         return ReferralCode(**referral_code_data)
 #     else:
@@ -105,7 +105,7 @@
 #         referral_code_details = get_referral_code_details(code)
 #     except Exception as e:
 #         raise e
-    
+
 #     number_of_uses = referral_code_details.get('numberOfUses')
 
 #     if number_of_uses == 0:
@@ -121,7 +121,7 @@
 #                                 initialUses=referral_code_details.get('initialUses'),
 #                                 uses=referral_code_details.get('uses').append(referral_code_use)
 #                                 )
-    
+
 #     # TODO: Update the database for the referral code with the new referral code object
 
 #     return JSONResponse(status_code=200, content={"detail": f"Successfully used referral code {code} for user {user}."})

@@ -4,12 +4,13 @@ from web3 import Web3
 
 import re
 
+
 class EmailAccountBase(BaseModel):
     username: EmailStr
 
     @root_validator(pre=True)
     def pre_process(cls, values):
-        values['username'] = values['username'].lower()
+        values["username"] = values["username"].lower()
         return values
 
 
@@ -17,7 +18,7 @@ class CreateEmailAccount(EmailAccountBase):
     password: constr(min_length=10)
     referral_code: str
 
-    @validator('referral_code')
+    @validator("referral_code")
     def referral_code_is_valid(cls, v):
         # TODO: Must check if the referral code is valid
         return v
@@ -31,17 +32,17 @@ class VerifyEmailAccount(BaseModel):
     username: EmailStr
     password: constr(min_length=10)
     confirmation_code: str
-    
+
     @root_validator(pre=True)
     def pre_process(cls, values):
-        values['username'] = values['username'].lower()
+        values["username"] = values["username"].lower()
         return values
-    
-    @validator('confirmation_code')
+
+    @validator("confirmation_code")
     def confirmation_code_is_valid(cls, v):
         valid = bool(re.match(r"^\d{6}$", v))
         if not valid:
-            raise ValueError('Confirmation code must be a 6-digit number.')
+            raise ValueError("Confirmation code must be a 6-digit number.")
         return v
 
 
@@ -63,13 +64,13 @@ class SignedMessage(BaseModel):
     def pre_process(cls, values):
         values["address"] = values["address"].lower()
         return values
-    
-    @validator('address')
+
+    @validator("address")
     def address_is_valid(cls, v):
         valid = bool(re.match(r"^0x[a-fA-F0-9]{40}$", v))
         if not valid:
-            raise ValueError('Address must be a valid Ethereum address.')
-        return v 
+            raise ValueError("Address must be a valid Ethereum address.")
+        return v
 
 
 class UserAccessTokens(BaseModel):

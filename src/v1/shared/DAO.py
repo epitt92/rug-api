@@ -11,12 +11,17 @@ from src.v1.shared.exceptions import SQSException
 
 dotenv.load_dotenv()
 
-CLIENT_URL = os.environ.get('REDIS_CLIENT_URL')
-CLIENT_PORT = os.environ.get('REDIS_CLIENT_PORT')
+CLIENT_URL = os.environ.get("REDIS_CLIENT_URL")
+CLIENT_PORT = os.environ.get("REDIS_CLIENT_PORT")
 
 if not CLIENT_URL or not CLIENT_PORT:
-    logging.error(f"Exception: Redis Client URL or Port not found in environment variables.")
-    raise Exception("Exception: Redis Client URL or Port not found in environment variables.")
+    logging.error(
+        f"Exception: Redis Client URL or Port not found in environment variables."
+    )
+    raise Exception(
+        "Exception: Redis Client URL or Port not found in environment variables."
+    )
+
 
 class DecimalEncoder(JSONEncoder):
     def default(self, o):
@@ -24,30 +29,32 @@ class DecimalEncoder(JSONEncoder):
             return float(o)
         return super().default(o)
 
+
 class RAO:
     """
     Redis Access Object (RAO) class to store and retrieve data from Redis/ElastiCache.
-    
+
     This object corresponds to a specific table name in DynamoDB. It then acts as a base layer for caching for DAO object queries.
-    
+
     It has a TTE (Time-To-Expiry) which determines after which amount of time cached keys expire.
-    
+
     It stores all data in a JSON-serialised string format on the Redis server.
     """
+
     def __init__(self, prefix: str, tte: int = 5 * 60) -> None:
         self.client_url = CLIENT_URL
         self.client_port = CLIENT_PORT
         self.prefix = prefix
-        self.tte = tte # 5 minutes until keys expire
-        
+        self.tte = tte  # 5 minutes until keys expire
+
         if not self.client_url or not self.client_port:
             raise Exception("Exception: Redis Client URL or Port not found.")
-        
+
         self.client = redis.Redis(host=self.client_url, port=self.client_port, db=0)
-    
+
     def generate_key(self, pk: str):
         return self.prefix + "_" + pk
-    
+
     def put(self, pk: str, data: dict):
         key = self.generate_key(pk)
         logging.info(f"Storing key {key} in Redis for {self.tte}s...")
@@ -59,11 +66,11 @@ class RAO:
     def get(self, pk: str):
         key = self.generate_key(pk)
         serialised_data = self.client.get(key)
-        
+
         if not serialised_data:
             logging.info(f"Key {key} was not stored in Redis...")
             return serialised_data
-        
+
         logging.info(f"Key {key} was stored in Redis...")
         data = json.loads(serialised_data, parse_float=float, parse_int=int)
 
@@ -75,10 +82,8 @@ class DAO:
     Data Access Object (DAO) class to store and retrieve data from a file.
     Currently, we are using pickle to store data in a file.
     """
-    def __init__(
-            self,
-            table_name: str,
-            region_name: str = 'eu-west-2') -> None:
+
+    def __init__(self, table_name: str, region_name: str = "eu-west-2") -> None:
         """
         Initialize DAO with a collection_name.
 
@@ -90,7 +95,7 @@ class DAO:
         """
         partition_key_name = None
         partition_range_name = None
-        dynamodb = boto3.resource('dynamodb', region_name=region_name)
+        dynamodb = boto3.resource("dynamodb", region_name=region_name)
 
         self.rao = RAO(prefix=table_name)
 
@@ -98,22 +103,20 @@ class DAO:
         self.table = dynamodb.Table(table_name)
 
         for key in self.table.key_schema:
-            if key['KeyType'] == 'HASH':
-                partition_key_name = key['AttributeName']
-            if key['KeyType'] == 'RANGE':
-                partition_range_name = key['AttributeName']
+            if key["KeyType"] == "HASH":
+                partition_key_name = key["AttributeName"]
+            if key["KeyType"] == "RANGE":
+                partition_range_name = key["AttributeName"]
             if partition_key_name and partition_range_name:
                 break
 
         if partition_key_name is None:
-            raise ValueError(f'Could not find partition key for table {table_name}')
+            raise ValueError(f"Could not find partition key for table {table_name}")
 
         self.partition_key_name = partition_key_name
         self.partition_range_name = partition_range_name
 
-    def find_all_by_pk(
-            self,
-            partition_key_value: str) -> List[Dict[Any, Any]]:
+    def find_all_by_pk(self, partition_key_value: str) -> List[Dict[Any, Any]]:
         """
         Find all documents that match the partition key and its respective value.
 
@@ -128,11 +131,9 @@ class DAO:
             KeyConditionExpression=Key(self.partition_key_name).eq(partition_key_value)
         )
 
-        return response['Items']
+        return response["Items"]
 
-    def find_most_recent_by_pk(
-            self,
-            partition_key_value: str) -> Dict[Any, Any]:
+    def find_most_recent_by_pk(self, partition_key_value: str) -> Dict[Any, Any]:
         """
         Find the most recent document that match the partition key and its respective value.
 
@@ -146,30 +147,34 @@ class DAO:
             # Check if the key is in Redis
             data = self.rao.get(partition_key_value)
         except Exception as e:
-            logging.error(f"Exception: An exception occurred whilst fetching data from Redis: {e}")
+            logging.error(
+                f"Exception: An exception occurred whilst fetching data from Redis: {e}"
+            )
             data = None
 
         if data:
             logging.info(f"Key {partition_key_value} was stored in Redis...")
             return data
-        
+
         logging.info(f"Key {partition_key_value} was not stored in Redis...")
 
         # If not, fetch from DynamoDB
         response = self.table.query(
             KeyConditionExpression=Key(self.partition_key_name).eq(partition_key_value),
             ScanIndexForward=False,
-            Limit=1
+            Limit=1,
         )
 
-        if len(response['Items']) == 1:
-            data = response['Items'][0]
+        if len(response["Items"]) == 1:
+            data = response["Items"][0]
 
             try:
                 # Store in Redis
                 self.rao.put(partition_key_value, data)
             except Exception as e:
-                logging.error(f"Exception: An exception occurred whilst storing data in Redis: {e}")
+                logging.error(
+                    f"Exception: An exception occurred whilst storing data in Redis: {e}"
+                )
                 pass
 
             logging.info(f"Key {partition_key_value} was stored in Redis...")
@@ -178,9 +183,7 @@ class DAO:
             # Returning None here so that it's easy to do a check on whether a value exists
             return None
 
-    def find_count_by_pk(
-            self,
-            partition_key_value: str) -> bool:
+    def find_count_by_pk(self, partition_key_value: str) -> bool:
         """
         Find if a document exists that match the partition key and its respective value.
 
@@ -192,14 +195,11 @@ class DAO:
         """
         response = self.table.query(
             KeyConditionExpression=Key(self.partition_key_name).eq(partition_key_value),
-            Select='COUNT'
+            Select="COUNT",
         )
-        return response['Count']
+        return response["Count"]
 
-    def insert_one(
-            self,
-            partition_key_value: str,
-            item: Dict[Any, Any]) -> None:
+    def insert_one(self, partition_key_value: str, item: Dict[Any, Any]) -> None:
         """
         Insert a document with a partition key.
 
@@ -214,19 +214,19 @@ class DAO:
         logging.info(f"Inserting item {item} into DynamoDB...")
         self.table.put_item(
             Item=item,
-            ConditionExpression=f'attribute_not_exists({self.partition_key_name})')
-        
+            ConditionExpression=f"attribute_not_exists({self.partition_key_name})",
+        )
+
         try:
             # Update Redis
             self.rao.put(partition_key_value, item)
         except Exception as e:
-            logging.error(f"Exception: An exception occurred whilst storing data in Redis: {e}")
+            logging.error(
+                f"Exception: An exception occurred whilst storing data in Redis: {e}"
+            )
             pass
 
-    def insert_new(
-        self,
-        partition_key_value: str,
-        item: Dict[Any, Any]) -> None:
+    def insert_new(self, partition_key_value: str, item: Dict[Any, Any]) -> None:
         """
         Insert a document with a partition key.
 
@@ -241,19 +241,34 @@ class DAO:
             # Update Redis
             self.rao.put(partition_key_value, item)
         except Exception as e:
-            logging.error(f"Exception: An exception occurred whilst storing data in Redis: {e}")
+            logging.error(
+                f"Exception: An exception occurred whilst storing data in Redis: {e}"
+            )
             pass
 
 
 class DatabaseQueueObject:
     """Object to interact with DynamoDB and SQS."""
-    def __init__(self, table_name: str, queue_url: str, region_name: str = 'eu-west-2', staleness: Optional[int] = None) -> None:
+
+    def __init__(
+        self,
+        table_name: str,
+        queue_url: str,
+        region_name: str = "eu-west-2",
+        staleness: Optional[int] = None,
+    ) -> None:
         self.DAO = DAO(table_name=table_name, region_name=region_name)
-        self.sqs = boto3.client('sqs', region_name=region_name)
+        self.sqs = boto3.client("sqs", region_name=region_name)
         self.queue_url = queue_url
         self.staleness = staleness
 
-    def get_item(self, pk: str, MessageGroupId: str, message_data: dict, post_to_queue: bool = True) -> Optional[dict]:
+    def get_item(
+        self,
+        pk: str,
+        MessageGroupId: str,
+        message_data: dict,
+        post_to_queue: bool = True,
+    ) -> Optional[dict]:
         """Try to find most recent in DynamoDB, otherwise send a message to SQS.
 
         To make this function work, we consider the following:
@@ -280,12 +295,14 @@ class DatabaseQueueObject:
         to_queue = False
 
         # Check whether the item is stale or exists
-        if item and item.get('timestamp'):
+        if item and item.get("timestamp"):
             if self.staleness:
-                is_stale = int(time.time()) - int(item.get('timestamp')) > self.staleness
-                logging.info(f'Item found is stale: {is_stale}')
+                is_stale = (
+                    int(time.time()) - int(item.get("timestamp")) > self.staleness
+                )
+                logging.info(f"Item found is stale: {is_stale}")
                 to_queue = True if is_stale else False
-            
+
         if item is None or to_queue:
             if post_to_queue:
                 try:
@@ -293,12 +310,14 @@ class DatabaseQueueObject:
                         QueueUrl=self.queue_url,
                         MessageBody=json.dumps(message_data),
                         MessageGroupId=MessageGroupId,
-                        MessageDeduplicationId=MessageGroupId
+                        MessageDeduplicationId=MessageGroupId,
                     )
 
-                    logging.info(f'Success: Message sent to SQS: {message_data}')
+                    logging.info(f"Success: Message sent to SQS: {message_data}")
                 except Exception as e:
-                    logging.error(f'Exception: An error occurred whilst sending a message to SQS: {e}')
+                    logging.error(
+                        f"Exception: An error occurred whilst sending a message to SQS: {e}"
+                    )
                     raise SQSException()
 
         return item

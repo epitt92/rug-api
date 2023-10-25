@@ -4,6 +4,7 @@ from src.v1.search.schemas import SearchResponse
 
 router = APIRouter()
 
+
 @router.get("/", response_model=SearchResponse)
 def query_search(query: str):
     """
