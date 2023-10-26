@@ -153,7 +153,7 @@ async def check_username_exists(user: EmailStr):
         response = cognito.admin_get_user(UserPoolId=USER_POOL_ID, Username=user)
         if response and "Username" in response:
             return JSONResponse(
-                status_code=200,
+                status_code=400,
                 content={"exists": True, "detail": "Username already exists."},
             )
         else:
