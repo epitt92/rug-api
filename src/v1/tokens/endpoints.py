@@ -340,7 +340,9 @@ async def get_token_metrics(
         try:
             rpc = get_rpc_provider(chain)
             checksum_address = rpc.to_checksum_address(token_address)
-            is_token = rpc.eth.get_code(checksum_address).decode("utf-8", errors="replace")
+            is_token = rpc.eth.get_code(checksum_address).decode(
+                "utf-8", errors="replace"
+            )
 
             if len(is_token) == 0:
                 raise HTTPException(
