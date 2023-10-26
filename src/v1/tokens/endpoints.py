@@ -605,9 +605,7 @@ async def get_holder_chart(
 
     cluster_summary = await get_token_clustering(chain, token_address)
 
-    found = not cluster_summary or isinstance(cluster_summary, JSONResponse)
-
-    if not found:
+    if not cluster_summary or isinstance(cluster_summary, JSONResponse):
         logging.info(
             f"Exception: No cluster summary was found for {token_address} on chain {chain}."
         )
