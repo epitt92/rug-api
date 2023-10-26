@@ -282,7 +282,7 @@ async def get_supply_transferrability_info(
 
 @router.get(
     "/metadata/{chain}/{token_address}",
-    # dependencies=[Depends(decode_token)],
+    dependencies=[Depends(decode_token)],
     include_in_schema=True,
 )
 async def get_token_metrics(
