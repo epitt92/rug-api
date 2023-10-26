@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class FrequencyEnum(Enum):
     one_hour = "1h"
     four_hour = "4h"

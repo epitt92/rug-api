@@ -11,12 +11,22 @@ from cachetools import cached, TTLCache
 # from src.v1.referral.endpoints import post_referral_code_use
 from src.v1.shared.DAO import DAO
 
-from src.v1.auth.exceptions import CognitoException, CognitoUserAlreadyExists, CognitoIncorrectCredentials, CognitoLambdaException, CognitoUserDoesNotExist
+from src.v1.auth.exceptions import (
+    CognitoException,
+    CognitoUserAlreadyExists,
+    CognitoIncorrectCredentials,
+    CognitoLambdaException,
+    CognitoUserDoesNotExist,
+)
 from src.v1.auth.dependencies import render_template
 from src.v1.auth.schemas import (
-        EmailAccountBase, CreateEmailAccount,
-        SignInEmailAccount, VerifyEmailAccount,
-        UserAccessTokens, ResetPassword)
+    EmailAccountBase,
+    CreateEmailAccount,
+    SignInEmailAccount,
+    VerifyEmailAccount,
+    UserAccessTokens,
+    ResetPassword,
+)
 
 dotenv.load_dotenv()
 
@@ -25,10 +35,10 @@ router = APIRouter()
 token_scheme = security.HTTPBearer()
 
 # Initialize Cognito client
-cognito = boto3.client('cognito-idp', region_name="eu-west-2")
-ses = boto3.client('ses', region_name="eu-west-2")
+cognito = boto3.client("cognito-idp", region_name="eu-west-2")
+ses = boto3.client("ses", region_name="eu-west-2")
 
-WHITELIST_DAO = DAO(table_name='whitelist')
+WHITELIST_DAO = DAO(table_name="whitelist")
 
 ##############################################
 #                                            #
@@ -36,11 +46,13 @@ WHITELIST_DAO = DAO(table_name='whitelist')
 #                                            #
 ##############################################
 
+
 class Settings(BaseModel):
     JWT_SECRET = "secret"
     JWT_ALGORITHM = "RS256"
 
-    cognito_user_pool_id: str = os.environ.get('COGNITO_USER_POOL_ID')
+    cognito_user_pool_id: str = os.environ.get("COGNITO_USER_POOL_ID")
+
 
 @lru_cache()
 def get_settings() -> Settings:
@@ -49,6 +61,7 @@ def get_settings() -> Settings:
     """
     return Settings()
 
+
 def get_jwks_url(settings: Settings = Depends(get_settings)) -> str:
     """
     Build JWKS url
@@ -56,6 +69,7 @@ def get_jwks_url(settings: Settings = Depends(get_settings)) -> str:
     pool_id = settings.cognito_user_pool_id
     region = pool_id.split("_")[0]
     return f"https://cognito-idp.{region}.amazonaws.com/{pool_id}/.well-known/jwks.json"
+
 
 @cached(TTLCache(maxsize=1, ttl=3600))
 def get_jwks(url: str = Depends(get_jwks_url)) -> KeySet:
@@ -66,6 +80,7 @@ def get_jwks(url: str = Depends(get_jwks_url)) -> KeySet:
     with requests.get(url) as response:
         response.raise_for_status()
         return JsonWebKey.import_key_set(response.json())
+
 
 def decode_token(
     token: security.HTTPAuthorizationCredentials = Depends(token_scheme),
@@ -79,8 +94,8 @@ def decode_token(
             s=token.credentials,
             key=jwks,
             #  claim_options={
-                # Example of validating audience to match expected value
-                # "aud": {"essential": True, "values": [APP_CLIENT_ID]}
+            # Example of validating audience to match expected value
+            # "aud": {"essential": True, "values": [APP_CLIENT_ID]}
             #  }
         )
 
@@ -90,15 +105,19 @@ def decode_token(
 
         claims.validate()
     except errors.JoseError:
-        raise HTTPException(status_code=403, detail="Exception: Invalid Authentication Token Provided.")
+        raise HTTPException(
+            status_code=403, detail="Exception: Invalid Authentication Token Provided."
+        )
 
     return claims
+
 
 ##############################################
 #                                            #
 #          JWT Token Validation              #
 #                                            #
 ##############################################
+
 
 @router.get("/email/username/")
 def get_username_from_access_token(access_token: str) -> str:
@@ -120,24 +139,33 @@ def get_username_from_access_token(access_token: str) -> str:
         logging.error(f"Exception: Unknown Cognito Exception: {e}")
         return {}
 
-@router.get("/email/exists/") 
+
+@router.get("/email/exists/")
 async def check_username_exists(user: EmailStr):
     USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
 
     if not USER_POOL_ID:
-        raise CognitoException("Exception: COGNITO_USER_POOL_ID not set in environment variables.")
+        raise CognitoException(
+            "Exception: COGNITO_USER_POOL_ID not set in environment variables."
+        )
 
     try:
-        response = cognito.admin_get_user(
-            UserPoolId=USER_POOL_ID,
-            Username=user
-        )
-        if response and 'Username' in response:
-            return JSONResponse(status_code=200, content={"exists": True, "detail": "Username already exists."})
+        response = cognito.admin_get_user(UserPoolId=USER_POOL_ID, Username=user)
+        if response and "Username" in response:
+            return JSONResponse(
+                status_code=200,
+                content={"exists": True, "detail": "Username already exists."},
+            )
         else:
-            return JSONResponse(status_code=200, content={"exists": False, "detail": "Username is available."})
+            return JSONResponse(
+                status_code=200,
+                content={"exists": False, "detail": "Username is available."},
+            )
     except cognito.exceptions.UserNotFoundException:
-        return JSONResponse(status_code=200, content={"exists": False, "detail": "Username is available."})
+        return JSONResponse(
+            status_code=200,
+            content={"exists": False, "detail": "Username is available."},
+        )
     except Exception as e:
         raise CognitoException(str(e))
 
@@ -146,7 +174,9 @@ async def rollback_user_creation(username: str) -> Response:
     USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
 
     if not USER_POOL_ID:
-        raise CognitoException("Exception: COGNITO_USER_POOL_ID not set in environment variables.")
+        raise CognitoException(
+            "Exception: COGNITO_USER_POOL_ID not set in environment variables."
+        )
 
     # Rollback: Delete the user from Cognito if an error occurred after sign_up
     try:
@@ -157,13 +187,23 @@ async def rollback_user_creation(username: str) -> Response:
 
         cognito.admin_delete_user(
             UserPoolId=USER_POOL_ID,  # Replace with your User Pool ID
-            Username=username
+            Username=username,
         )
     except ClientError as e:
-        logging.error(f"Exception: ClientError whilst attempting to rollback user creation: {e}")
-        raise CognitoException(f"Exception: ClientError whilst attempting to rollback user creation: {e}")
+        logging.error(
+            f"Exception: ClientError whilst attempting to rollback user creation: {e}"
+        )
+        raise CognitoException(
+            f"Exception: ClientError whilst attempting to rollback user creation: {e}"
+        )
 
-    return JSONResponse(status_code=200, content={"detail": f"User {username} successfully rolled back and deleted from Cognito."})
+    return JSONResponse(
+        status_code=200,
+        content={
+            "detail": f"User {username} successfully rolled back and deleted from Cognito."
+        },
+    )
+
 
 ##############################################
 #                                            #
@@ -171,13 +211,16 @@ async def rollback_user_creation(username: str) -> Response:
 #                                            #
 ##############################################
 
+
 @router.post("/email/create/")
 async def create_user(user: CreateEmailAccount):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
         # TODO: Add custom exception for this
-        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
+        raise CognitoException(
+            "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
+        )
 
     logging.info(f"Client ID: {CLIENT_ID}")
 
@@ -186,48 +229,60 @@ async def create_user(user: CreateEmailAccount):
             ClientId=CLIENT_ID,
             Username=user.username,
             Password=user.password,
-            UserAttributes=[
-                {
-                    'Name': 'email',
-                    'Value': user.username
-                }
-            ]
+            UserAttributes=[{"Name": "email", "Value": user.username}],
         )
     except ClientError as e:
-        error_code = e.response['Error']['Code']
+        error_code = e.response["Error"]["Code"]
 
-        logging.error(f"Exception: Boto3 ClientError thrown during call to `sign_up`: {e}")
+        logging.error(
+            f"Exception: Boto3 ClientError thrown during call to `sign_up`: {e}"
+        )
         logging.error(f"Rolling back user creation for user {user.username}.")
 
         if error_code == "UsernameExistsException":
-            logging.error(f"Exception: The user with given email {user.username} already exists.")
-            raise CognitoUserAlreadyExists(user.username, f"User with given email {user.username} already exists.")
+            logging.error(
+                f"Exception: The user with given email {user.username} already exists."
+            )
+            raise CognitoUserAlreadyExists(
+                user.username, f"User with given email {user.username} already exists."
+            )
         elif error_code == "UnexpectedLambdaException":
             try:
                 await rollback_user_creation(user.username)
             except Exception as f:
-                logging.error(f"Exception: An exception occurred whilst attempting to rollback user creation: {f}")
+                logging.error(
+                    f"Exception: An exception occurred whilst attempting to rollback user creation: {f}"
+                )
 
             raise CognitoLambdaException(f"Exception: UnexpectedLambdaException: {e}")
         else:
             try:
                 await rollback_user_creation(user.username)
             except Exception as f:
-                logging.error(f"Exception: An exception occurred whilst attempting to rollback user creation: {f}")
+                logging.error(
+                    f"Exception: An exception occurred whilst attempting to rollback user creation: {f}"
+                )
 
             raise CognitoException(f"Exception: Unknown ClientError: {e}")
     except Exception as e:
         try:
             await rollback_user_creation(user.username)
         except Exception as e:
-            logging.error(f"Exception: An exception occurred whilst attempting to rollback user creation: {e}")
+            logging.error(
+                f"Exception: An exception occurred whilst attempting to rollback user creation: {e}"
+            )
 
         raise CognitoException(f"Exception: Unknown Cognito Exception: {e}")
 
     # Post a use on the referral code if this was successful
     # await post_referral_code_use(user.referral_code, user.username)
 
-    return JSONResponse(status_code=200, content={"detail": "User created successfully! Please verify your email using the link or code sent by AWS Cognito.",})
+    return JSONResponse(
+        status_code=200,
+        content={
+            "detail": "User created successfully! Please verify your email using the link or code sent by AWS Cognito.",
+        },
+    )
 
 
 @router.post("/email/verify/")
@@ -235,24 +290,30 @@ async def verify_user(user: VerifyEmailAccount):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
+        raise CognitoException(
+            "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
+        )
 
     try:
         _ = cognito.confirm_sign_up(
             ClientId=CLIENT_ID,
             Username=user.username,
-            ConfirmationCode=user.confirmation_code
+            ConfirmationCode=user.confirmation_code,
         )
     except cognito.exceptions.CodeMismatchException as e:
         raise HTTPException(status_code=400, detail="Invalid confirmation code.")
     except cognito.exceptions.ExpiredCodeException as e:
-        raise HTTPException(status_code=400, detail="The confirmation code has expired.")
+        raise HTTPException(
+            status_code=400, detail="The confirmation code has expired."
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     logging.info(f"User {user.username} successfully verified their account.")
 
-    return await sign_in(SignInEmailAccount(username=user.username, password=user.password))
+    return await sign_in(
+        SignInEmailAccount(username=user.username, password=user.password)
+    )
 
 
 @router.post("/email/verify/resend")
@@ -265,20 +326,25 @@ async def resend_verification_code(user: EmailAccountBase):
 
     try:
         # The new confirmation code will be sent to the user's registered email or phone number
-        _ = cognito.resend_confirmation_code(
-            ClientId=CLIENT_ID,
-            Username=user.username
-        )
+        _ = cognito.resend_confirmation_code(ClientId=CLIENT_ID, Username=user.username)
     except cognito.exceptions.UserNotFoundException as e:
         # TODO: Add exception handling here
-        raise CognitoUserDoesNotExist(user.username, f"Exception: UserNotFoundException for user {user.username}")
+        raise CognitoUserDoesNotExist(
+            user.username, f"Exception: UserNotFoundException for user {user.username}"
+        )
     except cognito.exceptions.LimitExceededException as e:
         # TODO: Add exception handling here
-        raise CognitoException(f"Exception: LimitExceededException for user {user.username}")
+        raise CognitoException(
+            f"Exception: LimitExceededException for user {user.username}"
+        )
     except Exception as e:
-        raise CognitoException(f"Exception: Unknown Cognito Exception for user {user.username}")
+        raise CognitoException(
+            f"Exception: Unknown Cognito Exception for user {user.username}"
+        )
 
-    return JSONResponse(status_code=200, content={"message": "Confirmation code resent successfully."})
+    return JSONResponse(
+        status_code=200, content={"message": "Confirmation code resent successfully."}
+    )
 
 
 @router.post("/email/signin/", response_model=UserAccessTokens)
@@ -287,35 +353,44 @@ async def sign_in(user: SignInEmailAccount) -> Response:
 
     if not CLIENT_ID:
         # TODO: Add custom exception for this
-        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
+        raise CognitoException(
+            "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
+        )
 
     try:
         response = cognito.initiate_auth(
             ClientId=CLIENT_ID,
-            AuthFlow='USER_PASSWORD_AUTH',
-            AuthParameters={
-                'USERNAME': user.username,
-                'PASSWORD': user.password
-            }
+            AuthFlow="USER_PASSWORD_AUTH",
+            AuthParameters={"USERNAME": user.username, "PASSWORD": user.password},
         )
 
         # Return the JWT tokens
         tokens = {
-            "accessToken": response.get('AuthenticationResult').get('AccessToken'),
-            "refreshToken": response.get('AuthenticationResult').get('RefreshToken'),
+            "accessToken": response.get("AuthenticationResult").get("AccessToken"),
+            "refreshToken": response.get("AuthenticationResult").get("RefreshToken"),
         }
     except cognito.exceptions.NotAuthorizedException as e:
         # Raise a custom exception here for invalid authentication
-        raise CognitoIncorrectCredentials(user.username, user.password, f"Exception: NotAuthorizedException for user {user.username}")
+        raise CognitoIncorrectCredentials(
+            user.username,
+            user.password,
+            f"Exception: NotAuthorizedException for user {user.username}",
+        )
     except cognito.exceptions.UserNotConfirmedException as e:
-        raise HTTPException(status_code=401, detail=f"User {user.username} has not confirmed their OTP.")
+        raise HTTPException(
+            status_code=401, detail=f"User {user.username} has not confirmed their OTP."
+        )
     except ClientError as e:
-        error_code = e.response['Error']['Code']
+        error_code = e.response["Error"]["Code"]
 
-        logging.error(f"Exception: Boto3 ClientError thrown during call to `sign_in`: {e}")
+        logging.error(
+            f"Exception: Boto3 ClientError thrown during call to `sign_in`: {e}"
+        )
         logging.error(f"Username: {user.username} Password: {user.password}")
 
-        raise CognitoException(f"Exception: Unknown ClientError with Error Code {error_code}: {e}")
+        raise CognitoException(
+            f"Exception: Unknown ClientError with Error Code {error_code}: {e}"
+        )
     except Exception as e:
         # TODO: Raise a catch-all exception here
         raise CognitoException(f"Exception: Unknown Cognito Exception: {e}")
@@ -338,7 +413,9 @@ async def refresh(Authorize: AuthJWT = Depends()):
 async def sign_out(Authorize: AuthJWT = Depends()):
     Authorize.jwt_required()
     Authorize.unset_jwt_cookies()
-    return JSONResponse(status_code=200, content={"detail": "User successfully signed out."})
+    return JSONResponse(
+        status_code=200, content={"detail": "User successfully signed out."}
+    )
 
 
 @router.post("/email/password/request")
@@ -346,22 +423,25 @@ async def request_reset_password(username: EmailStr):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
+        raise CognitoException(
+            "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
+        )
 
     try:
         # The verification code will be sent to the user's registered email or phone number
-        _ = cognito.forgot_password(
-            ClientId=CLIENT_ID,
-            Username=username
-        )
+        _ = cognito.forgot_password(ClientId=CLIENT_ID, Username=username)
     except cognito.exceptions.UserNotFoundException as e:
-        raise CognitoUserDoesNotExist(username, f"Exception: UserNotFoundException: {e}")
+        raise CognitoUserDoesNotExist(
+            username, f"Exception: UserNotFoundException: {e}"
+        )
     except cognito.exceptions.InvalidParameterException as e:
         raise CognitoException(f"Exception: InvalidParameterException: {e}")
     except Exception as e:
         raise CognitoException(f"Exception: Unknown Cognito Exception: {e}")
 
-    return JSONResponse(status_code=200, content={"detail": "Password reset code sent successfully."})
+    return JSONResponse(
+        status_code=200, content={"detail": "Password reset code sent successfully."}
+    )
 
 
 @router.post("/email/password/reset")
@@ -369,23 +449,29 @@ async def reset_password(user: ResetPassword):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        raise CognitoException("Exception: COGNITO_APP_CLIENT_ID not set in environment variables.")
+        raise CognitoException(
+            "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
+        )
 
     try:
         _ = cognito.confirm_forgot_password(
             ClientId=CLIENT_ID,
             Username=user.username,
             ConfirmationCode=user.verification_code,
-            Password=user.new_password
+            Password=user.new_password,
         )
         # The user's password is now reset
-        return JSONResponse(status_code=200, content={"detail": "Password reset successfully."})
+        return JSONResponse(
+            status_code=200, content={"detail": "Password reset successfully."}
+        )
     except cognito.exceptions.CodeMismatchException as e:
         # TODO: Add exception handling here
         raise HTTPException(status_code=400, detail="Invalid verification code.")
     except cognito.exceptions.ExpiredCodeException as e:
         # TODO: Add exception handling here
-        raise HTTPException(status_code=400, detail="The verification code has expired.")
+        raise HTTPException(
+            status_code=400, detail="The verification code has expired."
+        )
     except cognito.exceptions.UserNotFoundException as e:
         # TODO: Add exception handling here
         raise HTTPException(status_code=400, detail="User not found.")
@@ -399,29 +485,19 @@ async def reset_password(user: ResetPassword):
 def send_confirmation_join_waitlist(email: str):
     subject = "Thanks for Joining the rug.ai Waitlist!"
     logging.info(f"Sending confirmation email to user {email}.")
-    body = render_template('join-waitlist.html', title=subject)
+    body = render_template("join-waitlist.html", title=subject)
     logging.info(f"Email body: {body}")
     email_subject = subject
     email_body = body
-    
+
     try:
         _ = ses.send_email(
             Source="no-reply@rug.ai",
-            Destination={
-                'ToAddresses': [
-                    email
-                ]
-            },
+            Destination={"ToAddresses": [email]},
             Message={
-                'Subject': {
-                    'Data': email_subject
-                },
-                'Body': {
-                    'Html': {
-                        'Data': email_body
-                    }
-                }
-            }
+                "Subject": {"Data": email_subject},
+                "Body": {"Html": {"Data": email_body}},
+            },
         )
 
         return True
@@ -434,10 +510,7 @@ def send_confirmation_join_waitlist(email: str):
 async def join_waitlist(email: EmailStr):
     sign_up_time = int(time.time())
 
-    waitlist_payload = {
-        "timestamp": sign_up_time,
-        "whitelisted": True
-    }
+    waitlist_payload = {"timestamp": sign_up_time, "whitelisted": True}
 
     sent = None
 
@@ -452,13 +525,46 @@ async def join_waitlist(email: EmailStr):
             # Send confirmation email to user
             sent = send_confirmation_join_waitlist(email)
 
-            if sent: logging.info(f"Successfully sent confirmation email to user {email}.")
+            if sent:
+                logging.info(f"Successfully sent confirmation email to user {email}.")
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to insert user {email} into waitlist database.")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to insert user {email} into waitlist database.",
+            )
 
         if not sent:
-            raise HTTPException(status_code=500, detail="Failed to send confirmation email to user.")
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "title": "Unable to Send Email",
+                    "body": "We failed to send you an email on that address, please try again.",
+                },
+            )
 
-        return JSONResponse(status_code=200, content={"detail": "Successfully joined waitlist."})
+        return JSONResponse(
+            status_code=200,
+            content={
+                "status_code": 200,
+                "detail": {
+                    "body": "Successfully Joined Waitlist!",
+                    "title": "We'll notify you as soon as a spot becomes available.",
+                },
+            },
+        )
     else:
-        raise HTTPException(status_code=400, detail="User already on waitlist.")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "body": "We'll notify you as soon as a spot becomes available.",
+                "title": "You're Already On The Waitlist!",
+            },
+        )
+
+
+@router.get("/valid", dependencies=[Depends(decode_token)])
+async def get_auth():
+    return JSONResponse(
+        status_code=200,
+        content={"status_code": 200, "detail": "Successfully authenticated."},
+    )
