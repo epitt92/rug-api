@@ -282,7 +282,7 @@ async def get_supply_transferrability_info(
 
 @router.get(
     "/metadata/{chain}/{token_address}",
-    dependencies=[Depends(decode_token)],
+    # dependencies=[Depends(decode_token)],
     include_in_schema=True,
 )
 async def get_token_metrics(
@@ -340,7 +340,7 @@ async def get_token_metrics(
         try:
             rpc = get_rpc_provider(chain)
             checksum_address = rpc.to_checksum_address(token_address)
-            is_token = rpc.eth.get_code(checksum_address).decode("utf-8")
+            is_token = rpc.eth.get_code(checksum_address).decode("utf-8", errors="replace")
 
             if len(is_token) == 0:
                 raise HTTPException(
@@ -348,6 +348,8 @@ async def get_token_metrics(
                     detail=f"Token address {token_address} on chain {chain} is not a token.",
                 )
         except Exception as e:
+            logging.error(e)
+
             raise HTTPException(
                 status_code=404,
                 detail=f"Token address {token_address} on chain {chain} is not a token.",
