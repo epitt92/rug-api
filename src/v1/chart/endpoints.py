@@ -1,5 +1,5 @@
 from fastapi import HTTPException, APIRouter, Depends
-import requests, logging, json
+import requests, logging, json, dotenv, os
 
 from src.v1.shared.models import ChainEnum, validate_token_address
 from src.v1.shared.exceptions import UnsupportedChainException, GoPlusDataException
@@ -15,6 +15,8 @@ from src.v1.chart.exceptions import CoinGeckoChartException
 from src.v1.auth.endpoints import decode_token
 
 logging.basicConfig(level=logging.INFO)
+
+dotenv.load_dotenv()
 
 router = APIRouter()
 
@@ -136,7 +138,15 @@ async def get_chart_data(
 
     # Call CoinGecko API with pool address and correct frequency
     try:
-        url = f"https://api.geckoterminal.com/api/v2/networks/{network}/pools/{pool_address}/ohlcv/{frequency_value}"
+        suffix = (
+            f"/?partner_api_key={os.environ.get('COINGECKO_API_KEY')}"
+            if os.environ.get("COINGECKO_API_KEY")
+            else ""
+        )
+        url = (
+            f"https://api.geckoterminal.com/api/v2/networks/{network}/pools/{pool_address}/ohlcv/{frequency_value}"
+            + suffix
+        )
 
         params = {"aggregate": frequency_aggregate, "limit": frequency_limit}
 
