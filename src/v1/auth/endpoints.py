@@ -9,7 +9,7 @@ from authlib.jose import JsonWebToken, JsonWebKey, KeySet, JWTClaims, errors
 from cachetools import cached, TTLCache
 
 # from src.v1.referral.endpoints import post_referral_code_use
-from src.v1.shared.DAO import DAO
+from src.v1.shared.DAO import DAO, RAO
 
 from src.v1.auth.exceptions import (
     CognitoException,
@@ -119,7 +119,6 @@ def decode_token(
 ##############################################
 
 
-@router.get("/email/username/")
 def get_username_from_access_token(access_token: str) -> str:
     try:
         response = cognito.get_user(AccessToken=access_token)
@@ -280,6 +279,7 @@ async def create_user(user: CreateEmailAccount):
     return JSONResponse(
         status_code=200,
         content={
+            "status_code": 200,
             "detail": "User created successfully! Please verify your email using the link or code sent by AWS Cognito.",
         },
     )
@@ -321,8 +321,9 @@ async def resend_verification_code(user: EmailAccountBase):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        # TODO: Add custom exception for this
-        raise ValueError()
+        raise CognitoException(
+            "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
+        )
 
     try:
         # The new confirmation code will be sent to the user's registered email or phone number
@@ -352,7 +353,6 @@ async def sign_in(user: SignInEmailAccount) -> Response:
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        # TODO: Add custom exception for this
         raise CognitoException(
             "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
         )
