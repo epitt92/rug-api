@@ -765,7 +765,7 @@ async def get_token_details(chain: ChainEnum, token_address: str):
 
 
 @router.get(
-    "/token",
+    "/token/marketdata",
     response_model=MarketDataResponse,
     dependencies=[Depends(decode_token)],
     include_in_schema=True,
@@ -824,7 +824,7 @@ async def gather_data(tokens: List[TokenData]):
 
 
 @router.post(
-    "/markets",
+    "/marketdata",
     response_model=List[MarketDataResponse],
     dependencies=[Depends(decode_token)],
     include_in_schema=True,
