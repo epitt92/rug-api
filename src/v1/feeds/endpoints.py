@@ -4,6 +4,8 @@ from fastapi_jwt_auth import AuthJWT
 import json, boto3, os, dotenv, pandas as pd, logging, time, random
 from botocore.exceptions import ClientError
 from decimal import Decimal
+from typing import List, Tuple
+import asyncio
 
 from src.v1.feeds.constants import (
     TOP_EVENTS_STALENESS_THRESHOLD,
@@ -21,7 +23,7 @@ from src.v1.feeds.dependencies import (
 )
 from src.v1.feeds.models import EventClick, TokenView
 from src.v1.feeds.exceptions import TimestreamReadException, TimestreamWriteException
-from src.v1.feeds.schemas import MarketDataResponse
+from src.v1.feeds.schemas import MarketDataResponse, TokenData
 
 from src.v1.shared.models import ChainEnum
 from src.v1.shared.models import DexEnum
@@ -763,12 +765,12 @@ async def get_token_details(chain: ChainEnum, token_address: str):
 
 
 @router.get(
-    "/marketdata",
+    "/token/marketdata",
     response_model=MarketDataResponse,
     dependencies=[Depends(decode_token)],
     include_in_schema=True,
 )
-def get_market_data(
+async def get_token_market_data(
     chain: ChainEnum,
     token_address: str = Depends(validate_token_address),
     dex: DexEnum = DexEnum.uniswapv2,
@@ -813,3 +815,20 @@ def get_market_data(
             pass
 
     return MarketDataResponse(**data)
+
+
+async def gather_data(tokens: List[TokenData]):
+    tasks = [get_token_market_data(t.chain, t.token_address, t.dex) for t in tokens]
+    results = await asyncio.gather(*tasks)
+    return results
+
+
+@router.post(
+    "/marketdata",
+    response_model=List[MarketDataResponse],
+    dependencies=[Depends(decode_token)],
+    include_in_schema=True,
+)
+async def get_market_data(tokens: List[TokenData]):
+    results = await gather_data(tokens)
+    return results
