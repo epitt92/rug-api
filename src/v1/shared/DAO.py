@@ -41,7 +41,7 @@ class RAO:
     It stores all data in a JSON-serialised string format on the Redis server.
     """
 
-    def __init__(self, prefix: str, tte: int = 5 * 60) -> None:
+    def __init__(self, prefix: str, tte: int = 15 * 60) -> None:
         self.client_url = CLIENT_URL
         self.client_port = CLIENT_PORT
         self.prefix = prefix
