@@ -765,14 +765,14 @@ async def get_token_details(chain: ChainEnum, token_address: str):
 
 
 @router.get(
-    "/marketdata",
+    "/token/marketdata",
     response_model=MarketDataResponse,
     dependencies=[Depends(decode_token)],
     include_in_schema=True,
 )
-async def get_market_data_async(
+async def get_token_market_data(
     chain: ChainEnum,
-    token_address: str,
+    token_address: str = Depends(validate_token_address),
     dex: DexEnum = DexEnum.uniswapv2,
 ):
     """
@@ -816,7 +816,9 @@ async def get_market_data_async(
 
     return MarketDataResponse(**data)
 
+
 async def gather_data(tokens: List[TokenData]):
+<<<<<<< HEAD
     tasks = [get_market_data_async(t.chain, t.token_address, t.dex) for t in tokens]
     results, _ = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -828,21 +830,19 @@ async def gather_data(tokens: List[TokenData]):
             output.append(None)
     
     return output
+=======
+    tasks = [get_token_market_data(t.chain, t.token_address, t.dex) for t in tokens]
+    results = await asyncio.gather(*tasks)
+    return results
+>>>>>>> 30fe35d92222cf4982fc298517c70742167aaf7f
+
 
 @router.post(
-    "/batch_marketdata",
+    "/marketdata",
     response_model=List[MarketDataResponse],
     dependencies=[Depends(decode_token)],
     include_in_schema=True,
 )
-async def get_batch_market_data(tokens: List[TokenData]):
-    """
-    Retrieve token market data by using a token address and chain.
-
-    __Parameters:__
-    - **token_address** (str): The token address for the information.
-    - **chain** (str): The chain name on which the token is deployed.
-    - **dex** (str): The DEX name on which the token is deployed.
-    """
+async def get_market_data(tokens: List[TokenData]):
     results = await gather_data(tokens)
     return results
