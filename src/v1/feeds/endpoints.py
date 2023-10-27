@@ -818,8 +818,16 @@ async def get_market_data_async(
 
 async def gather_data(tokens: List[TokenData]):
     tasks = [get_market_data_async(t.chain, t.token_address, t.dex) for t in tokens]
-    results = await asyncio.gather(*tasks)
-    return results
+    results, _ = await asyncio.gather(*tasks, return_exceptions=True)
+
+    output = [] 
+    for res in results:
+        if not isinstance(res, Exception):
+            output.append(res)
+        else:
+            output.append(None)
+    
+    return output
 
 @router.post(
     "/batch_marketdata",
