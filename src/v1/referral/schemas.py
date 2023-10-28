@@ -1,47 +1,52 @@
-# import time
-# from pydantic import BaseModel, EmailStr, constr, root_validator, validator
-# from typing import Optional, List, Union
+import time
+from pydantic import BaseModel, EmailStr, constr, root_validator, validator
+from typing import Optional, List, Union
 
+# referralcodes Table
+# Enforce that a (PK) can only have one row in the table
+class ReferralUser(BaseModel):
+    referralCode: str # (PK)
+    user: EmailStr # (SK)
 
-# class ReferralCodeUse(BaseModel):
-#     username: EmailStr
-#     timestamp: int
+# users Table
+# Enforce that a (PK) can only have one row in the table
+class Referral(BaseModel):
+    invitedUser: EmailStr # Email address of the invited user
+    timestamp: int # UNIX timestamp at which the invite was accepted
+    confirmed: bool = True
 
-#     @root_validator(pre=True)
-#     def pre_process(cls, values):
-#         values['username'] = values['username'].lower()
-#         values['timestamp'] = int(time.time())
-#         return values
+    @root_validator(pre=True)
+    def pre_process(cls, values):
+        values['timestamp'] = int(time.time())
+        return values
 
+class UsersEntry(BaseModel):
+    user: EmailStr # User who is inviting people (PK)
+    referralCode: str # Referral code itself (SK)
+    referrals: List[Referral] = []
 
-# # Response model for a row from the 'referralcodes' table
-# class ReferralCode(BaseModel):
-#     code: str # Primary Key
-#     expiry: int
-#     initialUses: int
+    totalReferrals: int # Number of people the user is able to invite in total
 
-#     uses: List[ReferralCodeUse]
+    referralsRemaining: int # Calculated during pre-processing
+    referralsUsed: int # Calculated during pre-processing
 
-#     numberUses: int
-#     usesRemaining: int
+    referralIsValid: bool = True # Used to prevent further sign ups by this user's referral
+    timeCreated: int
 
-#     @root_validator(pre=True)
-#     def pre_process(cls, values):
-#         values['code'] = values['code'].lower()
+    @root_validator(pre=True)
+    def validate_referrals(cls, values):
+        if values.get('referrals'):
+            accepted_referrals = []
+            for item in values['referrals']:
+                if isinstance(item, dict):
+                    if item.get('confirmed') == True:
+                        accepted_referrals.append(item)
+                else:
+                    if item.confirmed == True:
+                        accepted_referrals.append(item)
+            
+            values['referralsRemaining'] = values['totalReferrals'] - len(accepted_referrals)
+            values['referralsUsed'] = len(accepted_referrals)
 
-#         values['numberUses'] = len(values['uses']) if values.get('uses') else 0
-#         values['usesRemaining'] = values['initialUses'] - values['numberUses']
-
-#         return values
-
-
-# # Response model for GET /get_referral_code endpoint
-# class UserReferralData(BaseModel):
-#     username: EmailStr
-#     referralCode: str
-#     previousReferralCodes: List[ReferralCode]
-
-#     @root_validator(pre=True)
-#     def pre_process(cls, values):
-#         values['username'] = values['username'].lower()
-#         return values
+        values['timeCreated'] = int(time.time())
+        return values
