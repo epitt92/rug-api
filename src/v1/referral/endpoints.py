@@ -1,166 +1,64 @@
-# from fastapi import APIRouter
-# from fastapi.responses import JSONResponse
-# from botocore.exceptions import ClientError
-# import logging, time
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+from botocore.exceptions import ClientError
+import logging, time
 
-# from src.v1.referral.dependencies import generate_referral_code, check_if_referral_code_exists
-# from src.v1.referral.exceptions import UserDoesNotExist
-# from src.v1.referral.schemas import UserReferralData, ReferralCode, ReferralCodeUse
-# from src.v1.referral.constants import EXPIRY_BUFFER, DEFAULT_NUMBER_OF_USES
+from src.v1.referral.dependencies import generate_referral_code, check_if_referral_code_exists
+from src.v1.referral.dependencies import is_referral_valid
 
-# from src.v1.shared.DAO import DAO
-# from src.v1.shared.exceptions import DatabaseLoadFailureException
+from src.v1.shared.DAO import DAO
 
-# REFERRAL_CODE_DAO = DAO('referralcodes')
+router = APIRouter()
 
-# router = APIRouter()
+@router.get("/valid", include_in_schema=True)
+async def is_referral_valid(referral_code: str):
+    """
+    Informs the caller whether a given referral code is valid or not.
+    """
+    validity = is_referral_valid(referral_code)
 
-# @router.get("/current/{user}", response_model=UserReferralData, include_in_schema=True)
-# async def get_referral_code(user: str):
-#     """
-#     Gets the referral code for the user, if it exists.
-#     """
-#     try:
-#         user_data = USERS_DAO.find_most_recent_by_pk(user)
-#     except ClientError as _:
-#         raise DatabaseLoadFailureException(message=f"Exception: Boto3 exception whilst fetching data from 'users' with PK: {user}")
-#     except Exception as _:
-#         raise DatabaseLoadFailureException(message=f"Exception: Unknown exception whilst fetching data from 'users' with PK: {user}")
-
-#     if user_data:
-#         return UserReferralData(**user_data)
-#     else:
-#         raise UserDoesNotExist(user, f"Exception: User with username {user} does not exist in the database.")
+    status_code = 200 if validity else 400
+    return JSONResponse(status_code=status_code, content={"valid": validity})
 
 
-# @router.post("/generate/{user}", response_model=ReferralCode, include_in_schema=True)
-# async def generate_referral_code(user: str):
-#     """
-#     Generates a new referral code for the user and updates the metadata in the database.
+async def create_user(user: str):
+    """
+    Creates a new user in the database with the given email address.
+    """
+    # First calls generate_referral_code() to generate a new referral code
 
-#     If the user does not have a referral code, this will create the first code for the user.
+    # Adds a new row to `referralcodes` by instantiating a new ReferralUser object with the referral code and the user
 
-#     Otherwise, it will generate a new code, increment all data accordingly and update the database.
-#     """
-#     try:
-#         existing_referral_code = get_referral_code(user)
-#     except UserDoesNotExist as _:
-#         logging.warning(f"Exception: User with username {user} does not exist in the database. Proceeding to generate a new referral code for the user.")
-#         existing_referral_code = None
+    # Generates a new UsersEntry object with the user, the referral code, and an empty list of referrals
 
-#     current_referral_code = existing_referral_code.get('referralCode') if existing_referral_code else None
+    # Adds a new row to `users` by instantiating a new UsersEntry object with the user, the referral code, and an empty list of referrals
 
-#     if not current_referral_code:
-#         # Generate a new referral code with a default number of uses
-#         new_referral_code = ReferralCode(
-#                                 code=generate_referral_code(),
-#                                 expiry=int(time.time()) + EXPIRY_BUFFER,
-#                                 initialUses=DEFAULT_NUMBER_OF_USES,
-#                                 uses=[]
-#                                 )
-#     else:
-#         # Generate a new referral code with the number of uses from the previous code
-#         referral_code_details = get_referral_code_details(current_referral_code)
-#         number_of_uses = referral_code_details.get('numberOfUses')
-
-#         if number_of_uses == 0:
-#             raise Exception(f"Exception: The referral code {current_referral_code} has no uses remaining.")
-
-#         new_referral_code = ReferralCode(
-#                                 code=generate_referral_code(),
-#                                 expiry=int(time.time()) + EXPIRY_BUFFER,
-#                                 initialUses=number_of_uses,
-#                                 uses=[]
-#                                 )
-
-#     # TODO: Update the database for the user with this new referral code object
-#     # TODO: Update the database for the referral code with the new referral code object
-
-#     return new_referral_code
-
-# @router.get("/details/{code}", response_model=ReferralCode, include_in_schema=True)
-# async def get_referral_code_details(code: str):
-#     """
-#     Fetches details on the most up-to-date referral code for the user, including how many invites are left.
-#     """
-#     try:
-#         referral_code_data = REFERRAL_CODE_DAO.find_most_recent_by_pk(code)
-#     except ClientError as e:
-#         raise DatabaseLoadFailureException(message=f"Exception: Boto3 exception whilst fetching data from 'referralcodes' with PK: {code}")
-
-#     if referral_code_data:
-#         return ReferralCode(**referral_code_data)
-#     else:
-#         # TODO: Write custom exception to handle this case
-#         raise Exception(f"Exception: Referral code {code} does not exist in the database.")
+    return JSONResponse(status_code=200, content={"detail": f"Successfully created user {user}."})
 
 
-# # TODO: Add check that `user` exists in the database
-# @router.post("/use/{code}", include_in_schema=True)
-# async def post_referral_code_use(code: str, user: str):
-#     """
-#     Increments the number of uses for the referral code and updates the database.
-#     """
-#     try:
-#         referral_code_details = get_referral_code_details(code)
-#     except Exception as e:
-#         raise e
+# TODO: Add check that `user` exists in the database
+@router.post("/use/{code}", include_in_schema=True)
+async def post_referral_code_use(code: str, user: str):
+    """
+    Uses a referral code that belongs to a specific user.
 
-#     number_of_uses = referral_code_details.get('numberOfUses')
+    Note: This should check DynamoDB for a list of all valid referral codes to see if one exists, and if so, should replace it with a new row indicating how many invites that code has left.
 
-#     if number_of_uses == 0:
-#         raise Exception(f"Exception: The referral code {code} has no uses remaining.")
-#     elif referral_code_details.get('expiry') < int(time.time()):
-#         raise Exception(f"Exception: The referral code {code} has expired.")
+    Note: Manual insertions into this table will allow the team to invite many people on a single referral code.
+    """
+    # First, calls is_referral_valid() to check whether the referral code exists and is valid
 
-#     referral_code_use = ReferralCodeUse(username=user, timestamp=int(time.time()))
+    # Then pulls the referral code user using is_referral_exists() with return_bool=False
 
-#     updated_referral_code = ReferralCode(
-#                                 code=code,
-#                                 expiry=referral_code_details.get('expiry'),
-#                                 initialUses=referral_code_details.get('initialUses'),
-#                                 uses=referral_code_details.get('uses').append(referral_code_use)
-#                                 )
+    # Fetches the user data from `users` and modifies it:
+    # Instantiates a new Referral object with the invitedUser set to the user who used the referral code, and confirmed set to True
 
-#     # TODO: Update the database for the referral code with the new referral code object
+    # Adds the new Referral object to the list of referrals for the user who owns the referral code
 
-#     return JSONResponse(status_code=200, content={"detail": f"Successfully used referral code {code} for user {user}."})
+    # Instantiates a new UsersEntry object with the user who owns the referral code, the referral code itself, and the list of referrals
 
+    # Puts the new users entry into the database at the slot of the previous one
 
-# @router.get("/stats/{user}", include_in_schema=True)
-# async def get_user_stats(user: str):
-#     """
-#     Fetches details on the user invite statistics for a given user, including the number of points earned.
-#     """
-#     user_data = get_referral_code(user)
+    # Calls create_user to create a new UsersEntry object for the user who used the referral code
 
-#     referral_codes = user_data.get('previousReferralCodes').append(user_data.get('referralCode'))
-
-#     referral_details = [await get_referral_code_details(code) for code in referral_codes]
-
-#     total_referrals = sum([referral.numberUses for referral in referral_details])
-
-#     # TODO: Add handling for second order referrals, such as when a user refers a user who refers a user
-
-#     return JSONResponse(status_code=200, content={"detail": total_referrals})
-
-
-# def post_email_invite(user: str, email: str):
-#     """
-#     Sends an email invite to the given email address.
-#     """
-#     return
-
-
-# def get_invite_history(user: str):
-#     """
-#     Fetches the invite history for a given user.
-#     """
-#     return
-
-
-# def get_invite_chart(user: str):
-#     """
-#     Fetches the invite chart for a given user.
-#     """
-#     return
+    return JSONResponse(status_code=200, content={"detail": f"Successfully used referral code {code} for user {user}."})
