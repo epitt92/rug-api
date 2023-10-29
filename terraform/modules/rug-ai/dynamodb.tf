@@ -96,7 +96,7 @@ resource "aws_dynamodb_table" "rug_users_table" {
   range_key    = "referral_code"
 
   attribute {
-    name = "user"
+    name = "username"
     type = "S"
   }
   attribute {
@@ -115,7 +115,7 @@ resource "aws_dynamodb_table" "rug_referralcodes_table" {
     type = "S"
   }
   attribute {
-    name = "user"
+    name = "username"
     type = "S"
   }
 }
