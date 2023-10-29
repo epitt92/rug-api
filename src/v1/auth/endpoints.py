@@ -28,6 +28,7 @@ from src.v1.auth.schemas import (
     ResetPassword,
 )
 
+from src.v1.referral.dependencies import is_referral_valid_
 from src.v1.referral.endpoints import referral_code_use, is_referral_valid
 
 dotenv.load_dotenv()
@@ -223,7 +224,9 @@ async def create_user(user: CreateEmailAccount):
         )
     
     # Check if the referral code is valid
-    referral_code_valid = is_referral_valid(user.referral_code)
+    referral_code_valid = await is_referral_valid_(user.referral_code)
+
+    logging.info(f"Referral code {user.referral_code} is valid: {referral_code_valid}")
 
     if not referral_code_valid:
         raise HTTPException(
@@ -303,7 +306,8 @@ async def verify_user(user: VerifyEmailAccount):
         )
     
     # Check if the referral code is valid
-    referral_code_valid = is_referral_valid(user.referral_code)
+    referral_code_valid = await is_referral_valid_(user.referral_code)
+    
     if not referral_code_valid:
         raise HTTPException(
             status_code=400,

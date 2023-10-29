@@ -6,14 +6,14 @@ from typing import Optional, List, Union
 # referralcodes Table
 # Enforce that a (PK) can only have one row in the table
 class ReferralUser(BaseModel):
-    referralCode: str  # (PK)
-    user: EmailStr  # (SK)
+    referral_code: str  # (PK)
+    username: EmailStr  # (SK)
 
 
 # users Table
 # Enforce that a (PK) can only have one row in the table
 class Referral(BaseModel):
-    invitedUser: EmailStr  # Email address of the invited user
+    invited_username: EmailStr  # Email address of the invited user
     timestamp: int  # UNIX timestamp at which the invite was accepted
     confirmed: bool = True
 
@@ -24,8 +24,8 @@ class Referral(BaseModel):
 
 
 class UsersEntry(BaseModel):
-    user: EmailStr  # User who is inviting people (PK)
-    referralCode: str  # Referral code itself (SK)
+    username: EmailStr  # User who is inviting people (PK)
+    referral_code: str  # Referral code itself (SK)
     referrals: List[Referral] = []
 
     totalReferrals: int  # Number of people the user is able to invite in total
@@ -40,7 +40,7 @@ class UsersEntry(BaseModel):
 
     @root_validator(pre=True)
     def validate_referrals(cls, values):
-        if values.get("referrals"):
+        if values.get("referrals") or values.get("referrals") == []:
             accepted_referrals = []
             for item in values["referrals"]:
                 if isinstance(item, dict):
