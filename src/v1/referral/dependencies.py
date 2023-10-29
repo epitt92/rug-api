@@ -1,4 +1,4 @@
-import re, random, logging
+import re, random, logging, jinja2
 from fastapi import HTTPException
 from botocore.client import ClientError
 from pydantic import EmailStr
@@ -57,7 +57,7 @@ async def is_referral_valid_(referral_code: str) -> bool:
     # Calls is_referral_exists() with return_bool=False to get the user to which the referral code belongs
     user = await is_referral_exists_(referral_code, return_bool=False)
 
-    logging.info(user)
+    logging.info(f"User: {user}")
 
     # If the referral code exists, check whether the user has any invites remaining
     if user:
@@ -103,8 +103,8 @@ async def is_referral_exists_(
 
     logging.info(referral_code_data)
 
-    if referral_code_data and referral_code_data.get("user"):
-        return True if return_bool else referral_code_data.get("user")
+    if referral_code_data and referral_code_data.get("username"):
+        return True if return_bool else referral_code_data.get("username")
     else:
         return False if return_bool else None
 
@@ -123,3 +123,10 @@ async def generate_referral_code_() -> str:
             continue
 
     return code
+
+
+def render_template(template, **kwargs):
+    templateLoader = jinja2.FileSystemLoader(searchpath="src/v1/auth/email/templates")
+    templateEnv = jinja2.Environment(loader=templateLoader)
+    templ = templateEnv.get_template(template)
+    return templ.render(kwargs)

@@ -29,7 +29,7 @@ from src.v1.auth.schemas import (
 )
 
 from src.v1.referral.dependencies import is_referral_valid_
-from src.v1.referral.endpoints import referral_code_use, is_referral_valid
+from src.v1.referral.endpoints import referral_code_use
 
 dotenv.load_dotenv()
 
@@ -120,26 +120,6 @@ def decode_token(
 #          JWT Token Validation              #
 #                                            #
 ##############################################
-
-
-def get_username_from_access_token(access_token: str) -> str:
-    try:
-        response = cognito.get_user(AccessToken=access_token)
-        logging.info(f"Response: {response}")
-        user_attributes = response.get("UserAttributes")
-
-        if user_attributes:
-            for attribute in user_attributes:
-                if attribute.get("Name") == "email":
-                    return {"username": attribute.get("Value")}
-        logging.error(f"Exception: No email attribute found in response: {response}")
-        return {}
-    except cognito.exceptions.NotAuthorizedException as e:
-        logging.error(f"Exception: NotAuthorizedException: {e}")
-        return {}
-    except Exception as e:
-        logging.error(f"Exception: Unknown Cognito Exception: {e}")
-        return {}
 
 
 @router.get("/email/exists/")

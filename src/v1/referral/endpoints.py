@@ -1,13 +1,14 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
 from botocore.exceptions import ClientError
-import logging
+import logging, boto3
 
 from src.v1.referral.constants import DEFAULT_NUMBER_OF_USES
 from src.v1.referral.dependencies import (
     is_referral_valid_,
     generate_referral_code_,
     is_referral_exists_,
+    render_template,
 )
 from src.v1.referral.schemas import ReferralUser, UsersEntry, Referral
 
@@ -17,10 +18,14 @@ from src.v1.shared.exceptions import (
     DatabaseLoadFailureException,
 )
 
+from src.v1.auth.dependencies import get_username_from_access_token
+
 router = APIRouter()
 
 USERS_DAO = DAO("userstemp", cache=False)
 REFERRAL_CODE_DAO = DAO("referralcodestemp", cache=False)
+
+ses = boto3.client("ses", region_name="eu-west-2")
 
 
 @router.get("/valid", include_in_schema=True)
@@ -174,3 +179,118 @@ async def referral_code_use(code: str, user: str):
         status_code=200,
         content={"detail": f"Successfully used referral code {code} for user {user}."},
     )
+
+
+async def get_details_from_username(username: str):
+    """
+    Gets the details of a user from their username.
+    """
+    try:
+        details = USERS_DAO.find_most_recent_by_pk(username)
+    except ClientError as _:
+        raise DatabaseLoadFailureException(
+            message=f"Exception: Boto3 exception whilst fetching data from 'users' with PK: {username}"
+        )
+    except Exception as _:
+        raise DatabaseLoadFailureException(
+            message=f"Exception: Unknown exception whilst fetching data from 'users' with PK: {username}"
+        )
+
+    if details:
+        return details
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": f"User {username} does not exist."},
+        )
+
+
+@router.get("/details", include_in_schema=True)
+async def get_details(request: Request):
+    token = request.headers.get("Authorization")
+
+    sender = get_username_from_access_token(token)
+
+    return await get_details_from_username(sender)
+
+
+@router.post("/use", include_in_schema=True)
+def send_email_invite(email: str, referral_code: str):
+    subject = "You've Been Invited!"
+    logging.info(f"Sending invite email to user {email}.")
+
+    # TODO: Add the correct encoded URL to this email
+    body = render_template(
+        "referral-invite.html",
+        title=subject,
+        username=email,
+        referer="",
+        url="https://rug.ai",
+    )
+
+    email_subject = subject
+    email_body = body
+
+    try:
+        _ = ses.send_email(
+            Source="no-reply@rug.ai",
+            Destination={"ToAddresses": [email]},
+            Message={
+                "Subject": {"Data": email_subject},
+                "Body": {"Html": {"Data": email_body}},
+            },
+        )
+
+        return True
+    except Exception as e:
+        logging.info(f"Exception: {e}")
+        return False
+
+
+@router.post("/invite", include_in_schema=True)
+async def invite_user(request: Request, user: str):
+    """
+    Sends an email inviting a user to join the platform.
+
+    Determines who the sender is by checking the header of the request for an Authorization token.
+
+    Then asks Cognito who the sender is and uses this to determine the referral code to use. Then wraps this referral code into an email.
+    """
+    # First, fetches the access token from the request header
+    token = request.headers.get("Authorization")
+
+    logging.info(f"Token: {token}")
+
+    # Then, calls get_user() to get the user who sent the request
+    sender = get_username_from_access_token(token)
+
+    logging.info(f"Sender: {sender}")
+
+    # Then, calls is_referral_exists() to get the referral code of the sender
+    user_details = await get_details_from_username(sender)
+
+    referral_code = user_details.get("referral_code")
+
+    if not referral_code:
+        raise HTTPException(
+            status_code=400,
+            detail=f"User {sender} does not have a referral code.",
+        )
+
+    logging.info(f"Referral code: {referral_code}")
+
+    # Now formats the email to send to the user
+    confirmed = await send_email_invite(user, referral_code)
+
+    if confirmed:
+        # TODO: Add the unconfirmed email to the list of unconfirmed emails in the database for the inviter
+
+        return JSONResponse(
+            status_code=200,
+            content={"detail": f"Successfully invited user {user}."},
+        )
+    else:
+        return JSONResponse(
+            status_code=400,
+            content={"detail": f"Failed to invite user {user} as we were unable to send the email invite."},
+        )
