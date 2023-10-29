@@ -224,7 +224,6 @@ def send_email_invite(email: str, referral_code: str):
         "referral-invite.html",
         title=subject,
         username=email,
-        referer="",
         url="https://rug.ai",
     )
 
