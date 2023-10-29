@@ -6,7 +6,7 @@ from src.v1.shared.exceptions import UnsupportedChainException, GoPlusDataExcept
 from src.v1.shared.constants import CHAIN_ID_MAPPING
 from src.v1.shared.DAO import RAO
 
-from src.v1.chart.constants import FREQUENCY_MAPPING
+from src.v1.chart.constants import FREQUENCY_MAPPING, DURATION_MAPPING
 from src.v1.chart.dependencies import process_market_data
 from src.v1.chart.models import FrequencyEnum
 from src.v1.chart.schemas import ChartResponse
@@ -185,7 +185,7 @@ async def get_chart_data(
         )
 
     try:
-        output = process_market_data(market_data)
+        output = process_market_data(market_data, DURATION_MAPPING.get(frequency.value))
 
         try:
             CHART_RAO.put(_key, output.json())
