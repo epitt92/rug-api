@@ -76,8 +76,7 @@ async def create_user(user: str):
     )
 
 
-@router.post("/use/{code}", include_in_schema=True)
-async def post_referral_code_use(code: str, user: str):
+async def referral_code_use(code: str, user: str):
     """
     Uses a referral code that belongs to a specific user.
 

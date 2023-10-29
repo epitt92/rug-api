@@ -20,7 +20,10 @@ class CreateEmailAccount(EmailAccountBase):
 
     @validator("referral_code")
     def referral_code_is_valid(cls, v):
-        # TODO: Must check if the referral code is valid
+        # Check if the referral code is a 6 digit hexadecimal string
+        valid = bool(re.match(r"^[a-fA-F0-9]{6}$", v))
+        if not valid:
+            raise ValueError("Referral code must be a hexadecimal string of length 6.")
         return v
 
 

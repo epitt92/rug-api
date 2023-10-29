@@ -58,7 +58,7 @@ class UsersEntry(BaseModel):
         values["timeCreated"] = int(time.time())
         return values
 
-    @validator("referralRemaining")
+    @validator("referralsRemaining")
     def validate_referrals_remaining(cls, v):
         if v < 0:
             raise ValueError("Referrals remaining cannot be less than 0.")
