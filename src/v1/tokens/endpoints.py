@@ -11,6 +11,7 @@ from src.v1.shared.dependencies import get_primary_key, get_chain
 from src.v1.shared.schemas import ScoreResponse, Score
 from src.v1.shared.DAO import DAO, DatabaseQueueObject
 from src.v1.shared.models import ChainEnum, validate_token_address
+from src.v1.shared.cloud_task_creator import create_http_task_rug_cf
 from src.v1.shared.exceptions import (
     RugAPIException,
     DatabaseLoadFailureException,
@@ -65,10 +66,8 @@ TRANSFERRABILITY_REPORT_DAO = DAO(table_name="transferrabilityreports")
 TOKEN_METRICS_DAO = DAO(table_name="tokenmetrics")
 CLUSTER_REPORT_DAO = DAO(table_name="clusterreports")
 HOLDERS_DAO = DAO(table_name="holders")
+TOKEN_ANALYSIS_DAO = DAO(table_name="tokenanalysis")
 
-TOKEN_ANALYSIS_QUEUE = DatabaseQueueObject(
-    table_name="tokenanalysis", queue_url=os.environ.get("TOKEN_ANALYSIS_QUEUE")
-)
 
 CLUSTERING_QUEUE = DatabaseQueueObject(
     table_name="clusterreports",
@@ -431,36 +430,25 @@ async def get_token_audit_summary(
 
     # PK for lookup in DB and message for, if there is no data in the DB, make the queue request
     pk = get_primary_key(token_address=token_address, chain=chain)
-    message = {"token_address": token_address, "chain": chain.value}
 
-    try:
-        # TODO: Quick fix for now to avoid excessive API charges
-        response = TOKEN_ANALYSIS_QUEUE.get_item(
-            pk=pk,
-            MessageGroupId=f"audit_{pk}",
-            message_data=message,
-            post_to_queue=False,
-        )
-        response = None
-    except Exception as e:
-        logging.error(
-            f"Exception: Whilst calling the queue object for `audit` for {token_address} on chain {chain}."
-        )
-        raise RugAPIException()
+    # Try to fetch the data from the database
+    db_response = TOKEN_ANALYSIS_DAO.find_most_recent_by_pk(partition_key_value=pk)
 
-    if response is None:
+    if db_response is None:
+        # Submit a task
+        create_http_task_rug_cf(json_payload={ "token_address": token_address, "chain": chain.value})
         return JSONResponse(
             status_code=202,
             content={
                 "status_code": 202,
-                "detail": f"Token {token_address} on chain {_chain} was queued for audit analysis.",
+                "detail": f"Token {token_address} on chain {chain.value} was queued for audit analysis.",
             },
         )
 
-    description = response.get("summaryText")
+    description = db_response.get("summaryText")
 
-    overallScore = float(response.get("tokenScore"))
-    files = response.get("files")
+    overallScore = float(db_response.get("tokenScore"))
+    files = db_response.get("files")
     numIssues = sum([len(item.get("result")) for item in files])
 
     logging.debug(
@@ -482,7 +470,7 @@ async def get_token_audit_summary(
                     description=issue.get("description"),
                     severity=issue.get("level"),
                     fileName=smart_contract.get("fileName"),
-                    sourceCode=issue.get("function_code"),
+                    sourceCode=[issue.get("function_code")],
                     lines=lines,
                 )
 
