@@ -36,6 +36,16 @@
     - [Token Endpoints](#token-endpoints)
     - [Feed Endpoints](#feed-endpoints)
     - [Chart Endpoints](#chart-endpoints)
+    - [Referral Endpoints](#referral-endpoints)
+      - [Schema of DynamoDB Tables](#schema-of-dynamodb-tables)
+      - [INTERNAL `has_invites`](#internal-has_invites)
+      - [INTERNAL `generate_referral_code`](#internal-generate_referral_code)
+      - [GET `is_referral_valid`](#get-is_referral_valid)
+      - [INTERNAL `is_referral_exists`](#internal-is_referral_exists)
+      - [POST `referral_use`](#post-referral_use)
+      - [POST `create_user`](#post-create_user)
+      - [POST `send_invite`](#post-send_invite)
+      - [GET `invite_stats`](#get-invite_stats)
 
 ## Authentication with AWS Cognito
 
@@ -322,3 +332,152 @@ An `Optional[dict]`: If the item is found in DynamoDB and is not stale, the meth
 ### Chart Endpoints
 
 -- Not Yet Implemented --
+
+### Referral Endpoints
+
+#### Schema of DynamoDB Tables
+
+```python
+# referralcodes Table
+# Enforce that a (PK) can only have one row in the table
+class ReferralUser(BaseModel):
+	referralCode: str # (PK)
+	user: EmailStr # (SK)
+
+# users Table
+# Enforce that a (PK) can only have one row in the table
+class Referral(BaseModel):
+	invitedUser: str # Email address of the invited user
+	timestamp: int # UNIX timestamp at which the invite was accepted
+	confirmed: bool
+
+class UsersEntry(BaseModel):
+	user: EmailStr # User who is inviting people (PK)
+	referralCode: str # Referral code itself (SK)
+	referrals: List[Referral] = []
+
+	totalReferrals: int # Number of people the user is able to invite in total
+
+	referralsRemaining: int # Calculated during pre-processing
+	referralsUsed: int # Calculated during pre-processing
+
+	referralIsValid: bool # Used to prevent further sign ups by this user's referral
+	
+	# Pre-processing Notes:
+	# totalReferrals is a fixed number for each user
+	# referralsUsed = len([item in referrals if item.confirmed])
+	# referralsRemaining = totalReferrals - referralsUsed
+	
+```
+
+---
+
+#### INTERNAL `has_invites`
+
+Checks whether a given user has any invites remaining by querying the `users` table:
+
+1. Checks whether the user has an entry in `users`
+2. If the user doesn’t have an entry: returns `False`
+3. If the user does have an entry: returns `(referralsRemaining > 0)`
+
+---
+
+#### INTERNAL `generate_referral_code`
+
+1. Generates a random referral code in the required format
+2. Calls `is_referral_valid` to check whether the code already exists
+3. If not:
+    1. Puts the code inside the `referralcodes` table with `usesRemaining = M`
+    2. Puts the code inside the `referralcodesindex` table with `invitedUser`
+4. Returns the code and reduces the user’s available invites by `M`
+
+---
+
+#### GET `is_referral_valid`
+
+Informs you whether a given referral code is valid or not.
+
+Note: Must add support to rate limit this somehow, to prevent brute force attacks.
+
+1. Calls `is_referral_exists` with `return_bool = False`
+2. If the referral code doesn’t exist, returns `False`
+3. If the referral code exists:
+    1. Checks whether `user` has any available invites left in `users` table by checking if `referralsRemaining > 0`
+4. Returns `(referralsRemaining > 0) and (referralIsValid)`
+
+---
+
+#### INTERNAL `is_referral_exists`
+
+Contains the option to return a Boolean or return an `Optional[str]` containing the username of the user.
+
+1. Attempts to get the user of the referral code from `referralcodes` 
+2. If the referral code doesn’t exist, returns `False`
+3. If the referral code does exist, returns `True`
+
+---
+
+#### POST `referral_use`
+
+Uses a referral code that belongs to a specific user.
+
+Note: This should check DynamoDB for a list of all valid referral codes to see if one exists, and if so, should replace it with a new row indicating how many invites that code has left.
+
+Note: Manual insertions into this table will allow the team to invite many people on a single referral code.
+
+1. First calls `is_referral_valid` with to prevent using an invalid code
+2. Pulls the referral code `user` using `is_referral_exists` with `return_bool = False`
+3. Takes the data from `user` and modifies it:
+    1. Instantiates a new `Referral` object
+    2. Appends this object to `referrals` key in the object
+    3. Instantiates a new `UsersEntry` to force pre-processing
+4. Puts the data back in the `users` table
+5. Calls `create_user` for the provided username to insert a new item into the `users` table
+
+---
+
+#### POST `create_user`
+
+Takes a given username and creates all of the entries required for that username in the system.
+
+1. First calls `generate_referral_code` to generate a new unique referral code `C` for that user
+2. Adds a new row to `referralcodes` by instantiating `ReferralUser` with the generated code `C`
+3. Generates a new `UserEntry` for the user with:
+    1. `referralCode = C`
+    2. `totalReferrals = 10`
+4. Inserts the new `UserEntry` into the `users` table
+
+---
+
+#### POST `send_invite`
+
+Sends a new unique referral code to a user given by their email address.
+
+Uses SES to format and send an email containing the invite.
+
+1. Checks whether the username to send the invite to already exists on rug.ai
+2. Fetches the username of the requesting user, and fetches their invite code
+3. Generate email template and uses SES to send the email invite
+
+---
+
+#### GET `invite_stats`
+
+***TODO:** WIP - Points System*
+
+```python
+class InviteStatsResponse(BaseModel):
+	points: int = 248
+	pointsDifference: int = 24
+	rank: int = 3313
+	totalRank: int = 50102
+	rankDifference: int = -24
+	invited: int = 5
+	totalInvites: int = 20
+	inviteChart: InviteChartResponse
+
+# Schema to store data required to plot a chart on the FE
+class InviteChartResponse(BaseModel):
+	pointsChart: ChartResponse
+	rankChart: ChartResponse
+```

@@ -1,32 +1,10 @@
-import re, jinja2
+import re, jinja2, boto3, logging
 
-from src.v1.auth.exceptions import InvalidReferralCodeFormat, InvalidReferralCode
-
+cognito = boto3.client("cognito-idp", region_name="eu-west-2")
 
 def is_referral_format_valid(s):
     pattern = r"^[0-9a-fA-F]{6}$"
     return bool(re.match(pattern, s))
-
-
-def validate_referral_code(code: str):
-    is_code_format_valid = is_referral_format_valid(code)
-
-    if not is_code_format_valid:
-        raise InvalidReferralCodeFormat(
-            code,
-            f"Exception: Invalid referral code format, the provided code {code} is not a hexadecimal string of length 6.",
-        )
-
-    # TODO: Check if the referral code exists in the database
-    is_valid_referral = True
-
-    if not is_valid_referral:
-        raise InvalidReferralCode(
-            code,
-            f"Exception: Invalid referral code, the provided code {code} is not valid.",
-        )
-
-    return code
 
 
 def render_template(template, **kwargs):
@@ -34,3 +12,23 @@ def render_template(template, **kwargs):
     templateEnv = jinja2.Environment(loader=templateLoader)
     templ = templateEnv.get_template(template)
     return templ.render(kwargs)
+
+
+def get_username_from_access_token(access_token: str) -> str:
+    try:
+        response = cognito.get_user(AccessToken=access_token)
+        logging.info(f"Response: {response}")
+        user_attributes = response.get("UserAttributes")
+
+        if user_attributes:
+            for attribute in user_attributes:
+                if attribute.get("Name") == "email":
+                    return {"username": attribute.get("Value")}
+        logging.error(f"Exception: No email attribute found in response: {response}")
+        return {}
+    except cognito.exceptions.NotAuthorizedException as e:
+        logging.error(f"Exception: NotAuthorizedException: {e}")
+        return {}
+    except Exception as e:
+        logging.error(f"Exception: Unknown Cognito Exception: {e}")
+        return {}

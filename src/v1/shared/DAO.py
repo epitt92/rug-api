@@ -83,7 +83,9 @@ class DAO:
     Currently, we are using pickle to store data in a file.
     """
 
-    def __init__(self, table_name: str, region_name: str = "eu-west-2") -> None:
+    def __init__(
+        self, table_name: str, region_name: str = "eu-west-2", cache: bool = True
+    ) -> None:
         """
         Initialize DAO with a collection_name.
 
@@ -97,7 +99,11 @@ class DAO:
         partition_range_name = None
         dynamodb = boto3.resource("dynamodb", region_name=region_name)
 
-        self.rao = RAO(prefix=table_name)
+        self.rao = RAO(prefix=table_name) if cache else None
+
+        logging.info(
+            f"DAO initialised for table {table_name}... And it has a RAO: {self.rao}"
+        )
 
         # Select the table
         self.table = dynamodb.Table(table_name)
@@ -143,18 +149,19 @@ class DAO:
         Returns:
             List[Dict[Any, Any]]: A list containing one document if found, empty list otherwise
         """
-        try:
-            # Check if the key is in Redis
-            data = self.rao.get(partition_key_value)
-        except Exception as e:
-            logging.error(
-                f"Exception: An exception occurred whilst fetching data from Redis: {e}"
-            )
-            data = None
+        if self.rao:
+            try:
+                # Check if the key is in Redis
+                data = self.rao.get(partition_key_value)
+            except Exception as e:
+                logging.error(
+                    f"Exception: An exception occurred whilst fetching data from Redis: {e}"
+                )
+                data = None
 
-        if data:
-            logging.info(f"Key {partition_key_value} was stored in Redis...")
-            return data
+            if data:
+                logging.info(f"Key {partition_key_value} was stored in Redis...")
+                return data
 
         logging.info(f"Key {partition_key_value} was not stored in Redis...")
 
@@ -167,15 +174,15 @@ class DAO:
 
         if len(response["Items"]) == 1:
             data = response["Items"][0]
-
-            try:
-                # Store in Redis
-                self.rao.put(partition_key_value, data)
-            except Exception as e:
-                logging.error(
-                    f"Exception: An exception occurred whilst storing data in Redis: {e}"
-                )
-                pass
+            if self.rao:
+                try:
+                    # Store in Redis
+                    self.rao.put(partition_key_value, data)
+                except Exception as e:
+                    logging.error(
+                        f"Exception: An exception occurred whilst storing data in Redis: {e}"
+                    )
+                    pass
 
             logging.info(f"Key {partition_key_value} was stored in Redis...")
             return data
@@ -217,14 +224,15 @@ class DAO:
             ConditionExpression=f"attribute_not_exists({self.partition_key_name})",
         )
 
-        try:
-            # Update Redis
-            self.rao.put(partition_key_value, item)
-        except Exception as e:
-            logging.error(
-                f"Exception: An exception occurred whilst storing data in Redis: {e}"
-            )
-            pass
+        if self.rao:
+            try:
+                # Update Redis
+                self.rao.put(partition_key_value, item)
+            except Exception as e:
+                logging.error(
+                    f"Exception: An exception occurred whilst storing data in Redis: {e}"
+                )
+                pass
 
     def insert_new(self, partition_key_value: str, item: Dict[Any, Any]) -> None:
         """
@@ -237,14 +245,15 @@ class DAO:
         item[self.partition_key_name] = partition_key_value
         self.table.put_item(Item=item)
 
-        try:
-            # Update Redis
-            self.rao.put(partition_key_value, item)
-        except Exception as e:
-            logging.error(
-                f"Exception: An exception occurred whilst storing data in Redis: {e}"
-            )
-            pass
+        if self.rao:
+            try:
+                # Update Redis
+                self.rao.put(partition_key_value, item)
+            except Exception as e:
+                logging.error(
+                    f"Exception: An exception occurred whilst storing data in Redis: {e}"
+                )
+                pass
 
 
 class DatabaseQueueObject:
