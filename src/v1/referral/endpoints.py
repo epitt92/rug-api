@@ -292,5 +292,7 @@ async def invite_user(request: Request, user: str):
     else:
         return JSONResponse(
             status_code=400,
-            content={"detail": f"Failed to invite user {user} as we were unable to send the email invite."},
+            content={
+                "detail": f"Failed to invite user {user} as we were unable to send the email invite."
+            },
         )

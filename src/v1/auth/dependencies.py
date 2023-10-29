@@ -2,6 +2,7 @@ import re, jinja2, boto3, logging
 
 cognito = boto3.client("cognito-idp", region_name="eu-west-2")
 
+
 def is_referral_format_valid(s):
     pattern = r"^[0-9a-fA-F]{6}$"
     return bool(re.match(pattern, s))
