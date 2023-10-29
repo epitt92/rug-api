@@ -3,11 +3,18 @@ from fastapi.responses import JSONResponse
 from botocore.exceptions import ClientError
 
 from src.v1.referral.constants import DEFAULT_NUMBER_OF_USES
-from src.v1.referral.dependencies import is_referral_valid, generate_referral_code, is_referral_exists
+from src.v1.referral.dependencies import (
+    is_referral_valid,
+    generate_referral_code,
+    is_referral_exists,
+)
 from src.v1.referral.schemas import ReferralUser, UsersEntry
 
 from src.v1.shared.DAO import DAO
-from src.v1.shared.exceptions import DatabaseInsertFailureException, DatabaseLoadFailureException
+from src.v1.shared.exceptions import (
+    DatabaseInsertFailureException,
+    DatabaseLoadFailureException,
+)
 
 router = APIRouter()
 
