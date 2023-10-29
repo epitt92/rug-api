@@ -1,8 +1,10 @@
 import re, jinja2
 
+
 def is_referral_format_valid(s):
     pattern = r"^[0-9a-fA-F]{6}$"
     return bool(re.match(pattern, s))
+
 
 def render_template(template, **kwargs):
     templateLoader = jinja2.FileSystemLoader(searchpath="src/v1/auth/email/templates")

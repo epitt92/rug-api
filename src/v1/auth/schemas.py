@@ -48,7 +48,7 @@ class VerifyEmailAccount(BaseModel):
         if not valid:
             raise ValueError("Confirmation code must be a 6-digit number.")
         return v
-    
+
     @validator("referral_code")
     def referral_code_is_valid(cls, v):
         # Check if the referral code is a 6 digit hexadecimal string

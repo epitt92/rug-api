@@ -86,7 +86,7 @@ async def create_user(user: str):
         raise DatabaseInsertFailureException(
             message=f"Exception: Unknown exception whilst fetching data from 'users' with PK: {user}"
         )
-    
+
     logging.info(f"Successfully created user {user}.")
 
     return JSONResponse(
@@ -109,7 +109,7 @@ async def referral_code_use(code: str, user: str):
             status_code=400,
             content={"detail": f"Referral code {code} is invalid or does not exist."},
         )
-    
+
     logging.info(f"Referral code {code} is valid.")
 
     # Then pulls the referral code user using is_referral_exists() with return_bool=False
@@ -129,7 +129,7 @@ async def referral_code_use(code: str, user: str):
         raise DatabaseLoadFailureException(
             message=f"Exception: Unknown exception whilst fetching data from 'users' with PK: {referral_owner}"
         )
-    
+
     logging.info(f"User data for {referral_owner}: {user_data}")
 
     # Adds the new Referral object to the list of referrals for the user who owns the referral code
@@ -137,8 +137,10 @@ async def referral_code_use(code: str, user: str):
 
     referrals.append(Referral(invited_username=user, confirmed=True))
     user_data["referrals"] = referrals
-    
-    logging.info(f"User data for {referral_owner} after appending new referral: \n\n{user_data}")
+
+    logging.info(
+        f"User data for {referral_owner} after appending new referral: \n\n{user_data}"
+    )
 
     # Instantiates a new UsersEntry object with the user who owns the referral code, the referral code itself, and the list of referrals
     user_entry = UsersEntry(**user_data)

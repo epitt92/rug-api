@@ -222,7 +222,7 @@ async def create_user(user: CreateEmailAccount):
         raise CognitoException(
             "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
         )
-    
+
     # Check if the referral code is valid
     referral_code_valid = await is_referral_valid_(user.referral_code)
 
@@ -304,10 +304,10 @@ async def verify_user(user: VerifyEmailAccount):
         raise CognitoException(
             "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
         )
-    
+
     # Check if the referral code is valid
     referral_code_valid = await is_referral_valid_(user.referral_code)
-    
+
     if not referral_code_valid:
         raise HTTPException(
             status_code=400,

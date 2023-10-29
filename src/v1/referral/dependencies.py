@@ -34,7 +34,7 @@ async def has_invites(user: EmailStr) -> bool:
         raise DatabaseLoadFailureException(
             message=f"Exception: Unknown exception whilst fetching data from 'users' with PK: {user}"
         )
-    
+
     logging.info(user_data)
 
     if user_data:
@@ -58,7 +58,7 @@ async def is_referral_valid_(referral_code: str) -> bool:
     user = await is_referral_exists_(referral_code, return_bool=False)
 
     logging.info(user)
-    
+
     # If the referral code exists, check whether the user has any invites remaining
     if user:
         valid = await has_invites(user)
@@ -85,7 +85,7 @@ async def is_referral_exists_(
             status_code=403,
             detail=f"Invalid referral code format. Referral code must be a hexadecimal string of length 6.",
         )
-    
+
     logging.info(f"{referral_code} is in the correct format.")
 
     # Check whether the referral code exists in the database
@@ -100,7 +100,7 @@ async def is_referral_exists_(
         raise DatabaseLoadFailureException(
             message=f"Exception: Unknown exception whilst fetching data from 'referralcodes' with PK: {referral_code}"
         )
-    
+
     logging.info(referral_code_data)
 
     if referral_code_data and referral_code_data.get("user"):

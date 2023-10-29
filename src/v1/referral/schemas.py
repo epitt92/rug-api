@@ -33,9 +33,9 @@ class UsersEntry(BaseModel):
     referralsRemaining: int  # Calculated during pre-processing
     referralsUsed: int  # Calculated during pre-processing
 
-    referralIsValid: bool = (
-        True
-    )  # Used to prevent further sign ups by this user's referral
+    referralIsValid: (
+        bool
+    ) = True  # Used to prevent further sign ups by this user's referral
     timeCreated: int
 
     @root_validator(pre=True)

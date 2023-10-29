@@ -83,7 +83,9 @@ class DAO:
     Currently, we are using pickle to store data in a file.
     """
 
-    def __init__(self, table_name: str, region_name: str = "eu-west-2", cache: bool = True) -> None:
+    def __init__(
+        self, table_name: str, region_name: str = "eu-west-2", cache: bool = True
+    ) -> None:
         """
         Initialize DAO with a collection_name.
 
@@ -99,7 +101,9 @@ class DAO:
 
         self.rao = RAO(prefix=table_name) if cache else None
 
-        logging.info(f"DAO initialised for table {table_name}... And it has a RAO: {self.rao}")
+        logging.info(
+            f"DAO initialised for table {table_name}... And it has a RAO: {self.rao}"
+        )
 
         # Select the table
         self.table = dynamodb.Table(table_name)
