@@ -20,6 +20,7 @@ from src.v1.feeds.dependencies import (
     TimestreamEventAdapter,
     convert_floats_to_decimals,
     get_swap_link,
+    get_metadata,
 )
 from src.v1.feeds.models import EventClick, TokenView
 from src.v1.feeds.exceptions import TimestreamReadException, TimestreamWriteException
@@ -798,8 +799,11 @@ async def get_token_market_data(
         try:
             # TODO: Implement calculations for market data here
             swapLink = get_swap_link(dex.value, chain.value, token_address)
-            marketCap = random.randint(100_000, 1_000_000_000)
-            liquidityUsd = random.randint(500, 10_000_000)
+            metadata = get_metadata(token_address, chain.value)
+            # marketCap = random.randint(100_000, 1_000_000_000)
+            marketCap = metadata.marketCap
+            # liquidityUsd = random.randint(500, 10_000_000)
+            liquidityUsd = metadata.liquidityUsd
             volume24h = int(random.randint(0, 1000) * liquidityUsd / 1000)
 
             data = {
