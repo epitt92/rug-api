@@ -71,6 +71,7 @@ jobs:
           dockerfile-path: ./
           role-to-assume: ${{ env.AWS_ROLE }}
           IMAGE_VARIABLE: ${{env.ENV}}_RUG_AI_IMAGE
+          gcp_service_account_key: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
       
       - name: push lambda artifact
         uses: ./.github/actions/build-and-push-lambda
