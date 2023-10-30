@@ -792,20 +792,34 @@ async def get_token_market_data(
         logging.error(f"An exception occurred whilst fetching data from RAO: {e}")
         data = None
         pass
-
+    
     if not data:
-        # TODO: Implement calculations for market data here
-        marketCap = random.randint(100_000, 1_000_000_000)
-        liquidityUsd = random.randint(500, 10_000_000)
-        volume24h = int(random.randint(0, 1000) * liquidityUsd / 1000)
-        swapLink = get_swap_link(dex.value, chain.value, token_address)
+        try:
+            # TODO: Implement calculations for market data here
+            swapLink = get_swap_link(dex.value, chain.value, token_address)
+            marketCap = random.randint(100_000, 1_000_000_000)
+            liquidityUsd = random.randint(500, 10_000_000)
+            volume24h = int(random.randint(0, 1000) * liquidityUsd / 1000)
 
-        data = {
-            "marketCap": marketCap,
-            "liquidityUsd": liquidityUsd,
-            "volume24h": volume24h,
-            "swapLink": swapLink,
-        }
+            data = {
+                "chain": chain.value,
+                "tokenAddress": token_address,
+                "dex": dex.value,
+                "marketCap": marketCap,
+                "liquidityUsd": liquidityUsd,
+                "volume24h": volume24h,
+                "swapLink": swapLink,
+            }
+
+        except Exception as e:
+            logging.error(f"An exception occurred whilst getting the metadata: {e}")
+            data = {
+                "chain": chain.value,
+                "tokenAddress": token_address,
+                "dex": dex.value,
+                "swapLink": swapLink,
+            }
+            pass
 
         try:
             MARKET_METRICS_RAO.put(_key, data)
@@ -818,9 +832,9 @@ async def get_token_market_data(
 
 async def gather_data(tokens: List[TokenData]):
     tasks = [get_token_market_data(t.chain, t.token_address, t.dex) for t in tokens]
-    results = await asyncio.gather(*tasks)
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
     return results
-
 
 @router.post(
     "/marketdata",
