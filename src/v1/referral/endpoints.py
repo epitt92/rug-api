@@ -205,7 +205,6 @@ async def get_details_from_username(username: str):
         )
     
 
-@router.get("/username", include_in_schema=True)
 async def get_username(request: Request):
     # First, fetches the access token from the request header
     try:
