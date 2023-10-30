@@ -457,10 +457,10 @@ async def get_token_audit_summary(
     db_response = TOKEN_ANALYSIS_DAO.find_most_recent_by_pk(partition_key_value=pk)
 
     if db_response is None:
-        # Submit a task
-        create_http_task_rug_cf(
-            json_payload={"token_address": token_address, "chain": chain.value}
-        )
+        # TODO: Switch this on during production
+        # create_http_task_rug_cf(
+        #     json_payload={"token_address": token_address, "chain": chain.value}
+        # )
 
         return JSONResponse(
             status_code=202,
