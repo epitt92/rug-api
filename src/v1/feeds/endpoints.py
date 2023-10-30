@@ -797,21 +797,20 @@ async def get_token_market_data(
 
     if not data:
         try:
-            # TODO: Implement calculations for market data here
             swapLink = get_swap_link(dex.value, chain.value, token_address)
+
+            # Calculations for market data are performed in the get_metadata function
             metadata = get_metadata(token_address, chain.value)
-            # marketCap = random.randint(100_000, 1_000_000_000)
-            marketCap = metadata.marketCap
-            # liquidityUsd = random.randint(500, 10_000_000)
-            liquidityUsd = metadata.liquidityUsd
-            volume24h = int(random.randint(0, 1000) * liquidityUsd / 1000)
+
+            # TODO: Implement calculations for volume after product launch here
+            volume24h = None
 
             data = {
                 "chain": chain.value,
                 "tokenAddress": token_address,
                 "dex": dex.value,
-                "marketCap": marketCap,
-                "liquidityUsd": liquidityUsd,
+                "marketCap": metadata.marketCap,
+                "liquidityUsd": metadata.liquidityUsd,
                 "volume24h": volume24h,
                 "swapLink": swapLink,
             }
