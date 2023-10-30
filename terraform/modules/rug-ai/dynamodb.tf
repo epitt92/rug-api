@@ -92,7 +92,7 @@ resource "aws_dynamodb_table" "rug_whitelist_table" {
 resource "aws_dynamodb_table" "rug_users_table" {
   name         = "users"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "user"
+  hash_key     = "username"
   range_key    = "referral_code"
 
   attribute {
