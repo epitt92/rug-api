@@ -15,7 +15,7 @@ USERS_DAO = DAO("userstemp")
 
 def generate_hex_string(length=6):
     # Generate a random hexadecimal string of the specified length
-    return "".join(random.choice("0123456789abcdef") for _ in range(length))
+    return "".join(random.choice("0123456789") for _ in range(length))
 
 
 async def has_invites(user: EmailStr) -> bool:
@@ -80,10 +80,10 @@ async def is_referral_exists_(
     Raises an InvalidReferralCodeFormat exception if the referral code is not in the correct format.
     """
     # Check whether the referral code is in the correct format
-    if not re.match("^[a-f0-9]{6}$", referral_code):
+    if not re.match("^[0-9]{6}$", referral_code):
         raise HTTPException(
             status_code=403,
-            detail=f"Invalid referral code format. Referral code must be a hexadecimal string of length 6.",
+            detail=f"Invalid referral code format. Referral code must be a digits string of length 6.",
         )
 
     logging.info(f"{referral_code} is in the correct format.")
