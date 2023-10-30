@@ -803,16 +803,21 @@ async def get_token_market_data(
             volume24h = int(random.randint(0, 1000) * liquidityUsd / 1000)
 
             data = {
-                "tokenData": TokenData(chain=chain.value, token_address=token_address, dex=dex.value),
+                "chain": chain.value,
+                "tokenAddress": token_address,
+                "dex": dex.value,
                 "marketCap": marketCap,
                 "liquidityUsd": liquidityUsd,
                 "volume24h": volume24h,
                 "swapLink": swapLink,
             }
+
         except Exception as e:
             logging.error(f"An exception occurred whilst getting the metadata: {e}")
             data = {
-                "tokenData": TokenData(chain=chain.value, token_address=token_address, dex=dex.value),
+                "chain": chain.value,
+                "tokenAddress": token_address,
+                "dex": dex.value,
                 "swapLink": swapLink,
             }
             pass

@@ -28,7 +28,9 @@ class TokenData(BaseModel):
         return value
 
 class MarketDataResponse(BaseModel):
-    tokenData: Optional[TokenData] = None
+    chain: Optional[str] = None
+    tokenAddress: Optional[str] = None
+    dex: Optional[str] = None
     marketCap: Optional[float] = None
     liquidityUsd: Optional[float] = None
     liquiditySingleSided: Optional[float] = None
