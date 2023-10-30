@@ -50,11 +50,16 @@ def create_http_task_rug_cf(
         http_request=tasks_v2.HttpRequest(
             http_method=tasks_v2.HttpMethod.POST,
             url=RUG_CF_QUEUE_URL,
-            headers={"Content-type": "application/json", "Authorization": f"Bearer {id_token}"},
+            headers={
+                "Content-type": "application/json",
+                "Authorization": f"Bearer {id_token}",
+            },
             body=json.dumps(json_payload).encode(),
         ),
         name=(
-            client.task_path(RUG_CF_PROJECT_NAME, RUG_CF_LOCATION, RUG_CF_QUEUE_NAME, task_id)
+            client.task_path(
+                RUG_CF_PROJECT_NAME, RUG_CF_LOCATION, RUG_CF_QUEUE_NAME, task_id
+            )
             if task_id is not None
             else None
         ),
@@ -79,7 +84,9 @@ def create_http_task_rug_cf(
     return client.create_task(
         tasks_v2.CreateTaskRequest(
             # The queue to add the task to
-            parent=client.queue_path(RUG_CF_PROJECT_NAME, RUG_CF_LOCATION, RUG_CF_QUEUE_NAME),
+            parent=client.queue_path(
+                RUG_CF_PROJECT_NAME, RUG_CF_LOCATION, RUG_CF_QUEUE_NAME
+            ),
             # The task itself
             task=task,
         )

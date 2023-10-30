@@ -203,7 +203,7 @@ async def get_details_from_username(username: str):
             status_code=400,
             content={"detail": f"User {username} does not exist."},
         )
-    
+
 
 async def get_username(request: Request):
     # First, fetches the access token from the request header

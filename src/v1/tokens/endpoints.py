@@ -458,7 +458,10 @@ async def get_token_audit_summary(
 
     if db_response is None:
         # Submit a task
-        create_http_task_rug_cf(json_payload={ "token_address": token_address, "chain": chain.value})
+        create_http_task_rug_cf(
+            json_payload={"token_address": token_address, "chain": chain.value}
+        )
+
         return JSONResponse(
             status_code=202,
             content={
