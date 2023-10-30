@@ -1,4 +1,4 @@
-import time
+import time, logging
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from src.utils.gcs import GCSAdapter
@@ -43,24 +43,34 @@ POOL_INDEXER = {"ethereum": {}, "base": {}}
 
 # Cronjob updates the token JSON every 2 minutes
 def cron_update_data():
+    logging.info("Running cronjob to update data")
     start_time = time.time()
     networks = ["base"]
     for network in networks:
         pools = bucket.get(f"pools/{network}/pools.json")
-        for pool in pools[::-1]:
+        pools_ = pools[::-1]
+
+        for pool in pools_:
             token0 = pool["token0"].lower()
             token1 = pool["token1"].lower()
-            if token0 not in POOL_INDEXER[network]:
+
+            if not POOL_INDEXER[network].get(token0):
                 POOL_INDEXER[network][token0] = [pool]
-            elif pool not in POOL_INDEXER[network][token0]:
+            else:
                 POOL_INDEXER[network][token0].append(pool)
 
-            if token1 not in POOL_INDEXER[network]:
+            if not POOL_INDEXER[network].get(token1):
                 POOL_INDEXER[network][token1] = [pool]
-            elif pool not in POOL_INDEXER[network][token1]:
+            else:
                 POOL_INDEXER[network][token1].append(pool)
 
-    print(f"Pool indexer job is finished in {time.time() - start_time}")
+        for key in POOL_INDEXER[network].keys():
+            pools_list = POOL_INDEXER[network][key]
+            POOL_INDEXER[network][key] = list(
+                {v["address"]: v for v in pools_list}.values()
+            )
+
+    logging.warning(f"Pool indexer job is finished in {time.time() - start_time}")
 
 
 # Load latest data on startup
