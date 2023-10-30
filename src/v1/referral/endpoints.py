@@ -248,7 +248,7 @@ async def get_details(request: Request):
 
 
 async def send_email_invite(email: str, referral_code: str):
-    subject = f"You've Been Invited! {referral_code}"
+    subject = f"You've Been Invited!"
     logging.info(f"Sending invite email to user {email}.")
 
     # TODO: Add the correct encoded URL to this email
@@ -256,7 +256,7 @@ async def send_email_invite(email: str, referral_code: str):
         "referral-invite.html",
         title=subject,
         username=email,
-        url="https://rug.ai",
+        url=f"https://rug.ai/signup?ref={referral_code}",
     )
 
     email_subject = subject
