@@ -109,6 +109,7 @@ resource "aws_dynamodb_table" "rug_referralcodes_table" {
   name         = "referralcodes"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "referral_code"
+  range_key    = "username"
 
   attribute {
     name = "referral_code"
