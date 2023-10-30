@@ -818,7 +818,7 @@ async def get_token_market_data(
 
 
 async def gather_data(tokens: List[TokenData]):
-    tasks = [get_market_data_async(t.chain, t.token_address, t.dex) for t in tokens]
+    tasks = [get_token_market_data(t.chain, t.token_address, t.dex) for t in tokens]
     results, _ = await asyncio.gather(*tasks, return_exceptions=True)
 
     output = [] 
