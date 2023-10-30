@@ -854,7 +854,7 @@ async def get_score_info(
         audit = Score()
     except Exception as e:
         logging.error(
-            f"Exception: During call to `get_audit_summary_from_cache` for {token_address} on chain {chain}."
+            f"Exception: During call to `get_token_audit_summary` for {token_address} on chain {chain}: {e}"
         )
         audit = Score()
 
