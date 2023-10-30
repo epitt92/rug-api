@@ -26,3 +26,4 @@ cachetools
 goplus==0.2.1
 networkx
 redis
+google-cloud-tasks==2.14.2
