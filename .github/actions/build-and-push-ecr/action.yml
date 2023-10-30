@@ -74,7 +74,7 @@ runs:
         # push it to ECR so that it can
         # be deployed to ECS.
         touch key.json
-        echo "${{ input.gcp_service_account_key }}" > key.json
+        echo "${{ inputs.gcp_service_account_key }}" > key.json
 
         docker build -t $ECR_REGISTRY/${{ inputs.ecr-repository }}:$IMAGE_TAG -f ./Dockerfile .
         docker push $ECR_REGISTRY/${{ inputs.ecr-repository }}:$IMAGE_TAG
