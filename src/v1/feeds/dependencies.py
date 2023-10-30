@@ -174,7 +174,6 @@ class TimestreamEventAdapter:
             raise TimestreamWriteException(message=message)
 
 
-
 decoder = lambda x: ftfy.fix_text(x.decode("utf-8", errors="ignore")).strip()
 int_decoder = lambda b: int.from_bytes(b, "big")
 
@@ -342,4 +341,6 @@ def get_metadata(token_address, network):
     # print(f"24H Volume: {volume_24h}")
     print(f"Market Capacity and Liquidity took {(time.time() - start_time):.3f}.")
     print("-------------------------------")
-    return MarketDataResponse(marketCap=average_market_cap, liquidityUsd=total_liquidity)
+    return MarketDataResponse(
+        marketCap=average_market_cap, liquidityUsd=total_liquidity
+    )

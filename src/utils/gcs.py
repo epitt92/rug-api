@@ -9,20 +9,23 @@ from google.cloud.exceptions import NotFound
 
 dotenv.load_dotenv()
 
-GCS_BUCKET_NAME = os.getenv('GCS_BUCKET_NAME')
+GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME")
 
 GCS_APPLICATION_CREDENTIALS = {
-    "project_id": os.getenv('GCS_PROJECT_ID'),
-    "private_key_id": os.getenv('GCS_PRIVATE_KEY_ID'),
-    "private_key": os.getenv('GCS_PRIVATE_KEY'),
-    "client_email": os.getenv('GCS_CLIENT_EMAIL'),
-    "client_id": os.getenv('GCS_CLIENT_ID'),
-    "token_uri": os.getenv('GCS_TOKEN_URI')
+    "project_id": os.getenv("GCS_PROJECT_ID"),
+    "private_key_id": os.getenv("GCS_PRIVATE_KEY_ID"),
+    "private_key": os.getenv("GCS_PRIVATE_KEY"),
+    "client_email": os.getenv("GCS_CLIENT_EMAIL"),
+    "client_id": os.getenv("GCS_CLIENT_ID"),
+    "token_uri": os.getenv("GCS_TOKEN_URI"),
 }
+
 
 class GCSAdapter:
     def __init__(self, bucket_name=GCS_BUCKET_NAME):
-        self.client = storage.Client.from_service_account_info(GCS_APPLICATION_CREDENTIALS)
+        self.client = storage.Client.from_service_account_info(
+            GCS_APPLICATION_CREDENTIALS
+        )
         self.bucket = self.client.bucket(bucket_name)
 
     def get(self, key):
@@ -31,13 +34,19 @@ class GCSAdapter:
         try:
             blob = self.bucket.blob(key)
             json_data = blob.download_as_text()
-            logging.info(f"Fetched {key} from GCS bucket {self.bucket.name} in {(time.time() - start_time):.2f} seconds.")
+            logging.info(
+                f"Fetched {key} from GCS bucket {self.bucket.name} in {(time.time() - start_time):.2f} seconds."
+            )
             return json.loads(json_data)
         except NotFound:
-            logging.info(f"Could not find {key} in GCS bucket {self.bucket}, returning an empty list...")
+            logging.info(
+                f"Could not find {key} in GCS bucket {self.bucket}, returning an empty list..."
+            )
             return []
         except Exception as e:
-            logging.error(f"Error fetching {key} from GCS bucket {self.bucket.name}: {e}")
+            logging.error(
+                f"Error fetching {key} from GCS bucket {self.bucket.name}: {e}"
+            )
             raise e
 
     def put(self, data, key) -> None:
@@ -46,7 +55,9 @@ class GCSAdapter:
         logging.info(f"Uploading {key} to GCS bucket {self.bucket.name}.")
         blob = self.bucket.blob(key)
         blob.upload_from_string(updated_json_data, content_type="application/json")
-        logging.info(f"Uploaded {key} to GCS bucket {self.bucket.name} in {(time.time() - start_time):.2f} seconds.")
+        logging.info(
+            f"Uploaded {key} to GCS bucket {self.bucket.name} in {(time.time() - start_time):.2f} seconds."
+        )
         return
 
     def append(self, data, key):
@@ -62,5 +73,7 @@ class GCSAdapter:
 
         self.put(updated_data, key)
 
-        logging.info(f"Appended {key} to GCS bucket {self.bucket.name} in {(time.time() - start_time):.2f} seconds.")
+        logging.info(
+            f"Appended {key} to GCS bucket {self.bucket.name} in {(time.time() - start_time):.2f} seconds."
+        )
         return

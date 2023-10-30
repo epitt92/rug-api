@@ -193,6 +193,7 @@ async def rollback_user_creation(username: str) -> Response:
 #                                            #
 ##############################################
 
+
 @router.post("/email/create/")
 async def create_user(user: CreateEmailAccount):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")

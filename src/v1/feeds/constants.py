@@ -19,7 +19,7 @@ UNISWAP_V3_ABI = '[{"inputs":[],"stateMutability":"nonpayable","type":"construct
 CHAIN_ID_MAPPING = {"ethereum": 1, "bsc": 56, "arbitrum": 42161, "base": 8453}
 METADATA_ANALYTICS_ADDRESS = {
     "ethererum": "0x6D72Bd36957aDc6b1C1a3EaB657894066C07a934",
-    "base": "0x6D72Bd36957aDc6b1C1a3EaB657894066C07a934"
+    "base": "0x6D72Bd36957aDc6b1C1a3EaB657894066C07a934",
 }
 
 METADATA_ANALYTICS_ABI = '[{"inputs":[{"internalType":"address","name":"poolAddress","type":"address"},{"internalType":"address","name":"tokenAddress","type":"address"}],"name":"getUniswapV2Data","outputs":[{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"marketCap","type":"uint256"},{"internalType":"address","name":"stableTokenAddr","type":"address"},{"internalType":"uint8","name":"stableTokenDecimals","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"poolAddress","type":"address"},{"internalType":"address","name":"tokenAddress","type":"address"}],"name":"getUniswapV3Data","outputs":[{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"marketCap","type":"uint256"},{"internalType":"address","name":"stableTokenAddr","type":"address"},{"internalType":"uint8","name":"stableTokenDecimals","type":"uint8"}],"stateMutability":"view","type":"function"}]'
@@ -35,13 +35,11 @@ SYMBOLS = {
         "0x4200000000000000000000000000000000000006": "ETH",
         "0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA": "USDC",
         "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913": "USDC",
-    }
+    },
 }
 
-POOL_INDEXER = {
-    "ethereum": {},
-    "base": {}
-}
+POOL_INDEXER = {"ethereum": {}, "base": {}}
+
 
 # Cronjob updates the token JSON every 2 minutes
 def cron_update_data():
@@ -63,10 +61,12 @@ def cron_update_data():
                 POOL_INDEXER[network][token1].append(pool)
 
     print(f"Pool indexer job is finished in {time.time() - start_time}")
+
+
 # Load latest data on startup
 cron_update_data()
 
 # Background scheduler to run cronjob to update data
 scheduler = BackgroundScheduler()
-scheduler.add_job(cron_update_data, 'interval', minutes=5)
+scheduler.add_job(cron_update_data, "interval", minutes=5)
 scheduler.start()

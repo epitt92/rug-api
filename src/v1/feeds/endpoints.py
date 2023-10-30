@@ -58,6 +58,7 @@ FEEDS_DAO = DAO("feeds")
 CHAIN_FEEDS_RAO = RAO("chainfeeds", tte=5 * 60)
 MARKET_METRICS_RAO = RAO("marketmetrics", tte=2 * 60)
 
+
 @router.post("/eventclick", dependencies=[Depends(decode_token)])
 async def post_event_click(eventClick: EventClick):
     # TODO: Fetch username from access token provided in header
@@ -793,7 +794,7 @@ async def get_token_market_data(
         logging.error(f"An exception occurred whilst fetching data from RAO: {e}")
         data = None
         pass
-    
+
     if not data:
         try:
             # TODO: Implement calculations for market data here
@@ -837,8 +838,9 @@ async def get_token_market_data(
 async def gather_data(tokens: List[TokenData]):
     tasks = [get_token_market_data(t.chain, t.token_address, t.dex) for t in tokens]
     results = await asyncio.gather(*tasks, return_exceptions=True)
-    
+
     return results
+
 
 @router.post(
     "/marketdata",

@@ -5,6 +5,7 @@ from src.v1.shared.schemas import Token
 
 from src.v1.shared.models import ChainEnum, DexEnum
 
+
 class TokenData(BaseModel):
     chain: ChainEnum
     token_address: str
@@ -26,6 +27,7 @@ class TokenData(BaseModel):
                 'Field "token_address" must be a valid Ethereum address with length 42.'
             )
         return value
+
 
 class MarketDataResponse(BaseModel):
     chain: Optional[str] = None
