@@ -1,9 +1,10 @@
 from fastapi import HTTPException
+import time, numpy as np
 
 from src.v1.chart.schemas import ChartResponse, ChartData
 
 
-def process_market_data(market_data):
+def process_market_data(market_data, duration):
     # Refactor response to correct formatting
     N = len(market_data)
 
@@ -16,15 +17,31 @@ def process_market_data(market_data):
     timestampArray = []
     priceArray = []
     marketCapArray = []
+    volumeArray = []
+
+    current_time = int(time.time())
+    cutoff_time = current_time - duration
 
     # CoinGecko returns data in reverse chronological order
     for i in reversed(range(N)):
         row = market_data[i]
         timestamp, price, volume, marketCap = row[0], row[4], row[5], row[4]
 
-        timestampArray.append(timestamp)
-        priceArray.append(price)
-        marketCapArray.append(marketCap)
+        # Only include data points that are within the cutoff time
+        if timestamp > cutoff_time:
+            timestampArray.append(timestamp)
+            priceArray.append(price)
+            marketCapArray.append(marketCap)
+            volumeArray.append(volume)
+
+    # Sort arrays by timestamp
+    indexes = np.argsort(timestampArray)
+
+    for index in indexes:
+        timestamp = timestampArray[index]
+        price = priceArray[index]
+        volume = volumeArray[index]
+        marketCap = marketCapArray[index]
 
         output.append(
             ChartData(

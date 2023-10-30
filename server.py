@@ -22,6 +22,8 @@ from src.v1.feeds.exceptions import TimestreamWriteException, TimestreamReadExce
 
 dotenv.load_dotenv()
 
+logging.getLogger().setLevel(logging.INFO)
+
 # Load GoPlus access token file on startup
 logging.info(f"Loading GoPlus access token file on startup...")
 load_access_token()

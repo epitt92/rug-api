@@ -89,18 +89,34 @@ resource "aws_dynamodb_table" "rug_whitelist_table" {
   }
 }
 
+resource "aws_dynamodb_table" "rug_users_table" {
+  name         = "users"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "username"
+  range_key    = "referral_code"
+
+  attribute {
+    name = "username"
+    type = "S"
+  }
+  attribute {
+    name = "referral_code"
+    type = "S"
+  }
+}
+
 resource "aws_dynamodb_table" "rug_referralcodes_table" {
   name         = "referralcodes"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "referral_code"
-  range_key    = "timestamp"
+  range_key    = "username"
 
   attribute {
     name = "referral_code"
     type = "S"
   }
   attribute {
-    name = "timestamp"
-    type = "N"
+    name = "username"
+    type = "S"
   }
 }
