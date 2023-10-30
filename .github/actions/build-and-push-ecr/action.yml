@@ -29,6 +29,10 @@ inputs:
     description: 'image variable'
     required: true
     default: 'CONTAINER_IMAGE'
+  gcp_service_account_key:
+    description: 'gcp service account file content'
+    required: true
+    default: 'gcp service account file content'
 
 runs:
   using: "composite"
@@ -69,6 +73,8 @@ runs:
         # Build a docker container and
         # push it to ECR so that it can
         # be deployed to ECS.
+        touch key.json
+        echo "${{ inputs.gcp_service_account_key }}" > key.json
 
         docker build -t $ECR_REGISTRY/${{ inputs.ecr-repository }}:$IMAGE_TAG -f ./Dockerfile .
         docker push $ECR_REGISTRY/${{ inputs.ecr-repository }}:$IMAGE_TAG

@@ -20,7 +20,10 @@ class CreateEmailAccount(EmailAccountBase):
 
     @validator("referral_code")
     def referral_code_is_valid(cls, v):
-        # TODO: Must check if the referral code is valid
+        # Check if the referral code is a 6 digit hexadecimal string
+        valid = bool(re.match(r"^[a-fA-F0-9]{6}$", v))
+        if not valid:
+            raise ValueError("Referral code must be a hexadecimal string of length 6.")
         return v
 
 
@@ -31,6 +34,7 @@ class SignInEmailAccount(EmailAccountBase):
 class VerifyEmailAccount(BaseModel):
     username: EmailStr
     password: constr(min_length=10)
+    referral_code: str
     confirmation_code: str
 
     @root_validator(pre=True)
@@ -43,6 +47,14 @@ class VerifyEmailAccount(BaseModel):
         valid = bool(re.match(r"^\d{6}$", v))
         if not valid:
             raise ValueError("Confirmation code must be a 6-digit number.")
+        return v
+
+    @validator("referral_code")
+    def referral_code_is_valid(cls, v):
+        # Check if the referral code is a 6 digit hexadecimal string
+        valid = bool(re.match(r"^[a-fA-F0-9]{6}$", v))
+        if not valid:
+            raise ValueError("Referral code must be a hexadecimal string of length 6.")
         return v
 
 

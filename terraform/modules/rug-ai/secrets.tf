@@ -33,3 +33,7 @@ resource "aws_secretsmanager_secret" "GO_PLUS_APP_KEY" {
 resource "aws_secretsmanager_secret" "GO_PLUS_APP_SECRET" {
   name = "GO_PLUS_APP_SECRET"
 }
+
+resource "aws_secretsmanager_secret" "COINGECKO_API_KEY" {
+  name = "COINGECKO_API_KEY" 
+}

@@ -58,7 +58,6 @@ FEEDS_DAO = DAO("feeds")
 CHAIN_FEEDS_RAO = RAO("chainfeeds", tte=5 * 60)
 MARKET_METRICS_RAO = RAO("marketmetrics", tte=2 * 60)
 
-
 @router.post("/eventclick", dependencies=[Depends(decode_token)])
 async def post_event_click(eventClick: EventClick):
     # TODO: Fetch username from access token provided in header
