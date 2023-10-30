@@ -19,7 +19,8 @@ class Referral(BaseModel):
 
     @root_validator(pre=True)
     def pre_process(cls, values):
-        values["timestamp"] = int(time.time())
+        if not values.get("timestamp"):
+            values["timestamp"] = int(time.time())
         return values
 
 
