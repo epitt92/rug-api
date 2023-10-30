@@ -79,6 +79,22 @@ module "rug_app_service" {
       value = "https://api.bscscan.com/api"
     },
     {
+      name = "RUG_CF_PROJECT_NAME"
+      value = "rug-cf-service"
+    },
+    {
+      name = "RUG_CF_LOCATION"
+      value = "us-central1"
+    },
+    {
+      name = "RUG_CF_QUEUE_NAME"
+      value = "cf-queue"
+    },
+    {
+      name = "RUG_CF_QUEUE_URL"
+      value = "https://cfv1-bqmimbu2sq-uc.a.run.app"
+    },
+    {
       name = "COGNITO_USER_POOL_ID"
       value = aws_cognito_user_pool.user_pool.id
     },
