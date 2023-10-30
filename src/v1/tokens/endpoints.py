@@ -1,5 +1,5 @@
 import time, os, logging, math, json
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from typing import List
 from dotenv import load_dotenv
@@ -7,7 +7,7 @@ from decimal import Decimal
 from botocore.exceptions import ClientError
 from pydantic import ValidationError
 
-from src.v1.shared.dependencies import get_primary_key, get_chain
+from src.v1.shared.dependencies import get_primary_key, get_chain, get_rpc_provider
 from src.v1.shared.schemas import ScoreResponse, Score
 from src.v1.shared.DAO import DAO, DatabaseQueueObject
 from src.v1.shared.models import ChainEnum, validate_token_address
@@ -281,7 +281,7 @@ async def get_supply_transferrability_info(
 
 @router.get(
     "/metadata/{chain}/{token_address}",
-    dependencies=[Depends(decode_token)],
+    # dependencies=[Depends(decode_token)],
     include_in_schema=True,
 )
 async def get_token_metrics(
@@ -333,6 +333,28 @@ async def get_token_metrics(
 
         # Fetch the data from all sources and then cache it in the database
         lastUpdatedTimestamp = int(time.time())
+
+        # First, check whether the address corresponds to a smart contract
+        # If not, throw a HTTP 404 exception
+        try:
+            rpc = get_rpc_provider(chain)
+            checksum_address = rpc.to_checksum_address(token_address)
+            is_token = rpc.eth.get_code(checksum_address).decode(
+                "utf-8", errors="replace"
+            )
+
+            if len(is_token) == 0:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Token address {token_address} on chain {chain} is not a token.",
+                )
+        except Exception as e:
+            logging.error(e)
+
+            raise HTTPException(
+                status_code=404,
+                detail=f"Token address {token_address} on chain {chain} is not a token.",
+            )
 
         # Fetch and process market data from GoPlus
         try:
@@ -575,9 +597,7 @@ async def get_holder_chart(
 
     cluster_summary = await get_token_clustering(chain, token_address)
 
-    found = not cluster_summary or isinstance(cluster_summary, JSONResponse)
-
-    if not found:
+    if not cluster_summary or isinstance(cluster_summary, JSONResponse):
         logging.info(
             f"Exception: No cluster summary was found for {token_address} on chain {chain}."
         )

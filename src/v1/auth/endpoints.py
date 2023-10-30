@@ -1,6 +1,6 @@
 import os, boto3, logging, requests, time, dotenv
 from functools import lru_cache
-from fastapi import Depends, HTTPException, APIRouter, Response, security
+from fastapi import Depends, HTTPException, APIRouter, Response, security, Request
 from fastapi.responses import JSONResponse
 from fastapi_jwt_auth import AuthJWT
 from pydantic import BaseModel, EmailStr
@@ -9,7 +9,7 @@ from authlib.jose import JsonWebToken, JsonWebKey, KeySet, JWTClaims, errors
 from cachetools import cached, TTLCache
 
 # from src.v1.referral.endpoints import post_referral_code_use
-from src.v1.shared.DAO import DAO
+from src.v1.shared.DAO import DAO, RAO
 
 from src.v1.auth.exceptions import (
     CognitoException,
@@ -18,7 +18,7 @@ from src.v1.auth.exceptions import (
     CognitoLambdaException,
     CognitoUserDoesNotExist,
 )
-from src.v1.auth.dependencies import render_template
+from src.v1.auth.dependencies import render_template, get_username_from_access_token
 from src.v1.auth.schemas import (
     EmailAccountBase,
     CreateEmailAccount,
@@ -27,6 +27,9 @@ from src.v1.auth.schemas import (
     UserAccessTokens,
     ResetPassword,
 )
+
+from src.v1.referral.dependencies import is_referral_valid_
+from src.v1.referral.endpoints import referral_code_use
 
 dotenv.load_dotenv()
 
@@ -119,27 +122,6 @@ def decode_token(
 ##############################################
 
 
-@router.get("/email/username/")
-def get_username_from_access_token(access_token: str) -> str:
-    try:
-        response = cognito.get_user(AccessToken=access_token)
-        logging.info(f"Response: {response}")
-        user_attributes = response.get("UserAttributes")
-
-        if user_attributes:
-            for attribute in user_attributes:
-                if attribute.get("Name") == "email":
-                    return {"username": attribute.get("Value")}
-        logging.error(f"Exception: No email attribute found in response: {response}")
-        return {}
-    except cognito.exceptions.NotAuthorizedException as e:
-        logging.error(f"Exception: NotAuthorizedException: {e}")
-        return {}
-    except Exception as e:
-        logging.error(f"Exception: Unknown Cognito Exception: {e}")
-        return {}
-
-
 @router.get("/email/exists/")
 async def check_username_exists(user: EmailStr):
     USER_POOL_ID = os.environ.get("COGNITO_USER_POOL_ID")
@@ -153,7 +135,7 @@ async def check_username_exists(user: EmailStr):
         response = cognito.admin_get_user(UserPoolId=USER_POOL_ID, Username=user)
         if response and "Username" in response:
             return JSONResponse(
-                status_code=200,
+                status_code=422,
                 content={"exists": True, "detail": "Username already exists."},
             )
         else:
@@ -211,18 +193,28 @@ async def rollback_user_creation(username: str) -> Response:
 #                                            #
 ##############################################
 
-
 @router.post("/email/create/")
 async def create_user(user: CreateEmailAccount):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        # TODO: Add custom exception for this
         raise CognitoException(
             "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
         )
 
-    logging.info(f"Client ID: {CLIENT_ID}")
+    # Check if the referral code is valid
+    referral_code_valid = await is_referral_valid_(user.referral_code)
+
+    logging.info(f"Referral code {user.referral_code} is valid: {referral_code_valid}")
+
+    if not referral_code_valid:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "title": "Invalid Referral Code",
+                "body": "The referral code you entered is invalid.",
+            },
+        )
 
     try:
         _ = cognito.sign_up(
@@ -274,12 +266,10 @@ async def create_user(user: CreateEmailAccount):
 
         raise CognitoException(f"Exception: Unknown Cognito Exception: {e}")
 
-    # Post a use on the referral code if this was successful
-    # await post_referral_code_use(user.referral_code, user.username)
-
     return JSONResponse(
         status_code=200,
         content={
+            "status_code": 200,
             "detail": "User created successfully! Please verify your email using the link or code sent by AWS Cognito.",
         },
     )
@@ -294,12 +284,27 @@ async def verify_user(user: VerifyEmailAccount):
             "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
         )
 
+    # Check if the referral code is valid
+    referral_code_valid = await is_referral_valid_(user.referral_code)
+
+    if not referral_code_valid:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "title": "Invalid Referral Code",
+                "body": "The referral code you entered is invalid.",
+            },
+        )
+
     try:
         _ = cognito.confirm_sign_up(
             ClientId=CLIENT_ID,
             Username=user.username,
             ConfirmationCode=user.confirmation_code,
         )
+
+        # Post a use on the referral code if this was successful
+        await referral_code_use(user.referral_code, user.username)
     except cognito.exceptions.CodeMismatchException as e:
         raise HTTPException(status_code=400, detail="Invalid confirmation code.")
     except cognito.exceptions.ExpiredCodeException as e:
@@ -321,8 +326,9 @@ async def resend_verification_code(user: EmailAccountBase):
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        # TODO: Add custom exception for this
-        raise ValueError()
+        raise CognitoException(
+            "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
+        )
 
     try:
         # The new confirmation code will be sent to the user's registered email or phone number
@@ -352,7 +358,6 @@ async def sign_in(user: SignInEmailAccount) -> Response:
     CLIENT_ID = os.environ.get("COGNITO_APP_CLIENT_ID")
 
     if not CLIENT_ID:
-        # TODO: Add custom exception for this
         raise CognitoException(
             "Exception: COGNITO_APP_CLIENT_ID not set in environment variables."
         )

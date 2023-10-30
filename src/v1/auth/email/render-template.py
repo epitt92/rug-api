@@ -15,7 +15,6 @@ if __name__ == "__main__":
             "referral-invite.html",
             title="You've Been Invited!",
             username="John",
-            referer="Jane",
             url="https://rug.ai",
         )
     )

@@ -113,7 +113,8 @@ module "rug_app_service" {
     aws_secretsmanager_secret.RUG_API_ARBITRUM_RPC_URL.arn,
     aws_secretsmanager_secret.RUG_API_BASE_RPC_URL.arn,
     aws_secretsmanager_secret.GO_PLUS_APP_KEY.arn,
-    aws_secretsmanager_secret.GO_PLUS_APP_SECRET.arn
+    aws_secretsmanager_secret.GO_PLUS_APP_SECRET.arn,
+    aws_secretsmanager_secret.COINGECKO_API_KEY.arn
   ]
   secrets = [
     {
@@ -151,6 +152,10 @@ module "rug_app_service" {
     {
       name     = "GO_PLUS_APP_SECRET"
       valueFrom = aws_secretsmanager_secret.GO_PLUS_APP_SECRET.arn
+    },
+    {
+      name = "COINGECKO_API_KEY"
+      valueFrom = aws_secretsmanager_secret.COINGECKO_API_KEY.arn
     }
   ]
   custom_policy = {
