@@ -19,5 +19,5 @@ DURATION_MAPPING = {
     "1d": DAY,
     "1w": WEEK,
     "1m": MONTH,
-    "all": None
+    "all": None,
 }

@@ -1,6 +1,6 @@
 import os, boto3, logging, requests, time, dotenv
 from functools import lru_cache
-from fastapi import Depends, HTTPException, APIRouter, Response, security
+from fastapi import Depends, HTTPException, APIRouter, Response, security, Request
 from fastapi.responses import JSONResponse
 from fastapi_jwt_auth import AuthJWT
 from pydantic import BaseModel, EmailStr
@@ -18,7 +18,7 @@ from src.v1.auth.exceptions import (
     CognitoLambdaException,
     CognitoUserDoesNotExist,
 )
-from src.v1.auth.dependencies import render_template
+from src.v1.auth.dependencies import render_template, get_username_from_access_token
 from src.v1.auth.schemas import (
     EmailAccountBase,
     CreateEmailAccount,
@@ -192,7 +192,6 @@ async def rollback_user_creation(username: str) -> Response:
 #                Endpoints                   #
 #                                            #
 ##############################################
-
 
 @router.post("/email/create/")
 async def create_user(user: CreateEmailAccount):

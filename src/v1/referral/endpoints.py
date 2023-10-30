@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse
 from botocore.exceptions import ClientError
 import logging, boto3
@@ -203,20 +203,53 @@ async def get_details_from_username(username: str):
             status_code=400,
             content={"detail": f"User {username} does not exist."},
         )
+    
+
+@router.get("/username", include_in_schema=True)
+async def get_username(request: Request):
+    # First, fetches the access token from the request header
+    try:
+        token = request.headers.get("Authorization").strip("Bearer").strip()
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "title": "Incorrect/Missing Access Token",
+                "body": "The access token provided was incorrect or missing.",
+            },
+        )
+
+    logging.info(f"{token}")
+
+    # Then, calls get_user() to get the user who sent the request
+    sender = get_username_from_access_token(token)
+
+    logging.info(f"Sender: {sender}")
+
+    if sender == {}:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "title": "Invalid Access Token",
+                "body": "The access token provided was invalid.",
+            },
+        )
+
+    return sender.get("username")
 
 
 @router.get("/details", include_in_schema=True)
 async def get_details(request: Request):
-    token = request.headers.get("Authorization")
+    # First, fetches the access token from the request header
+    sender = await get_username(request)
 
-    sender = get_username_from_access_token(token)
+    logging.info(sender)
 
     return await get_details_from_username(sender)
 
 
-@router.post("/use", include_in_schema=True)
-def send_email_invite(email: str, referral_code: str):
-    subject = "You've Been Invited!"
+async def send_email_invite(email: str, referral_code: str):
+    subject = f"You've Been Invited! {referral_code}"
     logging.info(f"Sending invite email to user {email}.")
 
     # TODO: Add the correct encoded URL to this email
@@ -255,20 +288,11 @@ async def invite_user(request: Request, user: str):
 
     Then asks Cognito who the sender is and uses this to determine the referral code to use. Then wraps this referral code into an email.
     """
-    # First, fetches the access token from the request header
-    token = request.headers.get("Authorization")
-
-    logging.info(f"Token: {token}")
-
-    # Then, calls get_user() to get the user who sent the request
-    sender = get_username_from_access_token(token)
-
-    logging.info(f"Sender: {sender}")
-
     # Then, calls is_referral_exists() to get the referral code of the sender
-    user_details = await get_details_from_username(sender)
+    user_details = await get_details(request)
 
     referral_code = user_details.get("referral_code")
+    sender = user_details.get("username")
 
     if not referral_code:
         raise HTTPException(
