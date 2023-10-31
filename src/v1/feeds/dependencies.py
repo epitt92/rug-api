@@ -192,7 +192,6 @@ def get_usd_price(symbol):
 
 
 def get_pools(chain, token_address):
-    print("-------------------------------")
     lower_address = token_address.lower()
     chain_id = CHAIN_ID_MAPPING[chain]
     # Get the leading pool address from GoPlus API for a token and return it
@@ -241,39 +240,6 @@ def get_metadata(token_address, network):
     total_liquidity = 0
     pool_count = 0
 
-    # Multicall
-    # calls = []
-
-    # for pool_data in pools:
-    #     pool_address = pool_data["pair"]
-
-    #     if pool_data["name"] == "UniswapV3":
-    #         calls.append(process_multicall.create_call(metadata_analytics_contract, 'getUniswapV3Data', args=[pool_address, token_address]))
-    #     else:
-    #         calls.append(process_multicall.create_call(metadata_analytics_contract, 'getUniswapV2Data', args=[pool_address, token_address]))
-
-    # results = process_multicall.call(calls)
-
-    # for idx, pool_data in enumerate(pools):
-    #     # Extracting results
-    #     if results[idx][0] == False:
-    #         continue
-    #     liquidity_raw = int_decoder(results[idx][1])
-    #     market_cap_raw = int_decoder(results[idx][2])
-    #     stable_token_addr = decoder(results[idx][3])
-    #     stable_token_decimals = int_decoder(results[idx][4])
-
-    #     symbol = SYMBOLS[network][stable_token_addr.lower()]
-    #     stable_token_price = get_usd_price(symbol)
-
-    #     # Adjust for stableTokenDecimals and multiply by token price in USD
-    #     liquidity_usd = (liquidity_raw * stable_token_price / (10 ** stable_token_decimals))
-    #     market_cap_usd = (market_cap_raw * stable_token_price / (10 ** stable_token_decimals))
-
-    #     total_market_caps += market_cap_usd
-    #     total_liquidity += liquidity_usd
-    #     pool_count += 1
-
     # Single call
     for pool_data in pools:
         pool_address = pool_data["address"]
@@ -294,7 +260,6 @@ def get_metadata(token_address, network):
         symbol = SYMBOLS[network].get(stable_token_addr.lower())
 
         if symbol is None:
-            # TODO: @ilce Add handling for this case
             continue
 
         stable_token_price = get_usd_price(symbol)
@@ -309,38 +274,9 @@ def get_metadata(token_address, network):
         total_liquidity += liquidity_usd
         pool_count += 1
 
-        # start_time = time.time()
-        # # start_block = get_block_from_24h_ago(w3)
-        # start_block = w3.eth.getBlock("latest")["number"] - 7200
-        # print(f"It took {(time.time() - start_time):.3f} to get the block number 24h ago.")
-
-        # start_time = time.time()
-        # events_filter = pool_contract.events.Swap.createFilter(
-        #     fromBlock=start_block, toBlock="latest"
-        # )
-        # events = events_filter.get_all_entries()
-        # if pool_data["name"] == "UniswapV3":
-        #     volume_24h = sum([event["args"]["amount0"] for event in events])
-        # else:
-        #     volume_24h = sum(
-        #         [
-        #             event["args"]["amount0In"] + event["args"]["amount0Out"]
-        #             for event in events
-        #         ]
-        #     )
-
-        # volume_24h = volume_24h * token_price_usd * 2
-        # print(
-        #     f"It took {(time.time() - start_time):.3f} to get all events and calculate the volume."
-        # )
-
     # Calculate the average market cap and total liquidity across all pools
     average_market_cap = total_market_caps / pool_count if pool_count else 0
-    print(f"Market capacity: {average_market_cap}")
-    print(f"Liquidity: {total_liquidity}")
-    # print(f"24H Volume: {volume_24h}")
-    print(f"Market Capacity and Liquidity took {(time.time() - start_time):.3f}.")
-    print("-------------------------------")
+    
     return MarketDataResponse(
         marketCap=average_market_cap, liquidityUsd=total_liquidity
     )

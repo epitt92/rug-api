@@ -4,7 +4,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 import dotenv, logging
+from apscheduler.schedulers.background import BackgroundScheduler
+import time, logging
 
+from src.utils.gcs import GCSAdapter
+from src.v1.feeds.constants import *
 from router import v1_router
 
 from src.v1.shared.dependencies import load_access_token
@@ -180,3 +184,46 @@ async def root():
 
 app.include_router(v1_router)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+
+# bucket = S3Adapter()
+bucket = GCSAdapter()
+
+# Cronjob updates the token JSON every 5 minutes
+def cron_update_data():
+    logging.info("Running cronjob to update data")
+    start_time = time.time()
+    networks = ["ethereum", "base"]
+    for network in networks:
+        pools = bucket.get(f"pools/{network}/pools.json")
+        pools_ = pools[::-1]
+
+        for pool in pools_:
+            token0 = pool["token0"].lower()
+            token1 = pool["token1"].lower()
+
+            if not POOL_INDEXER[network].get(token0):
+                POOL_INDEXER[network][token0] = [pool]
+            else:
+                POOL_INDEXER[network][token0].append(pool)
+
+            if not POOL_INDEXER[network].get(token1):
+                POOL_INDEXER[network][token1] = [pool]
+            else:
+                POOL_INDEXER[network][token1].append(pool)
+
+        for key in POOL_INDEXER[network].keys():
+            pools_list = POOL_INDEXER[network][key]
+            POOL_INDEXER[network][key] = list(
+                {v["address"]: v for v in pools_list}.values()
+            )
+
+    logging.warning(f"Pool indexer job is finished in {time.time() - start_time}")
+
+# Load latest data on startup
+cron_update_data()
+
+# Background scheduler to run cronjob to update data
+scheduler = BackgroundScheduler()
+scheduler.add_job(cron_update_data, "interval", minutes=5)
+scheduler.start()
