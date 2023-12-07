@@ -175,6 +175,3 @@ Once a pull request is approved and merged to the `main` branch, a GitHub Action
 
 Documentation for the API endpoints can be accessed [here](API.md) or at `localhost:8000/endpoints` on your local deployment.
 
-## Contact
-
-Jake Lee - `jake@diffusion.io`
